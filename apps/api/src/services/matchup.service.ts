@@ -169,10 +169,10 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
           UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
           WHERE id = $1
         `, [m.home_team_id, homeScore]);
-        await client.query(
-          `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
-          [awayScore, m.away_team_id],
-        );
+        await client.query(`
+          UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
+          WHERE id = $1
+        `, [m.away_team_id, awayScore]);
       } else {
         const winnerScore = winnerId === m.home_team_id ? homeScore : awayScore;
         await client.query(`
