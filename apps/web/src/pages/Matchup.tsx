@@ -280,19 +280,26 @@ function FighterRow({ fighter, align, isBench }: { fighter: any; align: 'left' |
   );
 }
 
+function calcMilestoneBonus(correctCount: number): number {
+  return correctCount >= 6 ? 300 : correctCount >= 5 ? 200 : correctCount >= 4 ? 100 : 0;
+}
+
 function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   label: string; picks: any[]; matchupPts: number; seasonPts: number; align?: 'left' | 'right';
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
+  const correctCount = correct.length;
   const methodBonus = correct.filter((p) => (+p.pointsEarned) >= 300).length;
   const underdogBonus = correct.filter((p) => (+p.pointsEarned) === 200 || (+p.pointsEarned) === 400).length;
+  const milestone = calcMilestoneBonus(correctCount);
   const hasScores = scored.length > 0;
 
   const rows = [
-    { label: 'Correct picks', value: correct.length, pts: correct.length * 100 },
-    ...(methodBonus > 0 ? [{ label: 'Method bonus', value: methodBonus, pts: methodBonus * 200 }] : []),
-    ...(underdogBonus > 0 ? [{ label: 'Underdog bonus', value: underdogBonus, pts: underdogBonus * 100 }] : []),
+    { label: 'Correct picks', pts: correctCount * 100 },
+    ...(methodBonus > 0 ? [{ label: 'Method bonus', pts: methodBonus * 200 }] : []),
+    ...(underdogBonus > 0 ? [{ label: 'Underdog bonus', pts: underdogBonus * 100 }] : []),
+    ...(milestone > 0 ? [{ label: `${correctCount}/6 correct bonus`, pts: milestone }] : []),
   ];
 
   return (

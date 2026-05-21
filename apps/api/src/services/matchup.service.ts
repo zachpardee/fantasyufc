@@ -100,6 +100,10 @@ export async function generateMatchupsForLeague(leagueId: string) {
   return { events: events.length, rounds: schedule.length, teams: teamIds.length };
 }
 
+function milestoneBonus(correct: number): number {
+  return correct >= 6 ? 300 : correct >= 5 ? 200 : correct >= 4 ? 100 : 0;
+}
+
 export async function finalizeMatchupResults(leagueId: string, eventId: string) {
   // After an event completes, determine winners and update W/L records
   const { rows: matchups } = await db.query(`
@@ -108,17 +112,43 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
     WHERE league_id = $1 AND event_id = $2 AND winner_id IS NULL
   `, [leagueId, eventId]);
 
+  // Correct pick counts per member — drives milestone and perfect card bonuses
+  const { rows: pickRows } = await db.query<{
+    member_id: string; total_picks: string; correct_picks: string;
+  }>(`
+    SELECT ep.member_id,
+      COUNT(*) AS total_picks,
+      SUM(CASE WHEN ep.is_correct THEN 1 ELSE 0 END) AS correct_picks
+    FROM event_picks ep
+    JOIN fights f ON f.id = ep.fight_id AND f.status = 'completed'
+    WHERE ep.league_id = $1 AND f.event_id = $2
+    GROUP BY ep.member_id
+  `, [leagueId, eventId]);
+
+  const bonusByMember: Record<string, number> = {};
+  for (const row of pickRows) {
+    bonusByMember[row.member_id] = milestoneBonus(parseInt(row.correct_picks));
+  }
+
   const client = await db.connect();
   try {
     await client.query('BEGIN');
 
     for (const m of matchups) {
+      const homeBonus = bonusByMember[m.home_team_id] ?? 0;
+      const awayBonus = bonusByMember[m.away_team_id] ?? 0;
+
+      // Apply milestone bonus to matchup scores before deciding winner
+      const homeScore = parseFloat(m.home_score) + homeBonus;
+      const awayScore = parseFloat(m.away_score) + awayBonus;
+
+      await client.query(
+        `UPDATE matchups SET home_score = $1, away_score = $2 WHERE id = $3`,
+        [homeScore, awayScore, m.id],
+      );
+
       let winnerId: string | null = null;
       let isTie = false;
-
-      const homeScore = parseFloat(m.home_score);
-      const awayScore = parseFloat(m.away_score);
-
       if (homeScore > awayScore) {
         winnerId = m.home_team_id;
       } else if (awayScore > homeScore) {
@@ -145,7 +175,6 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
         );
       } else {
         const winnerScore = winnerId === m.home_team_id ? homeScore : awayScore;
-        // Winner gets their matchup score + 250 bonus
         await client.query(`
           UPDATE league_members
           SET wins = wins + 1,
@@ -154,7 +183,6 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
           WHERE id = $1
         `, [winnerId, winnerScore, MATCHUP_WIN_BONUS]);
 
-        // Update loser
         const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
         const loserScore = winnerId === m.home_team_id ? awayScore : homeScore;
         await client.query(`
@@ -167,21 +195,8 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
       }
     }
 
-    // Perfect card bonus: (n-3) × 100 pts for anyone who got all their picks right
-    // Scope to picks whose fight has completed — avoids re-deriving fight ordering
-    const { rows: memberPicks } = await client.query<{
-      member_id: string; total_picks: string; correct_picks: string;
-    }>(`
-      SELECT ep.member_id,
-        COUNT(*) AS total_picks,
-        SUM(CASE WHEN ep.is_correct THEN 1 ELSE 0 END) AS correct_picks
-      FROM event_picks ep
-      JOIN fights f ON f.id = ep.fight_id AND f.status = 'completed'
-      WHERE ep.league_id = $1 AND f.event_id = $2
-      GROUP BY ep.member_id
-    `, [leagueId, eventId]);
-
-    for (const row of memberPicks) {
+    // Perfect card bonus: (n-3) × 100 pts → season total (not matchup score)
+    for (const row of pickRows) {
       const picked = parseInt(row.total_picks);
       const correct = parseInt(row.correct_picks);
       if (picked >= 4 && picked === correct) {
