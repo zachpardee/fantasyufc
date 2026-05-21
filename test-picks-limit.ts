@@ -8,11 +8,11 @@ async function run() {
   const eventId = (await db.query(`SELECT id FROM ufc_events WHERE name ILIKE '%Song%Figueiredo%'`)).rows[0].id;
 
   // --- Reset ---
+  await db.query(`DELETE FROM roster_win_bonuses WHERE league_id=$1`, [leagueId]);
   await db.query(`DELETE FROM fight_results WHERE fight_id IN (SELECT id FROM fights WHERE event_id=$1)`, [eventId]);
   await db.query(`UPDATE fights SET status='scheduled' WHERE event_id=$1`, [eventId]);
   await db.query(`DELETE FROM event_picks WHERE league_id=$1`, [leagueId]);
   await db.query(`DELETE FROM perfect_card_bonuses WHERE league_id=$1`, [leagueId]);
-  await db.query(`DELETE FROM roster_win_bonuses WHERE league_id=$1`, [leagueId]);
   await db.query(`DELETE FROM matchup_scores WHERE matchup_id IN (SELECT id FROM matchups WHERE league_id=$1)`, [leagueId]);
   await db.query(`UPDATE matchups SET home_score=0, away_score=0, winner_id=NULL WHERE league_id=$1`, [leagueId]);
   await db.query(`UPDATE league_members SET wins=0, losses=0, ties=0, streak=0, total_points=0 WHERE league_id=$1`, [leagueId]);
