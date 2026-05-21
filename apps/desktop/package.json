@@ -1,0 +1,30 @@
+{
+  "name": "@fantasy-ufc/desktop",
+  "version": "1.0.0",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "tsc && electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "electron-updater": "^6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.0",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.fantasyufc.desktop",
+    "productName": "Fantasy UFC",
+    "directories": { "output": "dist-electron" },
+    "files": ["dist/**", "src/**"],
+    "mac": { "category": "public.app-category.sports-games", "target": "dmg" },
+    "win": { "target": "nsis" },
+    "linux": { "target": "AppImage" }
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+apps/web/.env
+apps/mobile/.env
+*.log
+.DS_Store
+.turbo/
+coverage/
+.expo/
+ios/
+android/
+*.tsbuildinfo

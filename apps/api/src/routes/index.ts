@@ -1,0 +1,29 @@
+import { Router } from 'express';
+import { authRouter } from './auth.routes';
+import { leaguesRouter } from './leagues.routes';
+import { fightersRouter } from './fighters.routes';
+import { eventsRouter } from './events.routes';
+import { draftRouter } from './draft.routes';
+import { rosterRouter } from './roster.routes';
+import { matchupsRouter } from './matchups.routes';
+import { tradesRouter } from './trades.routes';
+import { notificationsRouter } from './notifications.routes';
+import { adminRouter } from './admin.routes';
+import { scheduleRouter } from './schedule.routes';
+import { waiversRouter } from './waivers.routes';
+
+export const apiRouter = Router();
+
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/leagues', leaguesRouter);
+apiRouter.use('/leagues/:leagueId/draft', draftRouter);
+apiRouter.use('/leagues/:leagueId/roster', rosterRouter);
+apiRouter.use('/leagues/:leagueId/matchups', matchupsRouter);
+apiRouter.use('/leagues/:leagueId/standings', matchupsRouter);
+apiRouter.use('/leagues/:leagueId/trades', tradesRouter);
+apiRouter.use('/leagues/:leagueId/schedule', scheduleRouter);
+apiRouter.use('/leagues/:leagueId/waivers', waiversRouter);
+apiRouter.use('/fighters', fightersRouter);
+apiRouter.use('/events', eventsRouter);
+apiRouter.use('/notifications', notificationsRouter);
+apiRouter.use('/admin', adminRouter);

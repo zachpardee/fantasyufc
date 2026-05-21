@@ -1,0 +1,105 @@
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { apiClient } from '../../../../src/api/client';
+import type { League, Matchup } from '@fantasy-ufc/shared';
+
+export default function LeagueHomeScreen() {
+  const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+  const router = useRouter();
+
+  const { data: league } = useQuery<League>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
+
+  const { data: matchup } = useQuery<Matchup | null>({
+    queryKey: ['matchup', 'current', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/current`),
+  });
+
+  if (!league) return null;
+
+  const navItems = [
+    { label: 'My Roster', icon: '👊', route: `/(app)/league/${leagueId}/roster` },
+    { label: 'Standings', icon: '📊', route: `/(app)/league/${leagueId}/standings` },
+    { label: 'Matchup', icon: '⚔️', route: `/(app)/league/${leagueId}/matchup` },
+    { label: 'Trades', icon: '🤝', route: `/(app)/league/${leagueId}/trade` },
+    { label: 'Draft', icon: '📋', route: `/(app)/league/${leagueId}/draft` },
+  ];
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.leagueName}>{league.name}</Text>
+        <View style={[styles.statusBadge, league.status === 'active' && styles.activeBadge]}>
+          <Text style={styles.statusText}>{league.status.toUpperCase()}</Text>
+        </View>
+      </View>
+
+      {matchup && (
+        <View style={styles.matchupPreview}>
+          <Text style={styles.matchupLabel}>CURRENT MATCHUP</Text>
+          <View style={styles.matchupScores}>
+            <View style={styles.teamScore}>
+              <Text style={styles.teamName}>{(matchup as any).home_team_name}</Text>
+              <Text style={styles.score}>{matchup.homeScore.toFixed(1)}</Text>
+            </View>
+            <Text style={styles.vs}>VS</Text>
+            <View style={[styles.teamScore, styles.awayTeam]}>
+              <Text style={styles.teamName}>{(matchup as any).away_team_name}</Text>
+              <Text style={styles.score}>{matchup.awayScore.toFixed(1)}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.nav}>
+        {navItems.map((item) => (
+          <TouchableOpacity
+            key={item.label}
+            style={styles.navItem}
+            onPress={() => router.push(item.route as never)}
+          >
+            <Text style={styles.navIcon}>{item.icon}</Text>
+            <Text style={styles.navLabel}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.info}>
+        <Text style={styles.infoText}>{league.memberCount} / {league.maxTeams} teams</Text>
+        <Text style={styles.infoText}>Invite: {league.inviteCode}</Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: { padding: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  leagueName: { fontSize: 22, fontWeight: 'bold', color: '#fff', flex: 1 },
+  statusBadge: { backgroundColor: '#333', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  activeBadge: { backgroundColor: '#1a3a1a' },
+  statusText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  matchupPreview: {
+    margin: 16, backgroundColor: '#1a1a1a', borderRadius: 12,
+    padding: 20, borderWidth: 1, borderColor: '#c8102e33',
+  },
+  matchupLabel: { fontSize: 11, color: '#c8102e', fontWeight: '700', letterSpacing: 1, marginBottom: 16 },
+  matchupScores: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  teamScore: { flex: 1 },
+  awayTeam: { alignItems: 'flex-end' },
+  teamName: { fontSize: 13, color: '#999', marginBottom: 4 },
+  score: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
+  vs: { color: '#666', fontWeight: '700', paddingHorizontal: 16 },
+  nav: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
+  navItem: {
+    width: '33.33%', padding: 8, alignItems: 'center',
+    backgroundColor: '#1a1a1a', margin: 4, borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a',
+  },
+  navIcon: { fontSize: 28, marginBottom: 6 },
+  navLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  info: { padding: 24, flexDirection: 'row', justifyContent: 'space-between' },
+  infoText: { color: '#555', fontSize: 13 },
+});
