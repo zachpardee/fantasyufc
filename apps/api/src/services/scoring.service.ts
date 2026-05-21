@@ -126,7 +126,7 @@ export async function processFightResult(fightResultId: string) {
         breakdown.ptsWin, breakdown.ptsFinish, breakdown.ptsRoundBonus,
         breakdown.ptsSigStrikes, breakdown.ptsTotalStrikes, breakdown.ptsKnockdowns,
         breakdown.ptsTakedowns, breakdown.ptsSubmissions, breakdown.ptsBonuses,
-        breakdown.titleMultiplier, breakdown.totalPoints,
+        breakdown.titleMultiplier, breakdown.totalPoints, row.is_starter,
       ]);
 
       processedMatchupIds.add(row.matchup_id);
@@ -170,9 +170,9 @@ export async function processFightResult(fightResultId: string) {
       `, [fightResult.fight_id]);
     }
 
-    // Award 250-pt season bonus to every league member who has the winner on their roster
+    // +50 matchup pts for every league member who has the winning fighter on their roster
     if (fightResult.winner_id) {
-      const ROSTER_WIN_BONUS = 250;
+      const ROSTER_WIN_BONUS = 50;
       const { rows: rosterOwners } = await client.query(`
         SELECT lm.id AS member_id, lm.league_id
         FROM roster_fighters rf
@@ -184,24 +184,16 @@ export async function processFightResult(fightResultId: string) {
       `, [fightResult.winner_id, fightResult.fight_id]);
 
       for (const owner of rosterOwners) {
-        const inserted = await client.query(`
+        await client.query(`
           INSERT INTO roster_win_bonuses
             (league_id, member_id, fighter_id, fight_result_id, points_awarded)
           VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT (league_id, member_id, fight_result_id) DO NOTHING
-          RETURNING id
         `, [owner.league_id, owner.member_id, fightResult.winner_id, fightResultId, ROSTER_WIN_BONUS]);
-
-        if (inserted.rowCount) {
-          await client.query(
-            `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
-            [ROSTER_WIN_BONUS, owner.member_id],
-          );
-        }
       }
     }
 
-    // Matchup score = correct picks only (100 pts each)
+    // Matchup score = pick points + roster win bonuses (50 pts per drafted winner this event)
     for (const matchupId of processedMatchupIds) {
       await client.query(`
         UPDATE matchups SET
@@ -211,6 +203,14 @@ export async function processFightResult(fightResultId: string) {
             WHERE ep.league_id = matchups.league_id
               AND ep.member_id = matchups.home_team_id
               AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $2)
+          ) + (
+            SELECT COALESCE(SUM(rwb.points_awarded), 0)
+            FROM roster_win_bonuses rwb
+            JOIN fight_results fr ON fr.id = rwb.fight_result_id
+            JOIN fights fi ON fi.id = fr.fight_id
+            WHERE rwb.league_id = matchups.league_id
+              AND rwb.member_id = matchups.home_team_id
+              AND fi.event_id = $2
           ),
           away_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0)
@@ -218,6 +218,14 @@ export async function processFightResult(fightResultId: string) {
             WHERE ep.league_id = matchups.league_id
               AND ep.member_id = matchups.away_team_id
               AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $2)
+          ) + (
+            SELECT COALESCE(SUM(rwb.points_awarded), 0)
+            FROM roster_win_bonuses rwb
+            JOIN fight_results fr ON fr.id = rwb.fight_result_id
+            JOIN fights fi ON fi.id = fr.fight_id
+            WHERE rwb.league_id = matchups.league_id
+              AND rwb.member_id = matchups.away_team_id
+              AND fi.event_id = $2
           )
         WHERE id = $1
       `, [matchupId, fightResult.event_id]);

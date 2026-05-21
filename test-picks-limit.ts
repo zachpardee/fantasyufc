@@ -49,6 +49,17 @@ async function run() {
   }
   console.log(`Created picks: ${m1.team_name} → red/DEC, ${m2.team_name} → blue/KO\n`);
 
+  // Put first fight's red fighter on m1's roster so they get a +50 roster bonus
+  const { rows: [m1Roster] } = await db.query(
+    `SELECT id FROM rosters WHERE league_member_id=$1`, [m1.id]
+  );
+  await db.query(`
+    INSERT INTO roster_fighters (roster_id, fighter_id, slot_type)
+    VALUES ($1, $2, 'starter')
+    ON CONFLICT (roster_id, fighter_id) DO NOTHING
+  `, [m1Roster.id, top6[0].red_fighter_id]);
+  console.log(`Added fighter ${top6[0].red_fighter_id.slice(0,8)} to ${m1.team_name}'s roster\n`);
+
   // Score fights: red wins all via decision — m1 gets 6/6 correct + method=300 each, m2 gets 0/6
   for (const f of top6) {
     const { rows: [fr] } = await db.query(`
@@ -97,10 +108,17 @@ async function run() {
   `, [leagueId]);
   console.log('\nPerfect card bonuses:', perfect.rows.length ? perfect.rows : 'none');
 
-  // Expected: m1 = 6/6 correct → 6×300=1800 pick pts + 300 milestone = 2100 matchup
-  // Season = 2100 + 250 (matchup win) + 300 (perfect card) = 2650
+  const rosterBonuses = await db.query(`
+    SELECT lm.team_name, SUM(rwb.points_awarded) as total
+    FROM roster_win_bonuses rwb JOIN league_members lm ON lm.id=rwb.member_id
+    WHERE rwb.league_id=$1 GROUP BY lm.team_name
+  `, [leagueId]);
+  console.log('Roster win bonuses:', rosterBonuses.rows.length ? rosterBonuses.rows : 'none');
+
+  // Expected: m1 = 6/6 correct → 6×300=1800 pick pts + 300 milestone + 50 roster bonus = 2150 matchup
+  // Season = 2150 + 250 (matchup win) + 300 (perfect card) = 2700
   console.log('\nExpected:');
-  console.log(`  ${m1.team_name}: 6/6 correct, 2100 matchup pts, perfect bonus=300, season=2650`);
+  console.log(`  ${m1.team_name}: 6/6 correct, 2150 matchup pts (1800 picks + 300 milestone + 50 roster), perfect=300, season=2700`);
   console.log(`  ${m2.team_name}: 0/6 correct, 0 matchup pts, season=0`);
 
   process.exit(0);
