@@ -11,6 +11,8 @@ export function LeagueHomePage() {
   const { session } = useAuthStore();
   const qc = useQueryClient();
   const [copyMsg, setCopyMsg] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
@@ -29,6 +31,14 @@ export function LeagueHomePage() {
       catch { return null; }
     },
     enabled: league?.status === 'active',
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: (name: string) => apiClient.patch(`/leagues/${leagueId}`, { name }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league', leagueId] });
+      setEditingName(false);
+    },
   });
 
   const startDraftMutation = useMutation({
@@ -65,7 +75,32 @@ export function LeagueHomePage() {
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to="/" style={styles.back}>← Home</Link>
-        <span style={styles.leagueName}>{league.name}</span>
+        {editingName ? (
+          <form
+            style={styles.nameForm}
+            onSubmit={(e) => { e.preventDefault(); renameMutation.mutate(nameInput.trim()); }}
+          >
+            <input
+              style={styles.nameInput}
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              autoFocus
+              maxLength={100}
+            />
+            <button type="submit" style={styles.nameSaveBtn} disabled={renameMutation.isPending || !nameInput.trim()}>Save</button>
+            <button type="button" style={styles.nameCancelBtn} onClick={() => setEditingName(false)}>Cancel</button>
+          </form>
+        ) : (
+          <span style={styles.leagueName}>
+            {league.name}
+            {isCommissioner && (
+              <button
+                style={styles.editNameBtn}
+                onClick={() => { setNameInput(league.name); setEditingName(true); }}
+              >✎</button>
+            )}
+          </span>
+        )}
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
       </nav>
 
@@ -212,7 +247,12 @@ const styles: Record<string, React.CSSProperties> = {
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
-  leagueName: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
+  leagueName: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1, display: 'flex', alignItems: 'center', gap: 8 },
+  editNameBtn: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
+  nameForm: { display: 'flex', alignItems: 'center', gap: 8, flex: 1 },
+  nameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 16, fontWeight: 700, padding: '4px 10px', outline: 'none', flex: 1, maxWidth: 320 },
+  nameSaveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+  nameCancelBtn: { background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: 6, padding: '5px 12px', fontSize: 13, cursor: 'pointer' },
   matchupBanner: {
     background: '#1a1a1a', borderBottom: '1px solid #c8102e33',
     padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 24,

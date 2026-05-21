@@ -161,6 +161,22 @@ leaguesRouter.get('/:leagueId/members', requireAuth, async (req: AuthRequest, re
   } catch (err) { next(err); }
 });
 
+leaguesRouter.patch('/:leagueId', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { name } = z.object({ name: z.string().min(1).max(100) }).parse(req.body);
+    const { rows: [league] } = await db.query(
+      `SELECT id FROM leagues WHERE id = $1 AND commissioner_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!league) throw new AppError(403, 'Not the commissioner of this league');
+    const { rows: [updated] } = await db.query(
+      `UPDATE leagues SET name = $1 WHERE id = $2 RETURNING *`,
+      [name, req.params.leagueId],
+    );
+    res.json(updated);
+  } catch (err) { next(err); }
+});
+
 leaguesRouter.get('/:leagueId/scoring-settings', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [ss] } = await db.query(
