@@ -24,21 +24,16 @@ export function MatchupPage() {
     },
   });
 
-  const { data: currentEvent } = useQuery<any>({
-    queryKey: ['picks-current-event', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
-  });
-
   const { data: homePicks } = useQuery<any>({
-    queryKey: ['matchup-picks-home', leagueId, currentEvent?.id, matchup?.homeTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}?memberId=${matchup!.homeTeamId}`),
-    enabled: !!currentEvent?.id && !!matchup?.homeTeamId,
+    queryKey: ['matchup-picks-home', leagueId, matchup?.eventId, matchup?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}?memberId=${matchup!.homeTeamId}`),
+    enabled: !!matchup?.eventId && !!matchup?.homeTeamId,
   });
 
   const { data: awayPicks } = useQuery<any>({
-    queryKey: ['matchup-picks-away', leagueId, currentEvent?.id, matchup?.awayTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}?memberId=${matchup!.awayTeamId}`),
-    enabled: !!currentEvent?.id && !!matchup?.awayTeamId,
+    queryKey: ['matchup-picks-away', leagueId, matchup?.eventId, matchup?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}?memberId=${matchup!.awayTeamId}`),
+    enabled: !!matchup?.eventId && !!matchup?.awayTeamId,
   });
 
   const { data: homeRoster = [] } = useQuery<any[]>({

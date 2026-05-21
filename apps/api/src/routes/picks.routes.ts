@@ -50,7 +50,8 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
         bf.ranking AS blue_ranking, bf.is_champion AS blue_is_champion,
         wc.name AS weight_class_name,
         ep.picked_fighter_id, ep.picked_method, ep.is_correct, ep.points_earned,
-        fr.winner_id AS result_winner_id, fr.outcome AS result_outcome
+        fr.winner_id AS result_winner_id, fr.outcome AS result_outcome,
+        fr.ending_round AS result_ending_round
       FROM fights f
       JOIN fighters rf ON rf.id = f.red_fighter_id
       JOIN fighters bf ON bf.id = f.blue_fighter_id

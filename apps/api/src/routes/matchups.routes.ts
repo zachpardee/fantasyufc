@@ -34,7 +34,8 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows: [matchup] } = await db.query(`
+    // Prefer an active (scheduled/live) matchup; fall back to most recent completed
+    let { rows: [matchup] } = await db.query(`
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
         ht.team_name as home_team_name, at2.team_name as away_team_name
@@ -48,6 +49,23 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
       ORDER BY e.scheduled_at ASC
       LIMIT 1
     `, [req.params.leagueId, member.id]);
+
+    if (!matchup) {
+      const { rows: [recent] } = await db.query(`
+        SELECT m.*,
+          e.name as event_name, e.scheduled_at, e.status as event_status,
+          ht.team_name as home_team_name, at2.team_name as away_team_name
+        FROM matchups m
+        JOIN ufc_events e ON e.id = m.event_id
+        JOIN league_members ht ON ht.id = m.home_team_id
+        JOIN league_members at2 ON at2.id = m.away_team_id
+        WHERE m.league_id = $1
+          AND (m.home_team_id = $2 OR m.away_team_id = $2)
+        ORDER BY e.scheduled_at DESC
+        LIMIT 1
+      `, [req.params.leagueId, member.id]);
+      matchup = recent ?? null;
+    }
 
     if (!matchup) { res.json(null); return; }
     res.json(matchup);
