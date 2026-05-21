@@ -243,31 +243,17 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, method, isCor
 }
 
 function RosterColumn({ label, fighters, align }: { label: string; fighters: any[]; align: 'left' | 'right' }) {
-  const starters = fighters.filter((f) => f.slotType === 'starter');
-  const bench = fighters.filter((f) => f.slotType === 'bench');
-
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       <div style={{ ...styles.rosterTeamLabel, textAlign: align }}>{label}</div>
-      {starters.length > 0 && (
-        <>
-          <div style={{ ...styles.slotLabel, textAlign: align }}>Starters</div>
-          {starters.map((f) => <FighterRow key={f.id} fighter={f} align={align} />)}
-        </>
-      )}
-      {bench.length > 0 && (
-        <>
-          <div style={{ ...styles.slotLabel, textAlign: align, marginTop: 10 }}>Bench</div>
-          {bench.map((f) => <FighterRow key={f.id} fighter={f} align={align} isBench />)}
-        </>
-      )}
+      {fighters.map((f) => <FighterRow key={f.id} fighter={f} align={align} />)}
     </div>
   );
 }
 
-function FighterRow({ fighter, align, isBench }: { fighter: any; align: 'left' | 'right'; isBench?: boolean }) {
+function FighterRow({ fighter, align }: { fighter: any; align: 'left' | 'right' }) {
   return (
-    <div style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row', opacity: isBench ? 0.6 : 1 }}>
+    <div style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
           <span style={styles.fighterName}>{fighter.firstName} {fighter.lastName}</span>

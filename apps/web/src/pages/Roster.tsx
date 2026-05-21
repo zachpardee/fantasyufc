@@ -16,9 +16,8 @@ export function RosterPage() {
     onSuccess: () => refetch(),
   });
 
-  const starters = fighters?.filter((f) => f.slotType === 'starter') ?? [];
-  const bench = fighters?.filter((f) => f.slotType === 'bench') ?? [];
-  const isEmpty = !isLoading && fighters !== undefined && starters.length === 0 && bench.length === 0;
+  const all = fighters ?? [];
+  const isEmpty = !isLoading && fighters !== undefined && all.length === 0;
 
   return (
     <div style={styles.page}>
@@ -38,16 +37,10 @@ export function RosterPage() {
         )}
 
         {!isEmpty && !isLoading && (
-          <>
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Starters <span style={styles.count}>{starters.length}</span></h2>
-              {starters.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
-            </div>
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Bench <span style={styles.count}>{bench.length}</span></h2>
-              {bench.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} isBench />)}
-            </div>
-          </>
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Roster <span style={styles.count}>{all.length}</span></h2>
+            {all.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
+          </div>
         )}
       </div>
     </div>
