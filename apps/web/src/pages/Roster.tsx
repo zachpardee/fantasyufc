@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import type { RosterFighter } from '@fantasy-ufc/shared';
 
@@ -22,16 +22,20 @@ export function RosterPage() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>My Roster</h1>
+      <nav style={styles.nav}>
+        <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
+        <span style={styles.title}>My Roster</span>
+      </nav>
 
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Starters <span style={styles.count}>{starters.length}</span></h2>
-        {starters.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
-      </div>
-
-      <div style={styles.section}>
-        <h2 style={styles.sectionTitle}>Bench <span style={styles.count}>{bench.length}</span></h2>
-        {bench.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} isBench />)}
+      <div style={styles.body}>
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Starters <span style={styles.count}>{starters.length}</span></h2>
+          {starters.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
+        </div>
+        <div style={styles.section}>
+          <h2 style={styles.sectionTitle}>Bench <span style={styles.count}>{bench.length}</span></h2>
+          {bench.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} isBench />)}
+        </div>
       </div>
     </div>
   );
@@ -43,13 +47,13 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
       <div style={styles.rowLeft}>
         {(fighter.isChampion || fighter.is_champion) && <span style={styles.champ}>C</span>}
         <div>
-          <div style={styles.name}>{fighter.first_name} {fighter.last_name}</div>
-          <div style={styles.meta}>{fighter.weight_class_name} · Acquired via {fighter.acquiredVia}</div>
+          <div style={styles.name}>{fighter.firstName} {fighter.lastName}</div>
+          <div style={styles.meta}>{fighter.weightClassName} · Acquired via {fighter.acquiredVia}</div>
         </div>
       </div>
       <div style={styles.rowRight}>
         <span style={styles.ranking}>{fighter.ranking ? `#${fighter.ranking}` : 'NR'}</span>
-        <span style={styles.avgPts}>{fighter.average_fantasy_points?.toFixed(1) ?? '--'} avg</span>
+        <span style={styles.avgPts}>{fighter.averageFantasyPoints != null ? (+fighter.averageFantasyPoints).toFixed(1) : '--'} avg</span>
         <button style={styles.dropBtn} onClick={onDrop}>Drop</button>
       </div>
     </div>
@@ -57,8 +61,11 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', background: '#0a0a0a', padding: 24 },
-  title: { color: '#fff', fontSize: 24, marginBottom: 24 },
+  page: { minHeight: '100vh', background: '#0a0a0a' },
+  nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 },
+  back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
+  title: { color: '#fff', fontSize: 18, fontWeight: 700 },
+  body: { padding: 24 },
   section: { marginBottom: 32 },
   sectionTitle: { color: '#888', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 },
   count: { background: '#333', color: '#aaa', borderRadius: 10, padding: '2px 8px', fontSize: 11 },
