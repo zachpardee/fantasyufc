@@ -93,6 +93,8 @@ export async function processFightResult(fightResultId: string) {
       fightResult.event_id,
     ]);
 
+    const processedMatchupIds = new Set<string>();
+
     for (const row of matchupFighters) {
       const settings = rowToScoringSettings(row);
       const breakdown = calculateFightScore(
@@ -123,29 +125,94 @@ export async function processFightResult(fightResultId: string) {
         breakdown.titleMultiplier, breakdown.totalPoints,
       ]);
 
-      // Update matchup totals
+      processedMatchupIds.add(row.matchup_id);
+    }
+
+    // Score event picks for this fight (10 pts per correct pick toward matchup)
+    const PICK_CORRECT_PTS = 10;
+    if (fightResult.winner_id) {
+      await client.query(`
+        UPDATE event_picks
+        SET is_correct = (picked_fighter_id = $1),
+            points_earned = CASE WHEN picked_fighter_id = $1 THEN $2 ELSE 0 END
+        WHERE fight_id = $3
+      `, [fightResult.winner_id, PICK_CORRECT_PTS, fightResult.fight_id]);
+    } else {
+      // Draw / no-contest: everyone gets half points
+      await client.query(`
+        UPDATE event_picks
+        SET is_correct = false, points_earned = 0
+        WHERE fight_id = $1
+      `, [fightResult.fight_id]);
+    }
+
+    // Award 250-pt season bonus to every league member who has the winner on their roster
+    if (fightResult.winner_id) {
+      const ROSTER_WIN_BONUS = 250;
+      const { rows: rosterOwners } = await client.query(`
+        SELECT lm.id AS member_id, lm.league_id
+        FROM roster_fighters rf
+        JOIN rosters r ON r.id = rf.roster_id
+        JOIN league_members lm ON lm.id = r.league_member_id
+        JOIN league_events le ON le.league_id = lm.league_id AND le.is_scoring = true
+        JOIN fights fi ON fi.event_id = le.event_id AND fi.id = $2
+        WHERE rf.fighter_id = $1
+      `, [fightResult.winner_id, fightResult.fight_id]);
+
+      for (const owner of rosterOwners) {
+        const inserted = await client.query(`
+          INSERT INTO roster_win_bonuses
+            (league_id, member_id, fighter_id, fight_result_id, points_awarded)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (league_id, member_id, fight_result_id) DO NOTHING
+          RETURNING id
+        `, [owner.league_id, owner.member_id, fightResult.winner_id, fightResultId, ROSTER_WIN_BONUS]);
+
+        if (inserted.rowCount) {
+          await client.query(
+            `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
+            [ROSTER_WIN_BONUS, owner.member_id],
+          );
+        }
+      }
+    }
+
+    // Recalculate matchup scores (fighter perf + correct picks) for every affected matchup
+    for (const matchupId of processedMatchupIds) {
       await client.query(`
         UPDATE matchups SET
           home_score = (
             SELECT COALESCE(SUM(ms.total_points), 0)
             FROM matchup_scores ms
-            JOIN roster_fighters rf ON rf.id = ms.roster_fighter_id
-            JOIN rosters ro ON ro.id = rf.roster_id
+            JOIN roster_fighters rf2 ON rf2.id = ms.roster_fighter_id
+            JOIN rosters ro ON ro.id = rf2.roster_id
             WHERE ms.matchup_id = matchups.id
               AND ro.league_member_id = matchups.home_team_id
               AND ms.is_starter = true
+          ) + (
+            SELECT COALESCE(SUM(ep.points_earned), 0)
+            FROM event_picks ep
+            WHERE ep.league_id = matchups.league_id
+              AND ep.member_id = matchups.home_team_id
+              AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $2)
           ),
           away_score = (
             SELECT COALESCE(SUM(ms.total_points), 0)
             FROM matchup_scores ms
-            JOIN roster_fighters rf ON rf.id = ms.roster_fighter_id
-            JOIN rosters ro ON ro.id = rf.roster_id
+            JOIN roster_fighters rf2 ON rf2.id = ms.roster_fighter_id
+            JOIN rosters ro ON ro.id = rf2.roster_id
             WHERE ms.matchup_id = matchups.id
               AND ro.league_member_id = matchups.away_team_id
               AND ms.is_starter = true
+          ) + (
+            SELECT COALESCE(SUM(ep.points_earned), 0)
+            FROM event_picks ep
+            WHERE ep.league_id = matchups.league_id
+              AND ep.member_id = matchups.away_team_id
+              AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $2)
           )
         WHERE id = $1
-      `, [row.matchup_id]);
+      `, [matchupId, fightResult.event_id]);
     }
 
     await client.query('COMMIT');

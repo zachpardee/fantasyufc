@@ -14,6 +14,7 @@ import { FighterBrowserPage } from './pages/FighterBrowser';
 import { TradesPage } from './pages/Trades';
 import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
+import { PicksPage } from './pages/Picks';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null };
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/league/:leagueId/standings" element={<RequireAuth><StandingsPage /></RequireAuth>} />
         <Route path="/league/:leagueId/trades" element={<RequireAuth><TradesPage /></RequireAuth>} />
         <Route path="/league/:leagueId/schedule" element={<RequireAuth><SchedulePage /></RequireAuth>} />
+        <Route path="/league/:leagueId/picks" element={<RequireAuth><PicksPage /></RequireAuth>} />
         <Route path="/fighters" element={<RequireAuth><FighterBrowserPage /></RequireAuth>} />
       </Routes>
     </BrowserRouter>

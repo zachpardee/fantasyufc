@@ -11,6 +11,7 @@ import { notificationsRouter } from './notifications.routes';
 import { adminRouter } from './admin.routes';
 import { scheduleRouter } from './schedule.routes';
 import { waiversRouter } from './waivers.routes';
+import { picksRouter } from './picks.routes';
 
 export const apiRouter = Router();
 
@@ -23,6 +24,7 @@ apiRouter.use('/leagues/:leagueId/standings', matchupsRouter);
 apiRouter.use('/leagues/:leagueId/trades', tradesRouter);
 apiRouter.use('/leagues/:leagueId/schedule', scheduleRouter);
 apiRouter.use('/leagues/:leagueId/waivers', waiversRouter);
+apiRouter.use('/leagues/:leagueId/picks', picksRouter);
 apiRouter.use('/fighters', fightersRouter);
 apiRouter.use('/events', eventsRouter);
 apiRouter.use('/notifications', notificationsRouter);

@@ -52,6 +52,7 @@ export function LeagueHomePage() {
 
   const navLinks = [
     { label: 'My Roster', path: 'roster', icon: '👊', show: league.status !== 'setup' },
+    { label: 'Picks', path: 'picks', icon: '🎯', show: league.status === 'active' },
     { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
     { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' },

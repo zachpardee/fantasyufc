@@ -16,6 +16,18 @@ export function MatchupPage() {
     },
   });
 
+  const { data: homeRoster = [] } = useQuery<any[]>({
+    queryKey: ['roster-member', leagueId, matchup?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/roster/${matchup!.homeTeamId}`),
+    enabled: !!matchup?.homeTeamId,
+  });
+
+  const { data: awayRoster = [] } = useQuery<any[]>({
+    queryKey: ['roster-member', leagueId, matchup?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/roster/${matchup!.awayTeamId}`),
+    enabled: !!matchup?.awayTeamId,
+  });
+
   useEffect(() => {
     if (!matchup?.id) return;
     const channel = supabase.channel(`matchup:${matchup.id}`)
@@ -35,58 +47,132 @@ export function MatchupPage() {
     );
   }
 
-  const homeScores = matchup.scores?.filter((s: any) => s.teamId === matchup.homeTeamId) ?? [];
-  const awayScores = matchup.scores?.filter((s: any) => s.teamId === matchup.awayTeamId) ?? [];
+  // Build a score lookup keyed by fighterId for overlay when event has scored
+  const scoreByFighterId: Record<string, any> = {};
+  for (const s of (matchup.scores ?? [])) {
+    scoreByFighterId[s.fighterId] = s;
+  }
+
+  const isLive = matchup.eventStatus === 'live';
+  const isCompleted = matchup.eventStatus === 'completed';
 
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
-        <span style={styles.navTitle}>{matchup.eventName ?? matchup.event_name}</span>
-        {(matchup.eventStatus === 'live' || matchup.event_status === 'live') && (
-          <span style={styles.liveBadge}>LIVE</span>
-        )}
+        <span style={styles.navTitle}>{matchup.eventName}</span>
+        {isLive && <span style={styles.liveBadge}>LIVE</span>}
       </nav>
 
       <div style={styles.scoreboard}>
         <div style={styles.teamBlock}>
-          <div style={styles.teamName}>{matchup.homeTeamName ?? matchup.home_team_name}</div>
+          <div style={styles.teamName}>{matchup.homeTeamName}</div>
           <div style={styles.totalScore}>{(+matchup.homeScore).toFixed(1)}</div>
         </div>
         <div style={styles.vsBlock}>
           <div style={styles.vs}>VS</div>
+          {isCompleted && <div style={styles.finalTag}>FINAL</div>}
         </div>
         <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
-          <div style={styles.teamName}>{matchup.awayTeamName ?? matchup.away_team_name}</div>
+          <div style={styles.teamName}>{matchup.awayTeamName}</div>
           <div style={styles.totalScore}>{(+matchup.awayScore).toFixed(1)}</div>
         </div>
       </div>
 
       <div style={styles.rosters}>
-        <div style={styles.rosterCol}>
-          <p style={styles.rosterHeader}>{matchup.homeTeamName ?? matchup.home_team_name}</p>
-          {homeScores.length === 0 && <p style={styles.empty}>No fighters yet</p>}
-          {homeScores.map((s: any) => (
-            <div key={s.fighterId ?? s.fighter_id} style={styles.scoreRow}>
-              <span style={styles.fighterName}>{s.firstName ?? s.first_name} {s.lastName ?? s.last_name}</span>
-              <span style={styles.pts}>{s.totalPoints != null ? (+s.totalPoints).toFixed(1) : s.total_points != null ? (+s.total_points).toFixed(1) : '--'}</span>
-            </div>
-          ))}
-        </div>
-
+        <RosterColumn
+          label={matchup.homeTeamName}
+          fighters={homeRoster}
+          scoreByFighterId={scoreByFighterId}
+          align="left"
+        />
         <div style={styles.divider} />
-
-        <div style={{ ...styles.rosterCol, alignItems: 'flex-end' }}>
-          <p style={styles.rosterHeader}>{matchup.awayTeamName ?? matchup.away_team_name}</p>
-          {awayScores.length === 0 && <p style={styles.empty}>No fighters yet</p>}
-          {awayScores.map((s: any) => (
-            <div key={s.fighterId ?? s.fighter_id} style={{ ...styles.scoreRow, flexDirection: 'row-reverse' }}>
-              <span style={styles.fighterName}>{s.firstName ?? s.first_name} {s.lastName ?? s.last_name}</span>
-              <span style={styles.pts}>{s.totalPoints != null ? (+s.totalPoints).toFixed(1) : s.total_points != null ? (+s.total_points).toFixed(1) : '--'}</span>
-            </div>
-          ))}
-        </div>
+        <RosterColumn
+          label={matchup.awayTeamName}
+          fighters={awayRoster}
+          scoreByFighterId={scoreByFighterId}
+          align="right"
+        />
       </div>
+    </div>
+  );
+}
+
+function RosterColumn({ label, fighters, scoreByFighterId, align }: {
+  label: string;
+  fighters: any[];
+  scoreByFighterId: Record<string, any>;
+  align: 'left' | 'right';
+}) {
+  const starters = fighters.filter((f) => f.slotType === 'starter');
+  const bench = fighters.filter((f) => f.slotType === 'bench');
+
+  return (
+    <div style={{ ...styles.rosterCol, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
+      <p style={{ ...styles.rosterHeader, textAlign: align }}>{label}</p>
+
+      {starters.length === 0 && bench.length === 0 && (
+        <p style={styles.empty}>No fighters</p>
+      )}
+
+      {starters.length > 0 && (
+        <>
+          <p style={{ ...styles.slotLabel, textAlign: align }}>Starters</p>
+          {starters.map((f) => (
+            <FighterScoreRow
+              key={f.id}
+              fighter={f}
+              score={scoreByFighterId[f.fighterId]}
+              align={align}
+            />
+          ))}
+        </>
+      )}
+
+      {bench.length > 0 && (
+        <>
+          <p style={{ ...styles.slotLabel, textAlign: align, marginTop: 16 }}>Bench</p>
+          {bench.map((f) => (
+            <FighterScoreRow
+              key={f.id}
+              fighter={f}
+              score={scoreByFighterId[f.fighterId]}
+              align={align}
+              isBench
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FighterScoreRow({ fighter, score, align, isBench }: {
+  fighter: any;
+  score?: any;
+  align: 'left' | 'right';
+  isBench?: boolean;
+}) {
+  const pts = score?.totalPoints != null ? (+score.totalPoints).toFixed(1) : null;
+
+  return (
+    <div style={{
+      ...styles.scoreRow,
+      flexDirection: align === 'right' ? 'row-reverse' : 'row',
+      opacity: isBench ? 0.65 : 1,
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
+          <span style={styles.fighterName}>{fighter.firstName} {fighter.lastName}</span>
+          {fighter.isChampion
+            ? <span style={styles.rankChamp}>C</span>
+            : fighter.ranking
+            ? <span style={styles.rankBadge}>#{fighter.ranking}</span>
+            : null}
+        </div>
+        <span style={styles.meta}>{fighter.weightClassName}</span>
+      </div>
+      <span style={pts != null ? styles.pts : styles.ptsEmpty}>{pts ?? '--'}</span>
     </div>
   );
 }
@@ -105,14 +191,23 @@ const styles: Record<string, React.CSSProperties> = {
   teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
   teamName: { color: '#888', fontSize: 14 },
   totalScore: { color: '#fff', fontSize: 64, fontWeight: 800, lineHeight: 1 },
-  vsBlock: { padding: '0 32px', textAlign: 'center' },
+  vsBlock: { padding: '0 32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
   vs: { color: '#444', fontWeight: 700, fontSize: 20 },
-  rosters: { display: 'flex', padding: 24, gap: 16 },
-  rosterCol: { flex: 1, display: 'flex', flexDirection: 'column' },
-  rosterHeader: { color: '#888', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' },
-  divider: { width: 1, background: '#1a1a1a' },
+  finalTag: { color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
+  rosters: { display: 'flex', padding: 24, gap: 0 },
+  rosterCol: { flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px' },
+  rosterHeader: { color: '#888', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', width: '100%' },
+  slotLabel: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 6px', width: '100%' },
+  divider: { width: 1, background: '#1a1a1a', alignSelf: 'stretch', margin: '0 4px' },
   empty: { color: '#444', fontSize: 13, fontStyle: 'italic' },
-  scoreRow: { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #111' },
-  fighterName: { color: '#ddd', fontSize: 14 },
-  pts: { color: '#c8102e', fontWeight: 700, fontSize: 16 },
+  scoreRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '10px 0', borderBottom: '1px solid #111', width: '100%',
+  },
+  fighterName: { color: '#ddd', fontSize: 14, fontWeight: 600 },
+  rankBadge: { color: '#c8102e', fontSize: 11, fontWeight: 700 },
+  rankChamp: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3 },
+  meta: { color: '#555', fontSize: 11, marginTop: 2 },
+  pts: { color: '#c8102e', fontWeight: 700, fontSize: 16, minWidth: 40, textAlign: 'center' },
+  ptsEmpty: { color: '#333', fontWeight: 700, fontSize: 14, minWidth: 40, textAlign: 'center' },
 };
