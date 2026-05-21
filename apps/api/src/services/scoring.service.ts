@@ -93,7 +93,11 @@ export async function processFightResult(fightResultId: string) {
       fightResult.event_id,
     ]);
 
-    const processedMatchupIds = new Set<string>();
+    // Always collect matchup IDs for this event — picks scoring applies regardless of roster
+    const { rows: eventMatchups } = await client.query<{ id: string }>(
+      `SELECT id FROM matchups WHERE event_id = $1`, [fightResult.event_id],
+    );
+    const processedMatchupIds = new Set<string>(eventMatchups.map((m) => m.id));
 
     for (const row of matchupFighters) {
       const settings = rowToScoringSettings(row);
