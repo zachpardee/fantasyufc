@@ -61,7 +61,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
         AND ep.league_id = $1 AND ep.member_id = $2
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $3
-      ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC
+      ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
       LIMIT 6
     `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
@@ -102,7 +102,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     // Only the top-6 fights are pickable
     const { rows: eligibleFights } = await db.query(`
       SELECT id FROM fights WHERE event_id = $1
-      ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC
+      ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
       LIMIT 6
     `, [req.params.eventId]);
     const eligibleIds = new Set(eligibleFights.map((f) => f.id));
