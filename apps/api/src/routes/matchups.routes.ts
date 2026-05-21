@@ -54,6 +54,26 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
   } catch (err) { next(err); }
 });
 
+// /standings must be before /:matchupId to avoid Express matching 'standings' as a param
+matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const cacheKey = `standings:${req.params.leagueId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) { res.json(JSON.parse(cached)); return; }
+
+    const { rows } = await db.query(`
+      SELECT lm.*, up.username, up.display_name, up.avatar_url
+      FROM league_members lm
+      JOIN user_profiles up ON up.id = lm.user_id
+      WHERE lm.league_id = $1 AND lm.is_active = true
+      ORDER BY lm.wins DESC, lm.total_points DESC
+    `, [req.params.leagueId]);
+
+    await redis.setex(cacheKey, CACHE_TTL.STANDINGS, JSON.stringify(rows));
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
 matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [matchup] } = await db.query(`
@@ -79,24 +99,5 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
     `, [req.params.matchupId]);
 
     res.json({ ...matchup, scores });
-  } catch (err) { next(err); }
-});
-
-matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next) => {
-  try {
-    const cacheKey = `standings:${req.params.leagueId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) { res.json(JSON.parse(cached)); return; }
-
-    const { rows } = await db.query(`
-      SELECT lm.*, up.username, up.display_name, up.avatar_url
-      FROM league_members lm
-      JOIN user_profiles up ON up.id = lm.user_id
-      WHERE lm.league_id = $1 AND lm.is_active = true
-      ORDER BY lm.wins DESC, lm.total_points DESC
-    `, [req.params.leagueId]);
-
-    await redis.setex(cacheKey, CACHE_TTL.STANDINGS, JSON.stringify(rows));
-    res.json(rows);
   } catch (err) { next(err); }
 });
