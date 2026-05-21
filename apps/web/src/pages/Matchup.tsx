@@ -145,6 +145,7 @@ export function MatchupPage() {
           picks={homePicks?.fights ?? []}
           matchupPts={+matchup.homeScore}
           seasonPts={+(matchup.homeSeasonPoints ?? 0)}
+          isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
           align="left"
         />
         <div style={styles.totalsDivider} />
@@ -153,6 +154,7 @@ export function MatchupPage() {
           picks={awayPicks?.fights ?? []}
           matchupPts={+matchup.awayScore}
           seasonPts={+(matchup.awaySeasonPoints ?? 0)}
+          isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
           align="right"
         />
       </div>
@@ -284,8 +286,9 @@ function calcMilestoneBonus(correctCount: number): number {
   return correctCount >= 6 ? 300 : correctCount >= 5 ? 200 : correctCount >= 4 ? 100 : 0;
 }
 
-function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
-  label: string; picks: any[]; matchupPts: number; seasonPts: number; align?: 'left' | 'right';
+function ScoreBreakdown({ label, picks, matchupPts, seasonPts, isFinalized }: {
+  label: string; picks: any[]; matchupPts: number; seasonPts: number;
+  isFinalized?: boolean; align?: 'left' | 'right';
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
@@ -294,8 +297,8 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   const totalPickPts = correct.reduce((sum, p) => sum + (+p.pointsEarned), 0);
   const basePts = correctCount * 200;
   const bonusPts = totalPickPts - basePts; // method + underdog bonuses combined
-  // Remainder of matchup total is roster win bonuses (50 pts per drafted winner)
-  const rosterBonus = Math.round(matchupPts - totalPickPts - milestone);
+  // Milestone is only added to matchupPts after finalization; subtract only then
+  const rosterBonus = Math.round(matchupPts - totalPickPts - (isFinalized ? milestone : 0));
   const hasScores = scored.length > 0;
 
   const rows = [

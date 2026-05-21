@@ -256,7 +256,7 @@ function FightPickRow({ fight, picked, pickedMethod, locked, onChange, onMethodC
 
       {fight.resultOutcome && (
         <div style={styles.resultOutcome}>
-          {formatOutcome(fight.resultOutcome)} · R{fight.endingRound ?? '?'}
+          {formatOutcome(fight.resultOutcome)} · R{fight.resultEndingRound ?? '?'}
         </div>
       )}
     </div>
