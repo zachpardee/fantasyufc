@@ -14,7 +14,19 @@ rosterRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       [req.params.leagueId, req.user!.id],
     );
     if (!member) throw new AppError(404, 'Not a member of this league');
-    res.redirect(`/api/v1/leagues/${req.params.leagueId}/roster/${member.id}`);
+
+    const { rows } = await db.query(`
+      SELECT rf.*, f.first_name, f.last_name, f.nickname, f.image_url,
+             f.record_wins, f.record_losses, f.ranking, f.is_champion,
+             f.average_fantasy_points, wc.name as weight_class_name, wc.slug as weight_class_slug
+      FROM roster_fighters rf
+      JOIN rosters r ON r.id = rf.roster_id
+      JOIN fighters f ON f.id = rf.fighter_id
+      JOIN weight_classes wc ON wc.id = f.weight_class_id
+      WHERE r.league_member_id = $1
+      ORDER BY rf.slot_type, rf.slot_position
+    `, [member.id]);
+    res.json(rows);
   } catch (err) { next(err); }
 });
 
