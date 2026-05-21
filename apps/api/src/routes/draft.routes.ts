@@ -34,12 +34,12 @@ draftRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
         ORDER BY dp.overall_pick ASC
       `, [session.id]),
       db.query(`
-        SELECT do.*, lm.team_name, up.username
-        FROM draft_order do
-        JOIN league_members lm ON lm.id = do.league_member_id
+        SELECT dord.*, lm.team_name, up.username
+        FROM draft_order dord
+        JOIN league_members lm ON lm.id = dord.league_member_id
         JOIN user_profiles up ON up.id = lm.user_id
-        WHERE do.draft_session_id = $1
-        ORDER BY do.position ASC
+        WHERE dord.draft_session_id = $1
+        ORDER BY dord.position ASC
       `, [session.id]),
     ]);
 
