@@ -128,8 +128,8 @@ export async function processFightResult(fightResultId: string) {
       processedMatchupIds.add(row.matchup_id);
     }
 
-    // Score event picks for this fight (10 pts per correct pick toward matchup)
-    const PICK_CORRECT_PTS = 10;
+    // Score event picks for this fight (100 pts per correct pick toward matchup)
+    const PICK_CORRECT_PTS = 100;
     if (fightResult.winner_id) {
       await client.query(`
         UPDATE event_picks
@@ -177,19 +177,11 @@ export async function processFightResult(fightResultId: string) {
       }
     }
 
-    // Recalculate matchup scores (fighter perf + correct picks) for every affected matchup
+    // Matchup score = correct picks only (100 pts each)
     for (const matchupId of processedMatchupIds) {
       await client.query(`
         UPDATE matchups SET
           home_score = (
-            SELECT COALESCE(SUM(ms.total_points), 0)
-            FROM matchup_scores ms
-            JOIN roster_fighters rf2 ON rf2.id = ms.roster_fighter_id
-            JOIN rosters ro ON ro.id = rf2.roster_id
-            WHERE ms.matchup_id = matchups.id
-              AND ro.league_member_id = matchups.home_team_id
-              AND ms.is_starter = true
-          ) + (
             SELECT COALESCE(SUM(ep.points_earned), 0)
             FROM event_picks ep
             WHERE ep.league_id = matchups.league_id
@@ -197,14 +189,6 @@ export async function processFightResult(fightResultId: string) {
               AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $2)
           ),
           away_score = (
-            SELECT COALESCE(SUM(ms.total_points), 0)
-            FROM matchup_scores ms
-            JOIN roster_fighters rf2 ON rf2.id = ms.roster_fighter_id
-            JOIN rosters ro ON ro.id = rf2.roster_id
-            WHERE ms.matchup_id = matchups.id
-              AND ro.league_member_id = matchups.away_team_id
-              AND ms.is_starter = true
-          ) + (
             SELECT COALESCE(SUM(ep.points_earned), 0)
             FROM event_picks ep
             WHERE ep.league_id = matchups.league_id
