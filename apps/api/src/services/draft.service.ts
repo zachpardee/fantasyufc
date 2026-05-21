@@ -85,9 +85,10 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
     );
     if (alreadyPicked) throw new AppError(400, 'Fighter already drafted');
 
+    const memberCount = await getMemberCount(client, leagueId);
     const overallPick = session.current_pick;
-    const round = Math.ceil(overallPick / session.total_rounds);
-    const pickInRound = overallPick - (round - 1) * (session.total_rounds);
+    const round = Math.ceil(overallPick / memberCount);
+    const pickInRound = overallPick - (round - 1) * memberCount;
 
     const durationSeconds = session.current_pick_deadline
       ? Math.floor((new Date(session.current_pick_deadline).getTime() - Date.now()) / 1000)
@@ -109,7 +110,7 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
     );
 
     const nextPick = overallPick + 1;
-    const totalPicks = session.total_rounds * (await getMemberCount(client, leagueId));
+    const totalPicks = session.total_rounds * memberCount;
 
     if (nextPick > totalPicks) {
       await client.query(
