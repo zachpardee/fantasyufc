@@ -62,6 +62,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $3
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC
+      LIMIT 6
     `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     const { rows: [event] } = await db.query(
@@ -96,6 +97,17 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     if (!event) throw new AppError(404, 'Event not found');
     if (event.status === 'live' || event.status === 'completed') {
       throw new AppError(400, 'Picks are locked — event has already started');
+    }
+
+    // Only the top-6 fights are pickable
+    const { rows: eligibleFights } = await db.query(`
+      SELECT id FROM fights WHERE event_id = $1
+      ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC
+      LIMIT 6
+    `, [req.params.eventId]);
+    const eligibleIds = new Set(eligibleFights.map((f) => f.id));
+    if (picks.some((p) => !eligibleIds.has(p.fightId))) {
+      throw new AppError(400, 'Pick includes a fight not in the top 6 for this event');
     }
 
     for (const pick of picks) {
