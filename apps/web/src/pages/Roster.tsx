@@ -1,12 +1,11 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import type { RosterFighter } from '@fantasy-ufc/shared';
 
 export function RosterPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
 
-  const { data: fighters, refetch } = useQuery<(RosterFighter & { first_name: string; last_name: string; weight_class_name: string; ranking: number; average_fantasy_points: number; is_champion: boolean })[]>({
+  const { data: fighters, isLoading, refetch } = useQuery<any[]>({
     queryKey: ['roster', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/roster`),
   });
@@ -19,6 +18,7 @@ export function RosterPage() {
 
   const starters = fighters?.filter((f) => f.slotType === 'starter') ?? [];
   const bench = fighters?.filter((f) => f.slotType === 'bench') ?? [];
+  const isEmpty = !isLoading && fighters !== undefined && starters.length === 0 && bench.length === 0;
 
   return (
     <div style={styles.page}>
@@ -28,14 +28,27 @@ export function RosterPage() {
       </nav>
 
       <div style={styles.body}>
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Starters <span style={styles.count}>{starters.length}</span></h2>
-          {starters.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
-        </div>
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Bench <span style={styles.count}>{bench.length}</span></h2>
-          {bench.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} isBench />)}
-        </div>
+        {isLoading && <div style={styles.loading}>Loading roster...</div>}
+
+        {isEmpty && (
+          <div style={styles.empty}>
+            <div style={styles.emptyTitle}>Your roster is empty</div>
+            <div style={styles.emptyMeta}>Fighters will appear here after the draft.</div>
+          </div>
+        )}
+
+        {!isEmpty && !isLoading && (
+          <>
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Starters <span style={styles.count}>{starters.length}</span></h2>
+              {starters.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
+            </div>
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Bench <span style={styles.count}>{bench.length}</span></h2>
+              {bench.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} isBench />)}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -67,6 +80,10 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
+  loading: { color: '#555', fontSize: 14, padding: '40px 0', textAlign: 'center' },
+  empty: { padding: '60px 0', textAlign: 'center' },
+  emptyTitle: { color: '#666', fontSize: 16, fontWeight: 600, marginBottom: 8 },
+  emptyMeta: { color: '#444', fontSize: 13 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontSize: 18, fontWeight: 700 },
