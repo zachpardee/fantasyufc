@@ -195,10 +195,10 @@ export function DraftRoomPage() {
                   const pick = rPicks.find((p) => p.leagueMemberId === o.leagueMemberId);
                   return (
                     <div key={o.leagueMemberId} style={styles.pickSlot}>
-                      {pick?.fighter ? (
+                      {pick?.fighterId ? (
                         <>
                           <div style={styles.pickFighter}>
-                            {pick.fighter.firstName} {pick.fighter.lastName}
+                            {(pick as any).firstName} {(pick as any).lastName}
                           </div>
                           {pick.autoPicked && <div style={styles.autoTag}>AUTO</div>}
                         </>
