@@ -4,6 +4,14 @@ import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 
+const METHOD_LABELS: Record<string, string> = {
+  ko_tko: 'KO/TKO', submission: 'SUB',
+  decision_unanimous: 'DEC (U)', decision_split: 'DEC (S)',
+  decision_majority: 'DEC (M)', draw: 'DRAW',
+  no_contest: 'NC', disqualification: 'DQ',
+  decision: 'DEC',
+};
+
 export function MatchupPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
 
@@ -14,6 +22,23 @@ export function MatchupPage() {
       if (!current) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${current.id}`);
     },
+  });
+
+  const { data: currentEvent } = useQuery<any>({
+    queryKey: ['picks-current-event', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
+  });
+
+  const { data: homePicks } = useQuery<any>({
+    queryKey: ['matchup-picks-home', leagueId, currentEvent?.id, matchup?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}?memberId=${matchup!.homeTeamId}`),
+    enabled: !!currentEvent?.id && !!matchup?.homeTeamId,
+  });
+
+  const { data: awayPicks } = useQuery<any>({
+    queryKey: ['matchup-picks-away', leagueId, currentEvent?.id, matchup?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}?memberId=${matchup!.awayTeamId}`),
+    enabled: !!currentEvent?.id && !!matchup?.awayTeamId,
   });
 
   const { data: homeRoster = [] } = useQuery<any[]>({
@@ -42,19 +67,17 @@ export function MatchupPage() {
         <nav style={styles.nav}>
           <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         </nav>
-        <div style={styles.center}>No matchup scheduled for the current event.</div>
+        <div style={styles.empty}>No matchup scheduled for the current event.</div>
       </div>
     );
   }
 
-  // Build a score lookup keyed by fighterId for overlay when event has scored
-  const scoreByFighterId: Record<string, any> = {};
-  for (const s of (matchup.scores ?? [])) {
-    scoreByFighterId[s.fighterId] = s;
-  }
-
   const isLive = matchup.eventStatus === 'live';
-  const isCompleted = matchup.eventStatus === 'completed';
+  const fights: any[] = homePicks?.fights ?? [];
+
+  // Build lookup: fightId → { home pick, away pick }
+  const awayPickMap: Record<string, any> = {};
+  for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
 
   return (
     <div style={styles.page}>
@@ -64,115 +87,204 @@ export function MatchupPage() {
         {isLive && <span style={styles.liveBadge}>LIVE</span>}
       </nav>
 
+      {/* Scoreboard */}
       <div style={styles.scoreboard}>
         <div style={styles.teamBlock}>
-          <div style={styles.teamName}>{matchup.homeTeamName}</div>
-          <div style={styles.totalScore}>{(+matchup.homeScore).toFixed(1)}</div>
+          <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
+          <div style={styles.matchupScore}>{(+matchup.homeScore).toFixed(0)}</div>
+          <div style={styles.scoreUnit}>matchup pts</div>
         </div>
-        <div style={styles.vsBlock}>
-          <div style={styles.vs}>VS</div>
-          {isCompleted && <div style={styles.finalTag}>FINAL</div>}
-        </div>
+        <div style={styles.vsBlock}>VS</div>
         <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
-          <div style={styles.teamName}>{matchup.awayTeamName}</div>
-          <div style={styles.totalScore}>{(+matchup.awayScore).toFixed(1)}</div>
+          <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
+          <div style={styles.matchupScore}>{(+matchup.awayScore).toFixed(0)}</div>
+          <div style={styles.scoreUnit}>matchup pts</div>
         </div>
       </div>
 
-      <div style={styles.rosters}>
-        <RosterColumn
-          label={matchup.homeTeamName}
-          fighters={homeRoster}
-          scoreByFighterId={scoreByFighterId}
-          align="left"
-        />
-        <div style={styles.divider} />
-        <RosterColumn
-          label={matchup.awayTeamName}
-          fighters={awayRoster}
-          scoreByFighterId={scoreByFighterId}
-          align="right"
-        />
+      {/* Picks section */}
+      {fights.length > 0 && (
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <span style={styles.sectionTitle}>PICKS</span>
+            {homePicks?.locked && <span style={styles.lockedTag}>LOCKED</span>}
+          </div>
+
+          {/* Column headers */}
+          <div style={styles.picksHeaderRow}>
+            <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
+            <div style={styles.fightInfoHeader}>FIGHT</div>
+            <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
+          </div>
+
+          {fights.map((fight) => {
+            const awayFight = awayPickMap[fight.id];
+            return (
+              <PickRow
+                key={fight.id}
+                fight={fight}
+                homePick={fight}
+                awayPick={awayFight}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Rosters */}
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <span style={styles.sectionTitle}>ROSTERS</span>
+        </div>
+        <div style={styles.rosterGrid}>
+          <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
+          <div style={styles.rosterDivider} />
+          <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
+        </div>
+      </div>
+
+      {/* Totals */}
+      <div style={styles.totalsBar}>
+        <TotalBlock label={matchup.homeTeamName} matchupPts={+matchup.homeScore} seasonPts={+(matchup.homeSeasonPoints ?? 0)} align="left" />
+        <div style={styles.totalsDivider} />
+        <TotalBlock label={matchup.awayTeamName} matchupPts={+matchup.awayScore} seasonPts={+(matchup.awaySeasonPoints ?? 0)} align="right" />
       </div>
     </div>
   );
 }
 
-function RosterColumn({ label, fighters, scoreByFighterId, align }: {
-  label: string;
-  fighters: any[];
-  scoreByFighterId: Record<string, any>;
+function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awayPick: any }) {
+  const resultWinner = fight.resultWinnerId;
+  const resultOutcome = fight.resultOutcome;
+
+  return (
+    <div style={styles.pickRow}>
+      {/* Home pick */}
+      <div style={styles.pickCell}>
+        {homePick?.pickedFighterId ? (
+          <PickDisplay
+            fighterId={homePick.pickedFighterId}
+            redFighterId={fight.redFighterId}
+            blueFighterId={fight.blueFighterId}
+            redName={`${fight.redFirstName} ${fight.redLastName}`}
+            blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
+            method={homePick.pickedMethod}
+            isCorrect={homePick.isCorrect}
+            pointsEarned={homePick.pointsEarned}
+            align="left"
+          />
+        ) : <span style={styles.noPick}>—</span>}
+      </div>
+
+      {/* Fight info */}
+      <div style={styles.fightInfo}>
+        <div style={styles.fightName}>
+          {fight.redFirstName?.split(' ').pop()} vs {fight.blueFirstName?.split(' ').pop()}
+        </div>
+        <div style={styles.fightWeight}>{fight.weightClassName}</div>
+        {resultWinner && (
+          <div style={styles.fightResult}>
+            {fight.redFighterId === resultWinner ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`}
+            {' '}· {METHOD_LABELS[resultOutcome] ?? resultOutcome}
+          </div>
+        )}
+      </div>
+
+      {/* Away pick */}
+      <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>
+        {awayPick?.pickedFighterId ? (
+          <PickDisplay
+            fighterId={awayPick.pickedFighterId}
+            redFighterId={fight.redFighterId}
+            blueFighterId={fight.blueFighterId}
+            redName={`${fight.redFirstName} ${fight.redLastName}`}
+            blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
+            method={awayPick.pickedMethod}
+            isCorrect={awayPick.isCorrect}
+            pointsEarned={awayPick.pointsEarned}
+            align="right"
+          />
+        ) : <span style={styles.noPick}>—</span>}
+      </div>
+    </div>
+  );
+}
+
+function PickDisplay({ fighterId, redFighterId, redName, blueName, method, isCorrect, pointsEarned, align }: {
+  fighterId: string; redFighterId: string; blueFighterId: string;
+  redName: string; blueName: string; method?: string;
+  isCorrect: boolean | null; pointsEarned: number | null;
   align: 'left' | 'right';
 }) {
+  const pickedName = fighterId === redFighterId ? redName : blueName;
+  const scored = isCorrect !== null;
+  const color = scored ? (isCorrect ? '#4caf50' : '#555') : '#ddd';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
+      <div style={{ color, fontSize: 13, fontWeight: 600 }}>{pickedName}</div>
+      {method && <div style={{ color: '#555', fontSize: 11 }}>{METHOD_LABELS[method] ?? method}</div>}
+      {scored && (
+        <div style={{ color: isCorrect ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>
+          {isCorrect ? `+${(+pointsEarned!).toFixed(0)} pts` : '✗'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RosterColumn({ label, fighters, align }: { label: string; fighters: any[]; align: 'left' | 'right' }) {
   const starters = fighters.filter((f) => f.slotType === 'starter');
   const bench = fighters.filter((f) => f.slotType === 'bench');
 
   return (
-    <div style={{ ...styles.rosterCol, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
-      <p style={{ ...styles.rosterHeader, textAlign: align }}>{label}</p>
-
-      {starters.length === 0 && bench.length === 0 && (
-        <p style={styles.empty}>No fighters</p>
-      )}
-
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ ...styles.rosterTeamLabel, textAlign: align }}>{label}</div>
       {starters.length > 0 && (
         <>
-          <p style={{ ...styles.slotLabel, textAlign: align }}>Starters</p>
-          {starters.map((f) => (
-            <FighterScoreRow
-              key={f.id}
-              fighter={f}
-              score={scoreByFighterId[f.fighterId]}
-              align={align}
-            />
-          ))}
+          <div style={{ ...styles.slotLabel, textAlign: align }}>Starters</div>
+          {starters.map((f) => <FighterRow key={f.id} fighter={f} align={align} />)}
         </>
       )}
-
       {bench.length > 0 && (
         <>
-          <p style={{ ...styles.slotLabel, textAlign: align, marginTop: 16 }}>Bench</p>
-          {bench.map((f) => (
-            <FighterScoreRow
-              key={f.id}
-              fighter={f}
-              score={scoreByFighterId[f.fighterId]}
-              align={align}
-              isBench
-            />
-          ))}
+          <div style={{ ...styles.slotLabel, textAlign: align, marginTop: 10 }}>Bench</div>
+          {bench.map((f) => <FighterRow key={f.id} fighter={f} align={align} isBench />)}
         </>
       )}
     </div>
   );
 }
 
-function FighterScoreRow({ fighter, score, align, isBench }: {
-  fighter: any;
-  score?: any;
-  align: 'left' | 'right';
-  isBench?: boolean;
-}) {
-  const pts = score?.totalPoints != null ? (+score.totalPoints).toFixed(1) : null;
-
+function FighterRow({ fighter, align, isBench }: { fighter: any; align: 'left' | 'right'; isBench?: boolean }) {
   return (
-    <div style={{
-      ...styles.scoreRow,
-      flexDirection: align === 'right' ? 'row-reverse' : 'row',
-      opacity: isBench ? 0.65 : 1,
-    }}>
+    <div style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row', opacity: isBench ? 0.6 : 1 }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
           <span style={styles.fighterName}>{fighter.firstName} {fighter.lastName}</span>
           {fighter.isChampion
-            ? <span style={styles.rankChamp}>C</span>
-            : fighter.ranking
-            ? <span style={styles.rankBadge}>#{fighter.ranking}</span>
+            ? <span style={styles.champBadge}>C</span>
+            : fighter.ranking ? <span style={styles.rankBadge}>#{fighter.ranking}</span>
             : null}
         </div>
-        <span style={styles.meta}>{fighter.weightClassName}</span>
+        <span style={styles.fighterMeta}>{fighter.weightClassName}</span>
       </div>
-      <span style={pts != null ? styles.pts : styles.ptsEmpty}>{pts ?? '--'}</span>
+    </div>
+  );
+}
+
+function TotalBlock({ label, matchupPts, seasonPts, align }: { label: string; matchupPts: number; seasonPts: number; align: 'left' | 'right' }) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 6 }}>
+      <div style={styles.totalsTeam}>{label}</div>
+      <div style={styles.totalsRow}>
+        <span style={styles.totalsLabel}>Matchup</span>
+        <span style={styles.totalsMatchup}>{matchupPts.toFixed(0)}</span>
+      </div>
+      <div style={styles.totalsRow}>
+        <span style={styles.totalsLabel}>Season</span>
+        <span style={styles.totalsSeason}>{seasonPts.toFixed(1)}</span>
+      </div>
     </div>
   );
 }
@@ -183,31 +295,47 @@ const styles: Record<string, React.CSSProperties> = {
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
-  center: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
-  scoreboard: {
-    background: '#111', borderBottom: '1px solid #333',
-    padding: '32px 40px', display: 'flex', alignItems: 'center',
-  },
-  teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
-  teamName: { color: '#888', fontSize: 14 },
-  totalScore: { color: '#fff', fontSize: 64, fontWeight: 800, lineHeight: 1 },
-  vsBlock: { padding: '0 32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
-  vs: { color: '#444', fontWeight: 700, fontSize: 20 },
-  finalTag: { color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
-  rosters: { display: 'flex', padding: 24, gap: 0 },
-  rosterCol: { flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px' },
-  rosterHeader: { color: '#888', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', width: '100%' },
-  slotLabel: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 6px', width: '100%' },
-  divider: { width: 1, background: '#1a1a1a', alignSelf: 'stretch', margin: '0 4px' },
-  empty: { color: '#444', fontSize: 13, fontStyle: 'italic' },
-  scoreRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '10px 0', borderBottom: '1px solid #111', width: '100%',
-  },
-  fighterName: { color: '#ddd', fontSize: 14, fontWeight: 600 },
-  rankBadge: { color: '#c8102e', fontSize: 11, fontWeight: 700 },
-  rankChamp: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3 },
-  meta: { color: '#555', fontSize: 11, marginTop: 2 },
-  pts: { color: '#c8102e', fontWeight: 700, fontSize: 16, minWidth: 40, textAlign: 'center' },
-  ptsEmpty: { color: '#333', fontWeight: 700, fontSize: 14, minWidth: 40, textAlign: 'center' },
+  empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
+
+  scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
+  teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
+  teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  matchupScore: { color: '#fff', fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  vsBlock: { color: '#333', fontWeight: 700, fontSize: 18, padding: '0 24px' },
+
+  section: { padding: '0 24px 8px' },
+  sectionHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px' },
+  sectionTitle: { color: '#444', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
+  lockedTag: { background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 },
+
+  picksHeaderRow: { display: 'flex', alignItems: 'center', borderBottom: '1px solid #1a1a1a', paddingBottom: 6, marginBottom: 4 },
+  pickTeamHeader: { flex: 1, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' },
+  fightInfoHeader: { width: 160, textAlign: 'center', color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
+
+  pickRow: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #111' },
+  pickCell: { flex: 1, display: 'flex', flexDirection: 'column' },
+  noPick: { color: '#333', fontSize: 13 },
+  fightInfo: { width: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
+  fightName: { color: '#555', fontSize: 11, textAlign: 'center' },
+  fightWeight: { color: '#333', fontSize: 10, textAlign: 'center' },
+  fightResult: { color: '#888', fontSize: 10, textAlign: 'center', marginTop: 2 },
+
+  rosterGrid: { display: 'flex', gap: 0 },
+  rosterDivider: { width: 1, background: '#1a1a1a', margin: '0 16px' },
+  rosterTeamLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, width: '100%' },
+  slotLabel: { color: '#333', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, margin: '6px 0 4px', width: '100%' },
+  rosterRow: { display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #0f0f0f' },
+  fighterName: { color: '#ccc', fontSize: 13, fontWeight: 600 },
+  rankBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700 },
+  champBadge: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3 },
+  fighterMeta: { color: '#444', fontSize: 11 },
+
+  totalsBar: { background: '#111', borderTop: '1px solid #1e1e1e', padding: '20px 32px', display: 'flex', marginTop: 16 },
+  totalsDivider: { width: 1, background: '#222', margin: '0 24px' },
+  totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  totalsRow: { display: 'flex', alignItems: 'baseline', gap: 8 },
+  totalsLabel: { color: '#444', fontSize: 11 },
+  totalsMatchup: { color: '#c8102e', fontSize: 22, fontWeight: 800 },
+  totalsSeason: { color: '#ff8c42', fontSize: 22, fontWeight: 800 },
 };

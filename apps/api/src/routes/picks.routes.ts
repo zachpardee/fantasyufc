@@ -24,7 +24,8 @@ picksRouter.get('/current-event', requireAuth, async (req: AuthRequest, res, nex
   } catch (err) { next(err); }
 });
 
-// Fights for a specific event, with the requesting user's picks overlaid
+// Fights for a specific event, with picks overlaid.
+// Pass ?memberId=<league_member_id> to view another member's picks (any league member can view).
 picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [member] } = await db.query(
@@ -32,6 +33,9 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       [req.params.leagueId, req.user!.id],
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
+
+    // Allow viewing another member's picks (for matchup page)
+    const targetMemberId = (req.query.memberId as string) || member.id;
 
     const { rows: fights } = await db.query(`
       SELECT
@@ -57,7 +61,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $3
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC
-    `, [req.params.leagueId, member.id, req.params.eventId]);
+    `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     const { rows: [event] } = await db.query(
       `SELECT status, name, scheduled_at FROM ufc_events WHERE id = $1`, [req.params.eventId],

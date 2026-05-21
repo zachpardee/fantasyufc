@@ -78,7 +78,8 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
   try {
     const { rows: [matchup] } = await db.query(`
       SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
-        ht.team_name as home_team_name, at2.team_name as away_team_name
+        ht.team_name as home_team_name, at2.team_name as away_team_name,
+        ht.total_points as home_season_points, at2.total_points as away_season_points
       FROM matchups m
       JOIN ufc_events e ON e.id = m.event_id
       JOIN league_members ht ON ht.id = m.home_team_id
