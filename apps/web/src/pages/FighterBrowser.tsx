@@ -7,7 +7,7 @@ export function FighterBrowserPage() {
   const [search, setSearch] = useState('');
   const [weightClass, setWeightClass] = useState('');
 
-  const { data: fighters } = useQuery<(Fighter & { weight_class_name: string })[]>({
+  const { data: fighters } = useQuery<(Fighter & { weightClassName: string })[]>({
     queryKey: ['fighters', search, weightClass],
     queryFn: () => {
       const p = new URLSearchParams({ status: 'active' });
@@ -52,7 +52,7 @@ export function FighterBrowserPage() {
                 </div>
                 {f.nickname && <div style={styles.nickname}>"{f.nickname}"</div>}
               </td>
-              <td style={styles.td}><span style={styles.division}>{f.weight_class_name}</span></td>
+              <td style={styles.td}><span style={styles.division}>{f.weightClassName}</span></td>
               <td style={styles.td}><span style={styles.record}>{f.record.wins}-{f.record.losses}-{f.record.draws}</span></td>
               <td style={styles.td}><span style={styles.avgPts}>{f.averageFantasyPoints?.toFixed(1) ?? '--'}</span></td>
             </tr>

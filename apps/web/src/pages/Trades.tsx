@@ -35,7 +35,7 @@ export function TradesPage() {
       {trades?.map((trade) => (
         <div key={trade.id} style={styles.tradeCard}>
           <div style={styles.tradeHeader}>
-            <span style={styles.teams}>{trade.proposing_team_name} → {trade.receiving_team_name}</span>
+            <span style={styles.teams}>{(trade as any).proposingTeamName} → {(trade as any).receivingTeamName}</span>
             <span style={{ ...styles.statusBadge, ...(styles[`status_${trade.status}`] ?? {}) }}>
               {trade.status}
             </span>
