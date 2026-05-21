@@ -37,6 +37,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       SELECT
         f.id, f.is_title_fight, f.is_main_event, f.is_co_main,
         f.card_segment, f.scheduled_rounds, f.bout_order, f.status,
+        f.red_fighter_odds, f.blue_fighter_odds,
         f.red_fighter_id, rf.first_name AS red_first_name, rf.last_name AS red_last_name,
         rf.nickname AS red_nickname, rf.image_url AS red_image_url,
         rf.ranking AS red_ranking, rf.is_champion AS red_is_champion,
@@ -44,7 +45,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
         bf.nickname AS blue_nickname, bf.image_url AS blue_image_url,
         bf.ranking AS blue_ranking, bf.is_champion AS blue_is_champion,
         wc.name AS weight_class_name,
-        ep.picked_fighter_id, ep.is_correct, ep.points_earned,
+        ep.picked_fighter_id, ep.picked_method, ep.is_correct, ep.points_earned,
         fr.winner_id AS result_winner_id, fr.outcome AS result_outcome
       FROM fights f
       JOIN fighters rf ON rf.id = f.red_fighter_id
@@ -74,6 +75,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
       picks: z.array(z.object({
         fightId: z.string().uuid(),
         pickedFighterId: z.string().uuid(),
+        pickedMethod: z.enum(['ko_tko', 'submission', 'decision', 'disqualification']).optional(),
       })),
     }).parse(req.body);
 
@@ -93,12 +95,13 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
 
     for (const pick of picks) {
       await db.query(`
-        INSERT INTO event_picks (league_id, member_id, fight_id, picked_fighter_id)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO event_picks (league_id, member_id, fight_id, picked_fighter_id, picked_method)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (league_id, member_id, fight_id) DO UPDATE SET
           picked_fighter_id = EXCLUDED.picked_fighter_id,
+          picked_method = EXCLUDED.picked_method,
           submitted_at = NOW()
-      `, [req.params.leagueId, member.id, pick.fightId, pick.pickedFighterId]);
+      `, [req.params.leagueId, member.id, pick.fightId, pick.pickedFighterId, pick.pickedMethod ?? null]);
     }
 
     res.json({ ok: true, count: picks.length });

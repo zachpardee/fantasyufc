@@ -128,20 +128,40 @@ export async function processFightResult(fightResultId: string) {
       processedMatchupIds.add(row.matchup_id);
     }
 
-    // Score event picks for this fight (100 pts per correct pick toward matchup)
-    const PICK_CORRECT_PTS = 100;
+    // Score event picks:
+    //   correct winner                         = 100 pts
+    //   correct winner + method                = 300 pts
+    //   correct winner + underdog (≥ +350 odds)= +100 bonus on top
     if (fightResult.winner_id) {
+      const { rows: [fight] } = await client.query<{
+        red_fighter_id: string; blue_fighter_id: string;
+        red_fighter_odds: number | null; blue_fighter_odds: number | null;
+      }>(`SELECT red_fighter_id, blue_fighter_id, red_fighter_odds, blue_fighter_odds FROM fights WHERE id = $1`,
+        [fightResult.fight_id]);
+
+      const winnerOdds = fight.red_fighter_id === fightResult.winner_id
+        ? fight.red_fighter_odds
+        : fight.blue_fighter_odds;
+      const isUnderdog = winnerOdds != null && winnerOdds >= 350;
+
       await client.query(`
         UPDATE event_picks
         SET is_correct = (picked_fighter_id = $1),
-            points_earned = CASE WHEN picked_fighter_id = $1 THEN $2 ELSE 0 END
-        WHERE fight_id = $3
-      `, [fightResult.winner_id, PICK_CORRECT_PTS, fightResult.fight_id]);
+            points_earned = CASE
+              WHEN picked_fighter_id = $1 AND (
+                (picked_method = 'ko_tko'          AND $2 = 'ko_tko') OR
+                (picked_method = 'submission'       AND $2 = 'submission') OR
+                (picked_method = 'decision'         AND $2 IN ('decision_unanimous','decision_split','decision_majority')) OR
+                (picked_method = 'disqualification' AND $2 = 'disqualification')
+              ) THEN 300 + CASE WHEN $3 THEN 100 ELSE 0 END
+              WHEN picked_fighter_id = $1 THEN 100 + CASE WHEN $3 THEN 100 ELSE 0 END
+              ELSE 0
+            END
+        WHERE fight_id = $4
+      `, [fightResult.winner_id, fightResult.outcome, isUnderdog, fightResult.fight_id]);
     } else {
-      // Draw / no-contest: everyone gets half points
       await client.query(`
-        UPDATE event_picks
-        SET is_correct = false, points_earned = 0
+        UPDATE event_picks SET is_correct = false, points_earned = 0
         WHERE fight_id = $1
       `, [fightResult.fight_id]);
     }

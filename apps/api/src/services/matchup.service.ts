@@ -164,6 +164,49 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
       }
     }
 
+    // Perfect card bonus: (n-3) × 100 pts for anyone who nailed every pick
+    const { rows: [{ total }] } = await client.query<{ total: string }>(
+      `SELECT COUNT(*) as total FROM fights WHERE event_id = $1 AND status = 'completed'`,
+      [eventId],
+    );
+    const totalFights = parseInt(total);
+
+    if (totalFights >= 4) {
+      const { rows: memberPicks } = await client.query<{
+        member_id: string; total_picks: string; correct_picks: string;
+      }>(`
+        SELECT ep.member_id,
+          COUNT(*) AS total_picks,
+          SUM(CASE WHEN ep.is_correct THEN 1 ELSE 0 END) AS correct_picks
+        FROM event_picks ep
+        JOIN fights f ON f.id = ep.fight_id
+        WHERE ep.league_id = $1 AND f.event_id = $2
+        GROUP BY ep.member_id
+      `, [leagueId, eventId]);
+
+      for (const row of memberPicks) {
+        const picked = parseInt(row.total_picks);
+        const correct = parseInt(row.correct_picks);
+        if (picked === totalFights && correct === totalFights) {
+          const bonus = (totalFights - 3) * 100;
+          const { rowCount } = await client.query(`
+            INSERT INTO perfect_card_bonuses
+              (league_id, member_id, event_id, fights_correct, points_awarded)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (league_id, member_id, event_id) DO NOTHING
+          `, [leagueId, row.member_id, eventId, totalFights, bonus]);
+
+          if (rowCount) {
+            await client.query(
+              `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
+              [bonus, row.member_id],
+            );
+            console.log(`[Scoring] Perfect card bonus: ${bonus} pts → member ${row.member_id} (${totalFights} fights)`);
+          }
+        }
+      }
+    }
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
