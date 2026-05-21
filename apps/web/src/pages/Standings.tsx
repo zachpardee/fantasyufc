@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 
 export function StandingsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
+  const navigate = useNavigate();
 
   const { data: standings } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
@@ -32,7 +33,11 @@ export function StandingsPage() {
             {standings?.map((member, i) => {
               const isMe = member.userId === session?.user.id;
               return (
-                <tr key={member.id} style={{ ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd), ...(isMe ? styles.rowMe : {}) }}>
+                <tr
+                  key={member.id}
+                  style={{ ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd), ...(isMe ? styles.rowMe : {}), cursor: 'pointer' }}
+                  onClick={() => navigate(`/league/${leagueId}/team/${member.id}`)}
+                >
                   <td style={styles.td}>
                     <span style={i < 3 ? styles.medal : undefined}>
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
