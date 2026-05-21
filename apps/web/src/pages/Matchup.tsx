@@ -143,11 +143,23 @@ export function MatchupPage() {
         </div>
       </div>
 
-      {/* Totals */}
+      {/* Score breakdown + totals */}
       <div style={styles.totalsBar}>
-        <TotalBlock label={matchup.homeTeamName} matchupPts={+matchup.homeScore} seasonPts={+(matchup.homeSeasonPoints ?? 0)} align="left" />
+        <ScoreBreakdown
+          label={matchup.homeTeamName}
+          picks={homePicks?.fights ?? []}
+          matchupPts={+matchup.homeScore}
+          seasonPts={+(matchup.homeSeasonPoints ?? 0)}
+          align="left"
+        />
         <div style={styles.totalsDivider} />
-        <TotalBlock label={matchup.awayTeamName} matchupPts={+matchup.awayScore} seasonPts={+(matchup.awaySeasonPoints ?? 0)} align="right" />
+        <ScoreBreakdown
+          label={matchup.awayTeamName}
+          picks={awayPicks?.fights ?? []}
+          matchupPts={+matchup.awayScore}
+          seasonPts={+(matchup.awaySeasonPoints ?? 0)}
+          align="right"
+        />
       </div>
     </div>
   );
@@ -273,16 +285,47 @@ function FighterRow({ fighter, align, isBench }: { fighter: any; align: 'left' |
   );
 }
 
-function TotalBlock({ label, matchupPts, seasonPts, align }: { label: string; matchupPts: number; seasonPts: number; align: 'left' | 'right' }) {
+function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
+  label: string; picks: any[]; matchupPts: number; seasonPts: number; align?: 'left' | 'right';
+}) {
+  const scored = picks.filter((p) => p.isCorrect !== null);
+  const correct = picks.filter((p) => p.isCorrect === true);
+  const methodBonus = correct.filter((p) => (+p.pointsEarned) >= 300).length;
+  const underdogBonus = correct.filter((p) => (+p.pointsEarned) === 200 || (+p.pointsEarned) === 400).length;
+  const hasScores = scored.length > 0;
+
+  const rows = [
+    { label: 'Correct picks', value: correct.length, pts: correct.length * 100 },
+    ...(methodBonus > 0 ? [{ label: 'Method bonus', value: methodBonus, pts: methodBonus * 200 }] : []),
+    ...(underdogBonus > 0 ? [{ label: 'Underdog bonus', value: underdogBonus, pts: underdogBonus * 100 }] : []),
+  ];
+
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 6 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={styles.totalsTeam}>{label}</div>
-      <div style={styles.totalsRow}>
-        <span style={styles.totalsLabel}>Matchup</span>
-        <span style={styles.totalsMatchup}>{matchupPts.toFixed(0)}</span>
-      </div>
-      <div style={styles.totalsRow}>
-        <span style={styles.totalsLabel}>Season</span>
+
+      {hasScores && (
+        <div style={styles.breakdownGrid}>
+          {rows.map((r) => (
+            <div key={r.label} style={styles.breakdownRow}>
+              <span style={styles.breakdownLabel}>{r.label}</span>
+              <span style={styles.breakdownVal}>+{r.pts}</span>
+            </div>
+          ))}
+          <div style={styles.breakdownDividerRow} />
+          <div style={{ ...styles.breakdownRow, ...styles.breakdownTotalRow }}>
+            <span style={styles.breakdownLabel}>Matchup total</span>
+            <span style={styles.totalsMatchup}>{matchupPts.toFixed(0)}</span>
+          </div>
+        </div>
+      )}
+
+      {!hasScores && (
+        <div style={styles.breakdownPending}>Scores update as fights complete</div>
+      )}
+
+      <div style={{ ...styles.breakdownRow, marginTop: 4 }}>
+        <span style={styles.totalsLabel}>Season total</span>
         <span style={styles.totalsSeason}>{seasonPts.toFixed(1)}</span>
       </div>
     </div>
@@ -333,9 +376,16 @@ const styles: Record<string, React.CSSProperties> = {
 
   totalsBar: { background: '#111', borderTop: '1px solid #1e1e1e', padding: '20px 32px', display: 'flex', marginTop: 16 },
   totalsDivider: { width: 1, background: '#222', margin: '0 24px' },
-  totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
   totalsRow: { display: 'flex', alignItems: 'baseline', gap: 8 },
-  totalsLabel: { color: '#444', fontSize: 11 },
-  totalsMatchup: { color: '#c8102e', fontSize: 22, fontWeight: 800 },
-  totalsSeason: { color: '#ff8c42', fontSize: 22, fontWeight: 800 },
+  totalsLabel: { color: '#444', fontSize: 12 },
+  totalsMatchup: { color: '#c8102e', fontSize: 20, fontWeight: 800 },
+  totalsSeason: { color: '#ff8c42', fontSize: 20, fontWeight: 800 },
+  breakdownGrid: { display: 'flex', flexDirection: 'column', gap: 4 },
+  breakdownRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24 },
+  breakdownTotalRow: { paddingTop: 6 },
+  breakdownLabel: { color: '#555', fontSize: 12 },
+  breakdownVal: { color: '#888', fontSize: 13, fontWeight: 600 },
+  breakdownDividerRow: { borderTop: '1px solid #1e1e1e', margin: '4px 0' },
+  breakdownPending: { color: '#333', fontSize: 12, fontStyle: 'italic' },
 };
