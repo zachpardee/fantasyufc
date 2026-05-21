@@ -5,13 +5,26 @@ function toCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
 
+// Postgres NUMERIC columns arrive as strings — coerce known score/stat fields to numbers.
+const NUMERIC_FIELDS = new Set([
+  'homeScore', 'awayScore', 'totalPoints', 'homePoints', 'awayPoints',
+  'averageFantasyPoints', 'waiverPriority', 'memberCount',
+  'wins', 'losses', 'ties', 'streak',
+  'ranking', 'recordWins', 'recordLosses', 'recordDraws', 'recordNc',
+  'fightCount', 'matchupCount',
+]);
+
 function transformKeys(obj: unknown): unknown {
   if (Array.isArray(obj)) return obj.map(transformKeys);
   if (obj === null || typeof obj !== 'object') return obj;
 
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
-    out[toCamel(key)] = transformKeys(val);
+    const camel = toCamel(key);
+    const transformed = transformKeys(val);
+    out[camel] = NUMERIC_FIELDS.has(camel) && typeof transformed === 'string'
+      ? parseFloat(transformed)
+      : transformed;
   }
   return out;
 }

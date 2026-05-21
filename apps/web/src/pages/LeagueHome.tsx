@@ -73,12 +73,12 @@ export function LeagueHomePage() {
         <div style={styles.matchupBanner}>
           <div style={styles.teamScore}>
             <span style={styles.teamName}>{matchup.homeTeamName}</span>
-            <span style={styles.score}>{matchup.homeScore?.toFixed(1) ?? '0.0'}</span>
+            <span style={styles.score}>{(+matchup.homeScore).toFixed(1)}</span>
           </div>
           <span style={styles.vs}>VS</span>
           <div style={{ ...styles.teamScore, alignItems: 'flex-end' }}>
             <span style={styles.teamName}>{matchup.awayTeamName}</span>
-            <span style={styles.score}>{matchup.awayScore?.toFixed(1) ?? '0.0'}</span>
+            <span style={styles.score}>{(+matchup.awayScore).toFixed(1)}</span>
           </div>
           <Link to={`/league/${leagueId}/matchup`} style={styles.matchupLink}>View Matchup →</Link>
         </div>

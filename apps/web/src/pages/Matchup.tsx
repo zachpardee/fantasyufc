@@ -51,14 +51,14 @@ export function MatchupPage() {
       <div style={styles.scoreboard}>
         <div style={styles.teamBlock}>
           <div style={styles.teamName}>{matchup.homeTeamName ?? matchup.home_team_name}</div>
-          <div style={styles.totalScore}>{matchup.homeScore?.toFixed(1) ?? '0.0'}</div>
+          <div style={styles.totalScore}>{(+matchup.homeScore).toFixed(1)}</div>
         </div>
         <div style={styles.vsBlock}>
           <div style={styles.vs}>VS</div>
         </div>
         <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
           <div style={styles.teamName}>{matchup.awayTeamName ?? matchup.away_team_name}</div>
-          <div style={styles.totalScore}>{matchup.awayScore?.toFixed(1) ?? '0.0'}</div>
+          <div style={styles.totalScore}>{(+matchup.awayScore).toFixed(1)}</div>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function MatchupPage() {
           {homeScores.map((s: any) => (
             <div key={s.fighterId ?? s.fighter_id} style={styles.scoreRow}>
               <span style={styles.fighterName}>{s.firstName ?? s.first_name} {s.lastName ?? s.last_name}</span>
-              <span style={styles.pts}>{s.totalPoints?.toFixed(1) ?? s.total_points?.toFixed(1) ?? '--'}</span>
+              <span style={styles.pts}>{s.totalPoints != null ? (+s.totalPoints).toFixed(1) : s.total_points != null ? (+s.total_points).toFixed(1) : '--'}</span>
             </div>
           ))}
         </div>
@@ -82,7 +82,7 @@ export function MatchupPage() {
           {awayScores.map((s: any) => (
             <div key={s.fighterId ?? s.fighter_id} style={{ ...styles.scoreRow, flexDirection: 'row-reverse' }}>
               <span style={styles.fighterName}>{s.firstName ?? s.first_name} {s.lastName ?? s.last_name}</span>
-              <span style={styles.pts}>{s.totalPoints?.toFixed(1) ?? s.total_points?.toFixed(1) ?? '--'}</span>
+              <span style={styles.pts}>{s.totalPoints != null ? (+s.totalPoints).toFixed(1) : s.total_points != null ? (+s.total_points).toFixed(1) : '--'}</span>
             </div>
           ))}
         </div>
