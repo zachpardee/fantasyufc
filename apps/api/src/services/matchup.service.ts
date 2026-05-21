@@ -116,9 +116,12 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
       let winnerId: string | null = null;
       let isTie = false;
 
-      if (m.home_score > m.away_score) {
+      const homeScore = parseFloat(m.home_score);
+      const awayScore = parseFloat(m.away_score);
+
+      if (homeScore > awayScore) {
         winnerId = m.home_team_id;
-      } else if (m.away_score > m.home_score) {
+      } else if (awayScore > homeScore) {
         winnerId = m.away_team_id;
       } else {
         isTie = true;
@@ -135,13 +138,13 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
         await client.query(`
           UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
           WHERE id = $1
-        `, [m.home_team_id, m.home_score]);
+        `, [m.home_team_id, homeScore]);
         await client.query(
           `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
-          [m.away_score, m.away_team_id],
+          [awayScore, m.away_team_id],
         );
       } else {
-        const winnerScore = winnerId === m.home_team_id ? m.home_score : m.away_score;
+        const winnerScore = winnerId === m.home_team_id ? homeScore : awayScore;
         // Winner gets their matchup score + 250 bonus
         await client.query(`
           UPDATE league_members
@@ -153,7 +156,7 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
 
         // Update loser
         const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
-        const loserScore = winnerId === m.home_team_id ? m.away_score : m.home_score;
+        const loserScore = winnerId === m.home_team_id ? awayScore : homeScore;
         await client.query(`
           UPDATE league_members
           SET losses = losses + 1,
