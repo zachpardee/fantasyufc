@@ -290,16 +290,16 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
   const correctCount = correct.length;
-  const methodBonus = correct.filter((p) => (+p.pointsEarned) >= 300).length;
-  const underdogBonus = correct.filter((p) => (+p.pointsEarned) === 200 || (+p.pointsEarned) === 400).length;
+  const methodBonus = correct.filter((p) => (+p.pointsEarned) >= 400).length;
+  const underdogBonus = correct.filter((p) => (+p.pointsEarned) === 300 || (+p.pointsEarned) === 500).length;
   const milestone = calcMilestoneBonus(correctCount);
-  const picksPts = correctCount * 100 + methodBonus * 200 + underdogBonus * 100 + milestone;
+  const picksPts = correctCount * 200 + methodBonus * 200 + underdogBonus * 100 + milestone;
   // Remainder of matchup total is roster win bonuses (50 pts per drafted winner)
   const rosterBonus = Math.round(matchupPts - picksPts);
   const hasScores = scored.length > 0;
 
   const rows = [
-    { label: 'Correct picks', pts: correctCount * 100 },
+    { label: 'Correct picks', pts: correctCount * 200 },
     ...(methodBonus > 0 ? [{ label: 'Method bonus', pts: methodBonus * 200 }] : []),
     ...(underdogBonus > 0 ? [{ label: 'Underdog bonus', pts: underdogBonus * 100 }] : []),
     ...(milestone > 0 ? [{ label: `${correctCount}/6 correct bonus`, pts: milestone }] : []),

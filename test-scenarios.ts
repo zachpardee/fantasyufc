@@ -82,7 +82,7 @@ async function run() {
   for (let i = 0; i < 4; i++) await scoreFight(top6[i], top6[i].red_fighter_id, 'ko_tko');
   for (let i = 4; i < 6; i++) await scoreFight(top6[i], top6[i].blue_fighter_id, 'decision_unanimous');
   await finalizeMatchupResults(leagueId, eventId);
-  await report(leagueId, 'Scenario 1: m1=4/6 KO (500), m2=2/6 DEC (600) — m2 wins');
+  await report(leagueId, 'Scenario 1: m1=4/6 KO (4×200+100ms=900), m2=2/6 DEC (2×400=800) — m1 wins');
 
   // ── Scenario 2: roster tiebreaker ───────────────────────────────────────
   // Both 5/6 + method → 1700 each. m1 has winning fighter on roster → +50 → 1750, m1 wins
@@ -95,7 +95,7 @@ async function run() {
   for (let i = 0; i < 5; i++) await scoreFight(top6[i], top6[i].red_fighter_id, 'decision_unanimous');
   await scoreFight(top6[5], top6[5].blue_fighter_id, 'decision_unanimous');
   await finalizeMatchupResults(leagueId, eventId);
-  await report(leagueId, 'Scenario 2: both 5/6+DEC (1700), m1 roster win +50 → 1750, m1 wins');
+  await report(leagueId, 'Scenario 2: both 5/6+DEC (5×400+200ms=2200), m1 roster +50 → 2250, m1 wins');
 
   // ── Scenario 3: true tie ─────────────────────────────────────────────────
   // Both 6/6 + method, no roster bonus → 2100 each, ties+1, both get perfect card
@@ -110,9 +110,9 @@ async function run() {
     SELECT lm.team_name, pcb.points_awarded FROM perfect_card_bonuses pcb
     JOIN league_members lm ON lm.id=pcb.member_id WHERE pcb.league_id=$1 ORDER BY lm.team_name
   `, [leagueId])).rows;
-  await report(leagueId, 'Scenario 3: true tie — both 6/6+DEC → 2100, no win bonus, both get perfect card');
+  await report(leagueId, 'Scenario 3: true tie — both 6/6+DEC → 2700, no win bonus, both get perfect card');
   console.log('  Perfect card bonuses:', perfect);
-  // Expected: 0W-0L-1T each. Season = 2100 + 300 perfect = 2400 each.
+  // Expected: 0W-0L-1T each. Season = 2700 + 300 perfect = 3000 each.
 
   process.exit(0);
 }

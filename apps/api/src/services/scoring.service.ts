@@ -157,8 +157,8 @@ export async function processFightResult(fightResultId: string) {
                 (picked_method = 'submission'       AND $2 = 'submission') OR
                 (picked_method = 'decision'         AND $2 IN ('decision_unanimous','decision_split','decision_majority')) OR
                 (picked_method = 'disqualification' AND $2 = 'disqualification')
-              ) THEN 300 + CASE WHEN $3 THEN 100 ELSE 0 END
-              WHEN picked_fighter_id = $1 THEN 100 + CASE WHEN $3 THEN 100 ELSE 0 END
+              ) THEN 400 + CASE WHEN $3 THEN 100 ELSE 0 END
+              WHEN picked_fighter_id = $1 THEN 200 + CASE WHEN $3 THEN 100 ELSE 0 END
               ELSE 0
             END
         WHERE fight_id = $4
