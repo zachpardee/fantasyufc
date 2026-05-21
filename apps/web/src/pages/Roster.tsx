@@ -41,7 +41,7 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
   return (
     <div style={styles.row}>
       <div style={styles.rowLeft}>
-        {fighter.is_champion && <span style={styles.champ}>C</span>}
+        {(fighter.isChampion || fighter.is_champion) && <span style={styles.champ}>C</span>}
         <div>
           <div style={styles.name}>{fighter.first_name} {fighter.last_name}</div>
           <div style={styles.meta}>{fighter.weight_class_name} · Acquired via {fighter.acquiredVia}</div>

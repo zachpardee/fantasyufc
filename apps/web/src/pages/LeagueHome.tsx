@@ -1,30 +1,63 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import type { League, Matchup } from '@fantasy-ufc/shared';
+import { useAuthStore } from '../store/auth.store';
+import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const navigate = useNavigate();
+  const { session } = useAuthStore();
+  const qc = useQueryClient();
+  const [copyMsg, setCopyMsg] = useState('');
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: matchup } = useQuery<(Matchup & { home_team_name: string; away_team_name: string }) | null>({
+  const { data: members = [] } = useQuery<(LeagueMember & { username: string; displayName?: string })[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+
+  const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string }) | null>({
     queryKey: ['matchup-current', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/current`),
+    queryFn: async () => {
+      try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
+      catch { return null; }
+    },
+    enabled: league?.status === 'active',
+  });
+
+  const startDraftMutation = useMutation({
+    mutationFn: () => apiClient.post(`/leagues/${leagueId}/draft/start`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league', leagueId] });
+      navigate(`/league/${leagueId}/draft`);
+    },
   });
 
   if (!league) return <div style={styles.loading}>Loading...</div>;
 
+  const isCommissioner = session?.user.id === league.commissionerId;
+  const canStartDraft = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
+
+  function copyInviteCode() {
+    navigator.clipboard.writeText(league!.inviteCode);
+    setCopyMsg('Copied!');
+    setTimeout(() => setCopyMsg(''), 2000);
+  }
+
   const navLinks = [
-    { label: 'My Roster', path: 'roster', icon: '👊' },
-    { label: 'Matchup', path: 'matchup', icon: '⚔️' },
-    { label: 'Standings', path: 'standings', icon: '📊' },
-    { label: 'Trades', path: 'trades', icon: '🤝' },
-    { label: 'Draft', path: 'draft', icon: '📋' },
-    { label: 'Fighters', path: '/fighters', icon: '🥊', external: true },
+    { label: 'My Roster', path: 'roster', icon: '👊', show: league.status !== 'setup' },
+    { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' },
+    { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
+    { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' },
+    { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' || league.status === 'active' },
+    { label: 'Schedule', path: 'schedule', icon: '📅', show: isCommissioner && league.status === 'active' },
+    { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
   ];
 
   return (
@@ -32,70 +65,205 @@ export function LeagueHomePage() {
       <nav style={styles.nav}>
         <Link to="/" style={styles.back}>← Home</Link>
         <span style={styles.leagueName}>{league.name}</span>
-        <span style={styles.inviteCode}>Code: {league.inviteCode}</span>
+        <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
       </nav>
 
+      {/* Current matchup banner */}
       {matchup && (
         <div style={styles.matchupBanner}>
           <div style={styles.teamScore}>
-            <span style={styles.teamName}>{matchup.home_team_name}</span>
-            <span style={styles.score}>{matchup.homeScore.toFixed(1)}</span>
+            <span style={styles.teamName}>{matchup.homeTeamName}</span>
+            <span style={styles.score}>{matchup.homeScore?.toFixed(1) ?? '0.0'}</span>
           </div>
           <span style={styles.vs}>VS</span>
-          <div style={[styles.teamScore, styles.awayScore] as any}>
-            <span style={styles.teamName}>{matchup.away_team_name}</span>
-            <span style={styles.score}>{matchup.awayScore.toFixed(1)}</span>
+          <div style={{ ...styles.teamScore, alignItems: 'flex-end' }}>
+            <span style={styles.teamName}>{matchup.awayTeamName}</span>
+            <span style={styles.score}>{matchup.awayScore?.toFixed(1) ?? '0.0'}</span>
           </div>
           <Link to={`/league/${leagueId}/matchup`} style={styles.matchupLink}>View Matchup →</Link>
         </div>
       )}
 
-      <div style={styles.navGrid}>
-        {navLinks.map((item) => (
-          <Link
-            key={item.label}
-            to={item.external ? item.path : `/league/${leagueId}/${item.path}`}
-            style={styles.navCard}
-          >
-            <span style={styles.navIcon}>{item.icon}</span>
-            <span style={styles.navLabel}>{item.label}</span>
-          </Link>
-        ))}
-      </div>
+      {/* Setup / pre-draft lobby */}
+      {league.status === 'setup' && (
+        <div style={styles.lobbyCard}>
+          <div style={styles.lobbyHeader}>
+            <div>
+              <p style={styles.lobbyTitle}>Waiting for players</p>
+              <p style={styles.lobbyMeta}>{league.memberCount} / {league.maxTeams} teams joined</p>
+            </div>
+            <div style={styles.inviteSection}>
+              <p style={styles.inviteLabel}>Invite code</p>
+              <div style={styles.inviteRow}>
+                <span style={styles.inviteCode}>{league.inviteCode}</span>
+                <button style={styles.copyBtn} onClick={copyInviteCode}>
+                  {copyMsg || 'Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.memberGrid}>
+            {members.map((m) => (
+              <div key={m.id} style={styles.memberCard}>
+                <span style={styles.memberTeam}>{m.teamName}</span>
+                <span style={styles.memberUser}>@{m.username}</span>
+                {m.userId === league.commissionerId && (
+                  <span style={styles.commBadge}>Commissioner</span>
+                )}
+              </div>
+            ))}
+            {Array.from({ length: Math.max(0, league.maxTeams - members.length) }).map((_, i) => (
+              <div key={`empty-${i}`} style={{ ...styles.memberCard, ...styles.memberCardEmpty }}>
+                <span style={styles.memberEmpty}>Open slot</span>
+              </div>
+            ))}
+          </div>
+
+          {isCommissioner && (
+            <div style={styles.commActions}>
+              {(league.memberCount ?? 0) < 2 && (
+                <p style={styles.draftHint}>Need at least 2 teams to start the draft</p>
+              )}
+              <button
+                style={{ ...styles.startDraftBtn, ...(!canStartDraft ? styles.startDraftDisabled : {}) }}
+                onClick={() => startDraftMutation.mutate()}
+                disabled={!canStartDraft || startDraftMutation.isPending}
+              >
+                {startDraftMutation.isPending ? 'Starting...' : `Start Draft (${league.memberCount} teams)`}
+              </button>
+              {startDraftMutation.isError && (
+                <p style={styles.error}>{(startDraftMutation.error as any)?.error ?? 'Failed to start draft'}</p>
+              )}
+            </div>
+          )}
+          {!isCommissioner && (
+            <p style={styles.waitingMsg}>Waiting for the commissioner to start the draft...</p>
+          )}
+        </div>
+      )}
+
+      {/* Drafting notice */}
+      {league.status === 'drafting' && (
+        <div style={styles.draftingBanner}>
+          <span style={styles.draftingDot} />
+          <span style={styles.draftingText}>Draft in progress</span>
+          <Link to={`/league/${leagueId}/draft`} style={styles.draftingLink}>Enter Draft Room →</Link>
+        </div>
+      )}
+
+      {/* Nav grid (shown when past setup) */}
+      {league.status !== 'setup' && (
+        <div style={styles.navGrid}>
+          {navLinks.filter((l) => l.show).map((item) => (
+            <Link
+              key={item.label}
+              to={item.external ? item.path : `/league/${leagueId}/${item.path}`}
+              style={styles.navCard}
+            >
+              <span style={styles.navIcon}>{item.icon}</span>
+              <span style={styles.navLabel}>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Members roster (active leagues) */}
+      {league.status === 'active' && members.length > 0 && (
+        <div style={styles.memberSection}>
+          <p style={styles.memberSectionTitle}>Teams</p>
+          <div style={styles.teamsRow}>
+            {members.map((m) => (
+              <div key={m.id} style={styles.teamPill}>
+                <span style={styles.teamPillName}>{m.teamName}</span>
+                <span style={styles.teamPillRecord}>{m.wins}-{m.losses}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={styles.meta}>
         <span>{league.memberCount} / {league.maxTeams} teams</span>
         <span>Roster: {league.rosterSize} ({league.starterSlots} starters)</span>
         <span>Season {league.seasonYear}</span>
+        {league.status === 'setup' && <span style={styles.metaCode}>Code: {league.inviteCode}</span>}
       </div>
     </div>
   );
 }
 
+function statusStyle(status: string): React.CSSProperties {
+  const colors: Record<string, string> = {
+    setup: '#8888ff',
+    drafting: '#ffd700',
+    active: '#4caf50',
+    completed: '#888',
+  };
+  return {
+    fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
+    background: '#222', color: colors[status] ?? '#888',
+  };
+}
+
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   loading: { color: '#888', padding: 40 },
-  nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 20 },
+  nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   leagueName: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
-  inviteCode: { color: '#666', fontSize: 13 },
   matchupBanner: {
     background: '#1a1a1a', borderBottom: '1px solid #c8102e33',
     padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 24,
   },
-  teamScore: { display: 'flex', flexDirection: 'column' as any, gap: 4 },
-  awayScore: { alignItems: 'flex-end' },
+  teamScore: { display: 'flex', flexDirection: 'column', gap: 4 },
   teamName: { color: '#888', fontSize: 12 },
   score: { color: '#fff', fontSize: 36, fontWeight: 800 },
-  vs: { color: '#555', fontWeight: 700, flex: 1, textAlign: 'center' as any },
+  vs: { color: '#555', fontWeight: 700, flex: 1, textAlign: 'center' },
   matchupLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginLeft: 'auto' },
+  lobbyCard: { margin: 24, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: 28 },
+  lobbyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  lobbyTitle: { color: '#fff', fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 4 },
+  lobbyMeta: { color: '#666', fontSize: 13, margin: 0 },
+  inviteSection: { textAlign: 'right' },
+  inviteLabel: { color: '#666', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' },
+  inviteRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  inviteCode: { color: '#fff', fontFamily: 'monospace', fontSize: 20, fontWeight: 700, letterSpacing: 2 },
+  copyBtn: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 6, color: '#ccc', padding: '5px 12px', cursor: 'pointer', fontSize: 12 },
+  memberGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, marginBottom: 24 },
+  memberCard: { background: '#111', border: '1px solid #333', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 },
+  memberCardEmpty: { borderStyle: 'dashed', opacity: 0.4 },
+  memberTeam: { color: '#fff', fontSize: 14, fontWeight: 600 },
+  memberUser: { color: '#666', fontSize: 12 },
+  memberEmpty: { color: '#555', fontSize: 13 },
+  commBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700, marginTop: 4 },
+  commActions: { display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' },
+  draftHint: { color: '#888', fontSize: 13, margin: 0 },
+  startDraftBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
+  startDraftDisabled: { opacity: 0.5, cursor: 'not-allowed' },
+  waitingMsg: { color: '#666', fontSize: 14, margin: 0, fontStyle: 'italic' },
+  error: { color: '#ff6b6b', fontSize: 13, margin: 0 },
+  draftingBanner: {
+    background: '#1a2a1a', borderBottom: '1px solid #4caf5044',
+    padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12,
+  },
+  draftingDot: { width: 8, height: 8, borderRadius: '50%', background: '#ffd700' },
+  draftingText: { color: '#ffd700', fontWeight: 700, fontSize: 14, flex: 1 },
+  draftingLink: { color: '#4caf50', textDecoration: 'none', fontSize: 13, fontWeight: 700 },
   navGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, padding: 24 },
   navCard: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: 24, textDecoration: 'none', display: 'flex', flexDirection: 'column' as any,
-    alignItems: 'center', gap: 12, transition: 'border-color 0.2s',
+    padding: 24, textDecoration: 'none', display: 'flex', flexDirection: 'column',
+    alignItems: 'center', gap: 12,
   },
   navIcon: { fontSize: 32 },
   navLabel: { color: '#fff', fontWeight: 600, fontSize: 14 },
-  meta: { padding: '0 24px 24px', display: 'flex', gap: 24, color: '#555', fontSize: 13 },
+  memberSection: { padding: '0 24px 20px' },
+  memberSectionTitle: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' },
+  teamsRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  teamPill: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: '6px 14px', display: 'flex', gap: 10, alignItems: 'center' },
+  teamPillName: { color: '#ddd', fontSize: 13, fontWeight: 600 },
+  teamPillRecord: { color: '#555', fontSize: 12 },
+  meta: { padding: '0 24px 24px', display: 'flex', gap: 24, color: '#555', fontSize: 13, flexWrap: 'wrap' },
+  metaCode: { color: '#888', fontFamily: 'monospace', fontWeight: 700 },
 };

@@ -57,8 +57,12 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
 matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [matchup] } = await db.query(`
-      SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status
-      FROM matchups m JOIN ufc_events e ON e.id = m.event_id
+      SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
+        ht.team_name as home_team_name, at2.team_name as away_team_name
+      FROM matchups m
+      JOIN ufc_events e ON e.id = m.event_id
+      JOIN league_members ht ON ht.id = m.home_team_id
+      JOIN league_members at2 ON at2.id = m.away_team_id
       WHERE m.id = $1 AND m.league_id = $2
     `, [req.params.matchupId, req.params.leagueId]);
     if (!matchup) throw new AppError(404, 'Matchup not found');
