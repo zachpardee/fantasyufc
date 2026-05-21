@@ -115,7 +115,7 @@ async function run() {
   `, [leagueId]);
   console.log('Roster win bonuses:', rosterBonuses.rows.length ? rosterBonuses.rows : 'none');
 
-  // Expected: m1 = 6/6 correct → 6×300=1800 pick pts + 300 milestone + 50 roster bonus = 2150 matchup
+  // Expected: m1 = 6/6 correct → 6×300=1800 pick pts + 300 milestone + 50 roster = 2150 matchup
   // Season = 2150 + 250 (matchup win) + 300 (perfect card) = 2700
   console.log('\nExpected:');
   console.log(`  ${m1.team_name}: 6/6 correct, 2150 matchup pts (1800 picks + 300 milestone + 50 roster), perfect=300, season=2700`);

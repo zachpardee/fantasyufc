@@ -290,18 +290,17 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
   const correctCount = correct.length;
-  const methodBonus = correct.filter((p) => (+p.pointsEarned) >= 400).length;
-  const underdogBonus = correct.filter((p) => (+p.pointsEarned) === 300 || (+p.pointsEarned) === 500).length;
   const milestone = calcMilestoneBonus(correctCount);
-  const picksPts = correctCount * 200 + methodBonus * 200 + underdogBonus * 100 + milestone;
+  const totalPickPts = correct.reduce((sum, p) => sum + (+p.pointsEarned), 0);
+  const basePts = correctCount * 200;
+  const bonusPts = totalPickPts - basePts; // method + underdog bonuses combined
   // Remainder of matchup total is roster win bonuses (50 pts per drafted winner)
-  const rosterBonus = Math.round(matchupPts - picksPts);
+  const rosterBonus = Math.round(matchupPts - totalPickPts - milestone);
   const hasScores = scored.length > 0;
 
   const rows = [
-    { label: 'Correct picks', pts: correctCount * 200 },
-    ...(methodBonus > 0 ? [{ label: 'Method bonus', pts: methodBonus * 200 }] : []),
-    ...(underdogBonus > 0 ? [{ label: 'Underdog bonus', pts: underdogBonus * 100 }] : []),
+    { label: 'Correct picks', pts: basePts },
+    ...(bonusPts > 0 ? [{ label: 'Pick bonuses', pts: bonusPts }] : []),
     ...(milestone > 0 ? [{ label: `${correctCount}/6 correct bonus`, pts: milestone }] : []),
     ...(rosterBonus > 0 ? [{ label: 'Drafted fighter wins', pts: rosterBonus }] : []),
   ];
