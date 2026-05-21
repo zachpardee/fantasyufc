@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
@@ -26,7 +26,10 @@ type AvailableFighter = {
 export function DraftRoomPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
+  const qc = useQueryClient();
   const [timeLeft, setTimeLeft] = useState(0);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [pendingFighterId, setPendingFighterId] = useState<string | null>(null);
 
   const { data: draft, refetch, isError } = useQuery<ApiDraftState>({
     queryKey: ['draft', leagueId],
@@ -74,9 +77,23 @@ export function DraftRoomPage() {
   }, [draft?.session.currentPickDeadline]);
 
   const pickMutation = useMutation({
-    mutationFn: (fighterId: string) =>
-      apiClient.post(`/leagues/${leagueId}/draft/pick`, { fighterId }),
-    onSuccess: () => { refetch(); refetchFighters(); },
+    mutationFn: (fighterId: string) => {
+      setPendingFighterId(fighterId);
+      return apiClient.post(`/leagues/${leagueId}/draft/pick`, { fighterId });
+    },
+    onSuccess: () => {
+      setPendingFighterId(null);
+      setToast({ msg: 'Pick submitted!', type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+      qc.invalidateQueries({ queryKey: ['draft', leagueId] });
+      qc.invalidateQueries({ queryKey: ['draft-available', leagueId] });
+    },
+    onError: (err: any) => {
+      setPendingFighterId(null);
+      const msg = err?.error ?? err?.message ?? 'Pick failed';
+      setToast({ msg, type: 'error' });
+      setTimeout(() => setToast(null), 4000);
+    },
   });
 
   const pauseMutation = useMutation({
@@ -156,6 +173,12 @@ export function DraftRoomPage() {
         )}
       </nav>
 
+      {toast && (
+        <div style={{ ...styles.toast, ...(toast.type === 'error' ? styles.toastError : styles.toastSuccess) }}>
+          {toast.msg}
+        </div>
+      )}
+
       {isCompleted ? (
         <div style={styles.completeBanner}>
           <p style={styles.completeTitle}>Draft Complete!</p>
@@ -220,18 +243,19 @@ export function DraftRoomPage() {
               Available Fighters
               <span style={styles.availCount}>{availableFighters.length}</span>
             </p>
-            {pickMutation.isError && (
-              <p style={styles.pickError}>{(pickMutation.error as any)?.error ?? 'Pick failed'}</p>
-            )}
             <div style={styles.fighterList}>
-              {availableFighters.map((f) => (
+              {availableFighters.map((f) => {
+                const isPending = pendingFighterId === f.id;
+                const canPick = isMyTurn && !isPaused && !pendingFighterId;
+                return (
                 <div
                   key={f.id}
                   style={{
                     ...styles.fighterRow,
-                    ...(isMyTurn && !isPaused ? styles.fighterRowClickable : styles.fighterRowDisabled),
+                    ...(canPick ? styles.fighterRowClickable : styles.fighterRowDisabled),
+                    ...(isPending ? styles.fighterRowPending : {}),
                   }}
-                  onClick={() => isMyTurn && !isPaused && pickMutation.mutate(f.id)}
+                  onClick={() => canPick && pickMutation.mutate(f.id)}
                 >
                   <div style={styles.fighterLeft}>
                     {f.isChampion && <span style={styles.champ}>C</span>}
@@ -245,7 +269,8 @@ export function DraftRoomPage() {
                     <span style={styles.pts}>{f.averageFantasyPoints?.toFixed(1) ?? '--'} pts</span>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -280,6 +305,11 @@ const styles: Record<string, React.CSSProperties> = {
   timerUrgent: { background: '#c8102e' },
   commControls: { display: 'flex', gap: 8 },
   controlBtn: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 6, color: '#ccc', padding: '6px 14px', cursor: 'pointer', fontSize: 13 },
+  toast: {
+    padding: '10px 20px', fontWeight: 700, fontSize: 14, textAlign: 'center',
+  },
+  toastSuccess: { background: '#1a2a1a', color: '#4caf50', borderBottom: '1px solid #4caf5044' },
+  toastError: { background: '#2a1a1a', color: '#ff5252', borderBottom: '1px solid #ff525244' },
   turnBanner: {
     background: '#141414', borderBottom: '1px solid #2a2a2a',
     padding: '10px 20px', textAlign: 'center',
@@ -320,6 +350,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   fighterRowClickable: { cursor: 'pointer' },
   fighterRowDisabled: { opacity: 0.5, cursor: 'default' },
+  fighterRowPending: { background: '#1a2a1a', borderColor: '#4caf50', opacity: 1 },
   fighterLeft: { display: 'flex', alignItems: 'center', gap: 8 },
   champ: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 3, flexShrink: 0 },
   fighterName: { color: '#ddd', fontSize: 13, fontWeight: 600 },
