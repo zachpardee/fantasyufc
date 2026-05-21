@@ -23,7 +23,7 @@ export function StandingsPage() {
         <table style={styles.table}>
           <thead>
             <tr>
-              {['#', 'Team', 'W', 'L', 'T', 'Pts', 'Season PF', 'Streak'].map((h) => (
+              {['#', 'Team', 'Season Pts', 'W', 'L', 'T', 'Streak'].map((h) => (
                 <th key={h} style={styles.th}>{h}</th>
               ))}
             </tr>
@@ -45,15 +45,12 @@ export function StandingsPage() {
                     </div>
                     <div style={styles.username}>@{member.username}</div>
                   </td>
+                  <td style={{ ...styles.td, ...styles.ptsCol }}>
+                    {(+(member.totalPoints ?? member.total_points ?? 0)).toFixed(1)}
+                  </td>
                   <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
                   <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>
                   <td style={styles.td}>{member.ties}</td>
-                  <td style={{ ...styles.td, ...styles.ptsCol }}>
-                    {member.wins * 2 + member.ties}
-                  </td>
-                  <td style={{ ...styles.td, ...styles.pfCol }}>
-                    {(+(member.totalPoints ?? member.total_points ?? 0)).toFixed(1)}
-                  </td>
                   <td style={styles.td}>
                     {member.streak > 0
                       ? <span style={styles.winStreak}>W{member.streak}</span>
@@ -95,7 +92,6 @@ const styles: Record<string, React.CSSProperties> = {
   win: { color: '#4caf50', fontWeight: 700 },
   loss: { color: '#ff5252', fontWeight: 700 },
   ptsCol: { color: '#c8102e', fontWeight: 700 },
-  pfCol: { color: '#ff8c42', fontWeight: 700 },
   winStreak: { color: '#4caf50', fontWeight: 700 },
   lossStreak: { color: '#ff5252', fontWeight: 700 },
   noStreak: { color: '#444' },

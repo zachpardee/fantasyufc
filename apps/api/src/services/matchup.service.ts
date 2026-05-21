@@ -129,25 +129,27 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
         [winnerId, m.id],
       );
 
+      const MATCHUP_WIN_BONUS = 250;
+
       if (isTie) {
         await client.query(`
           UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
-          WHERE id IN ($1, $3)
-        `, [m.home_team_id, m.home_score, m.away_team_id]);
-        // Separately add away score
+          WHERE id = $1
+        `, [m.home_team_id, m.home_score]);
         await client.query(
           `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
           [m.away_score, m.away_team_id],
         );
       } else {
-        // Update winner
+        const winnerScore = winnerId === m.home_team_id ? m.home_score : m.away_score;
+        // Winner gets their matchup score + 250 bonus
         await client.query(`
           UPDATE league_members
           SET wins = wins + 1,
               streak = CASE WHEN streak >= 0 THEN streak + 1 ELSE 1 END,
-              total_points = total_points + $2
+              total_points = total_points + $2 + $3
           WHERE id = $1
-        `, [winnerId, winnerId === m.home_team_id ? m.home_score : m.away_score]);
+        `, [winnerId, winnerScore, MATCHUP_WIN_BONUS]);
 
         // Update loser
         const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;

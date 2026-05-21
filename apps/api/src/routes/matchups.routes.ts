@@ -66,7 +66,7 @@ matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next
       FROM league_members lm
       JOIN user_profiles up ON up.id = lm.user_id
       WHERE lm.league_id = $1 AND lm.is_active = true
-      ORDER BY lm.wins DESC, lm.total_points DESC
+      ORDER BY lm.total_points DESC, lm.wins DESC
     `, [req.params.leagueId]);
 
     await redis.setex(cacheKey, CACHE_TTL.STANDINGS, JSON.stringify(rows));
