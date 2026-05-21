@@ -65,8 +65,10 @@ export function PicksPage() {
   const prelims = fights.filter((f) => f.cardSegment === 'prelims');
   const earlyPrelims = fights.filter((f) => f.cardSegment === 'early_prelims');
 
-  const totalPicked = Object.keys(localPicks).length;
   const totalFights = fights.length;
+  // A pick is complete only when both a winner and a method are selected
+  const totalComplete = fights.filter((f) => localPicks[f.id] && localMethods[f.id]).length;
+  const allComplete = totalComplete === totalFights && totalFights > 0;
 
   if (!currentEvent) {
     return (
@@ -98,9 +100,9 @@ export function PicksPage() {
           </div>
         </div>
         <div style={styles.pickCount}>
-          <span style={styles.pickCountNum}>{totalPicked}</span>
+          <span style={{ ...styles.pickCountNum, color: allComplete ? '#4caf50' : '#c8102e' }}>{totalComplete}</span>
           <span style={styles.pickCountDen}>/{totalFights}</span>
-          <span style={styles.pickCountLabel}>picks</span>
+          <span style={styles.pickCountLabel}>complete</span>
         </div>
       </div>
 
@@ -141,13 +143,16 @@ export function PicksPage() {
 
       {!locked && (
         <div style={styles.footer}>
+          {!allComplete && totalFights > 0 && (
+            <span style={styles.footerHint}>Select a winner + method for all {totalFights} fights</span>
+          )}
           {saved && <span style={styles.savedMsg}>Picks saved!</span>}
           <button
-            style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
+            style={{ ...styles.saveBtn, ...(!allComplete || saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || totalPicked === 0}
+            disabled={!allComplete || saveMutation.isPending}
           >
-            {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalPicked}/${totalFights})`}
+            {saveMutation.isPending ? 'Saving...' : allComplete ? `Save All ${totalFights} Picks` : `${totalComplete}/${totalFights} picks complete`}
           </button>
         </div>
       )}
@@ -217,8 +222,8 @@ function FightPickRow({ fight, picked, pickedMethod, locked, onChange, onMethodC
       {/* Method selector — shown when a winner is picked and event isn't completed */}
       {picked && (
         <div style={styles.methodRow}>
-          <span style={styles.methodLabel}>
-            {isCompleted ? 'Method:' : 'Method bonus (+200 pts):'}
+          <span style={{ ...styles.methodLabel, color: !pickedMethod && !isCompleted ? '#c8102e' : '#555' }}>
+            {isCompleted ? 'Method:' : pickedMethod ? 'Method:' : 'Method (required):'}
           </span>
           <div style={styles.methodBtns}>
             {METHODS.map((m) => {
@@ -362,6 +367,7 @@ const styles: Record<string, React.CSSProperties> = {
   methodBtnWrong: { border: '1px solid #333', color: '#444' },
   resultOutcome: { color: '#555', fontSize: 11, textAlign: 'center', marginTop: 10 },
   footer: { position: 'sticky', bottom: 0, background: '#0a0a0a', borderTop: '1px solid #1a1a1a', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
+  footerHint: { color: '#666', fontSize: 13, flex: 1 },
   savedMsg: { color: '#4caf50', fontSize: 13, fontWeight: 600 },
   saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   saveBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },

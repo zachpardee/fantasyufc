@@ -75,7 +75,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
       picks: z.array(z.object({
         fightId: z.string().uuid(),
         pickedFighterId: z.string().uuid(),
-        pickedMethod: z.enum(['ko_tko', 'submission', 'decision', 'disqualification']).optional(),
+        pickedMethod: z.enum(['ko_tko', 'submission', 'decision', 'disqualification']),
       })),
     }).parse(req.body);
 
