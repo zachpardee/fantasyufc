@@ -186,7 +186,7 @@ export function LeagueHomePage() {
 
       <div style={styles.meta}>
         <span>{league.memberCount} / {league.maxTeams} teams</span>
-        <span>Roster: {league.rosterSize} ({league.starterSlots} starters)</span>
+        <span>Roster: {league.rosterSize}</span>
         <span>Season {league.seasonYear}</span>
         {league.status === 'setup' && <span style={styles.metaCode}>Code: {league.inviteCode}</span>}
       </div>
