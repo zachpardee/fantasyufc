@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from '../store/auth.store';
 
 const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -14,10 +15,33 @@ const METHOD_LABELS: Record<string, string> = {
 
 export function MatchupPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
+  const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+
+  // All matchups in the league (for history list)
+  const { data: allMatchups = [] } = useQuery<any[]>({
+    queryKey: ['matchups-all', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
+  });
+
+  // Current user's league member record
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+  const myMember = members.find((m) => m.userId === session?.user.id);
+
+  // Matchups the current user participated in, newest first
+  const myMatchups = allMatchups.filter(
+    (m) => m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id,
+  );
 
   const { data: matchup, refetch } = useQuery<any>({
-    queryKey: ['matchup-detail', leagueId],
+    queryKey: ['matchup-detail', leagueId, selectedMatchupId],
     queryFn: async () => {
+      if (selectedMatchupId) {
+        return apiClient.get(`/leagues/${leagueId}/matchups/${selectedMatchupId}`);
+      }
       const current = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!current) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${current.id}`);
@@ -48,131 +72,181 @@ export function MatchupPage() {
     enabled: !!matchup?.awayTeamId,
   });
 
+  // Live updates only for the current matchup
   useEffect(() => {
-    if (!matchup?.id) return;
+    if (!matchup?.id || selectedMatchupId) return;
     const channel = supabase.channel(`matchup:${matchup.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchups', filter: `id=eq.${matchup.id}` }, () => refetch())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [matchup?.id, refetch]);
+  }, [matchup?.id, selectedMatchupId, refetch]);
 
-  if (!matchup) {
-    return (
-      <div style={styles.page}>
-        <nav style={styles.nav}>
-          <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
-        </nav>
-        <div style={styles.empty}>No matchup scheduled for the current event.</div>
-      </div>
-    );
-  }
-
-  const isLive = matchup.eventStatus === 'live';
+  const isLive = matchup?.eventStatus === 'live';
   const fights: any[] = homePicks?.fights ?? [];
-
-  // Build lookup: fightId → { home pick, away pick }
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
+
+  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== myMatchups[0]?.id;
 
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.navTitle}>Matchup</span>
-        {isLive && <span style={styles.liveBadge}>LIVE</span>}
+        {isLive && !selectedMatchupId && <span style={styles.liveBadge}>LIVE</span>}
+        {isViewingHistory && (
+          <button style={styles.currentBtn} onClick={() => setSelectedMatchupId(null)}>
+            ← Current
+          </button>
+        )}
       </nav>
 
-      <div style={styles.eventHeader}>
-        <div style={styles.eventName}>{matchup.eventName}</div>
-        {(matchup.venue || matchup.location) && (
-          <div style={styles.eventLocation}>
-            {[matchup.venue, matchup.location].filter(Boolean).join(' · ')}
-          </div>
-        )}
-      </div>
+      {/* History strip — shown when user has past matchups */}
+      {myMatchups.length > 1 && (
+        <div style={styles.historyStrip}>
+          {myMatchups.map((m) => {
+            const isMeHome = m.homeTeamId === myMember?.id;
+            const myScore = +(isMeHome ? m.homeScore : m.awayScore);
+            const oppScore = +(isMeHome ? m.awayScore : m.homeScore);
+            const oppName = isMeHome ? m.awayTeamName : m.homeTeamName;
+            const isWin = m.winnerId === myMember?.id;
+            const isLoss = m.winnerId && m.winnerId !== myMember?.id;
+            const isActive = selectedMatchupId
+              ? m.id === selectedMatchupId
+              : m.id === myMatchups[0]?.id;
+            const eventShort = m.eventName?.replace(/^UFC\s*/i, '').split(':')[0].trim() ?? m.eventName;
 
-      {/* Scoreboard */}
-      <div style={styles.scoreboard}>
-        <div style={styles.teamBlock}>
-          <div style={styles.teamLabelRow}>
-            <div style={styles.teamAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
-            <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
-          </div>
-          <div style={styles.matchupScore}>{(+matchup.homeScore).toFixed(0)}</div>
-          <div style={styles.scoreUnit}>matchup pts</div>
-        </div>
-        <div style={styles.vsBlock}>VS</div>
-        <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
-          <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
-            <div style={styles.teamAvatar}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
-            <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
-          </div>
-          <div style={styles.matchupScore}>{(+matchup.awayScore).toFixed(0)}</div>
-          <div style={styles.scoreUnit}>matchup pts</div>
-        </div>
-      </div>
-
-      {/* Picks section */}
-      {fights.length > 0 && (
-        <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <span style={styles.sectionTitle}>PICKS</span>
-            {homePicks?.locked && <span style={styles.lockedTag}>LOCKED</span>}
-          </div>
-
-          {/* Column headers */}
-          <div style={styles.picksHeaderRow}>
-            <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
-            <div style={styles.fightInfoHeader}>FIGHT</div>
-            <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
-          </div>
-
-          {fights.map((fight) => {
-            const awayFight = awayPickMap[fight.id];
             return (
-              <PickRow
-                key={fight.id}
-                fight={fight}
-                homePick={fight}
-                awayPick={awayFight}
-              />
+              <button
+                key={m.id}
+                style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : {}) }}
+                onClick={() => setSelectedMatchupId(m.id === myMatchups[0]?.id ? null : m.id)}
+              >
+                <div style={styles.chipEvent}>{eventShort}</div>
+                <div style={styles.chipOpp}>vs {oppName}</div>
+                {m.eventStatus === 'completed' || m.winnerId || myScore > 0 ? (
+                  <>
+                    <div style={styles.chipScore}>{myScore.toFixed(0)}–{oppScore.toFixed(0)}</div>
+                    <div style={{
+                      ...styles.chipResult,
+                      color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700',
+                    }}>
+                      {isWin ? 'W' : isLoss ? 'L' : 'T'}
+                    </div>
+                  </>
+                ) : (
+                  <div style={styles.chipPending}>—</div>
+                )}
+              </button>
             );
           })}
         </div>
       )}
 
-      {/* Rosters */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <span style={styles.sectionTitle}>ROSTERS</span>
-        </div>
-        <div style={styles.rosterGrid}>
-          <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
-          <div style={styles.rosterDivider} />
-          <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
-        </div>
-      </div>
+      {!matchup ? (
+        <div style={styles.empty}>No matchup found.</div>
+      ) : (
+        <>
+          <div style={styles.eventHeader}>
+            <div style={styles.eventName}>{matchup.eventName}</div>
+            {(matchup.venue || matchup.location) && (
+              <div style={styles.eventLocation}>
+                {[matchup.venue, matchup.location].filter(Boolean).join(' · ')}
+              </div>
+            )}
+          </div>
 
-      {/* Score breakdown + totals */}
-      <div style={styles.totalsBar}>
-        <ScoreBreakdown
-          label={matchup.homeTeamName}
-          picks={homePicks?.fights ?? []}
-          matchupPts={+matchup.homeScore}
-          seasonPts={+(matchup.homeSeasonPoints ?? 0)}
-          isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
-          align="left"
-        />
-        <div style={styles.totalsDivider} />
-        <ScoreBreakdown
-          label={matchup.awayTeamName}
-          picks={awayPicks?.fights ?? []}
-          matchupPts={+matchup.awayScore}
-          seasonPts={+(matchup.awaySeasonPoints ?? 0)}
-          isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
-          align="right"
-        />
-      </div>
+          {/* Scoreboard */}
+          <div style={styles.scoreboard}>
+            <div style={styles.teamBlock}>
+              <div style={styles.teamLabelRow}>
+                <div style={styles.teamAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
+              </div>
+              <div style={{
+                ...styles.matchupScore,
+                color: matchup.winnerId === matchup.homeTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
+              }}>{(+matchup.homeScore).toFixed(0)}</div>
+              <div style={styles.scoreUnit}>matchup pts</div>
+            </div>
+
+            <div style={styles.vsBlock}>
+              {matchup.winnerId ? (
+                <div style={styles.resultBadge}>
+                  {matchup.winnerId === matchup.homeTeamId
+                    ? `${matchup.homeTeamName} wins`
+                    : `${matchup.awayTeamName} wins`}
+                </div>
+              ) : (
+                <div style={styles.vsText}>VS</div>
+              )}
+            </div>
+
+            <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
+              <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
+                <div style={styles.teamAvatar}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
+              </div>
+              <div style={{
+                ...styles.matchupScore,
+                color: matchup.winnerId === matchup.awayTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
+              }}>{(+matchup.awayScore).toFixed(0)}</div>
+              <div style={styles.scoreUnit}>matchup pts</div>
+            </div>
+          </div>
+
+          {/* Picks */}
+          {fights.length > 0 && (
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <span style={styles.sectionTitle}>PICKS</span>
+                {homePicks?.locked && <span style={styles.lockedTag}>LOCKED</span>}
+              </div>
+              <div style={styles.picksHeaderRow}>
+                <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
+                <div style={styles.fightInfoHeader}>FIGHT</div>
+                <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
+              </div>
+              {fights.map((fight) => (
+                <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} />
+              ))}
+            </div>
+          )}
+
+          {/* Rosters */}
+          <div style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <span style={styles.sectionTitle}>ROSTERS</span>
+            </div>
+            <div style={styles.rosterGrid}>
+              <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
+              <div style={styles.rosterDivider} />
+              <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
+            </div>
+          </div>
+
+          {/* Score breakdown */}
+          <div style={styles.totalsBar}>
+            <ScoreBreakdown
+              label={matchup.homeTeamName}
+              picks={homePicks?.fights ?? []}
+              matchupPts={+matchup.homeScore}
+              seasonPts={+(matchup.homeSeasonPoints ?? 0)}
+              isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
+              align="left"
+            />
+            <div style={styles.totalsDivider} />
+            <ScoreBreakdown
+              label={matchup.awayTeamName}
+              picks={awayPicks?.fights ?? []}
+              matchupPts={+matchup.awayScore}
+              seasonPts={+(matchup.awaySeasonPoints ?? 0)}
+              isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
+              align="right"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -183,13 +257,11 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
 
   return (
     <div style={styles.pickRow}>
-      {/* Home pick */}
       <div style={styles.pickCell}>
         {homePick?.pickedFighterId ? (
           <PickDisplay
             fighterId={homePick.pickedFighterId}
             redFighterId={fight.redFighterId}
-            blueFighterId={fight.blueFighterId}
             redName={`${fight.redFirstName} ${fight.redLastName}`}
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
             method={homePick.pickedMethod}
@@ -200,27 +272,24 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
         ) : <span style={styles.noPick}>—</span>}
       </div>
 
-      {/* Fight info */}
       <div style={styles.fightInfo}>
-        <div style={styles.fightName}>
-          {fight.redLastName} vs {fight.blueLastName}
-        </div>
+        <div style={styles.fightName}>{fight.redLastName} vs {fight.blueLastName}</div>
         <div style={styles.fightWeight}>{fight.weightClassName}</div>
         {resultWinner && (
           <div style={styles.fightResult}>
-            {fight.redFighterId === resultWinner ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`}
+            {fight.redFighterId === resultWinner
+              ? `${fight.redFirstName} ${fight.redLastName}`
+              : `${fight.blueFirstName} ${fight.blueLastName}`}
             {' '}· {METHOD_LABELS[resultOutcome] ?? resultOutcome}
           </div>
         )}
       </div>
 
-      {/* Away pick */}
       <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>
         {awayPick?.pickedFighterId ? (
           <PickDisplay
             fighterId={awayPick.pickedFighterId}
             redFighterId={fight.redFighterId}
-            blueFighterId={fight.blueFighterId}
             redName={`${fight.redFirstName} ${fight.redLastName}`}
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
             method={awayPick.pickedMethod}
@@ -235,7 +304,7 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
 }
 
 function PickDisplay({ fighterId, redFighterId, redName, blueName, method, isCorrect, pointsEarned, align }: {
-  fighterId: string; redFighterId: string; blueFighterId: string;
+  fighterId: string; redFighterId: string;
   redName: string; blueName: string; method?: string;
   isCorrect: boolean | null; pointsEarned: number | null;
   align: 'left' | 'right';
@@ -304,7 +373,6 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={styles.totalsTeam}>{label}</div>
-
       {hasScores && (
         <div style={styles.breakdownGrid}>
           {rows.map((r) => (
@@ -320,11 +388,7 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
           </div>
         </div>
       )}
-
-      {!hasScores && (
-        <div style={styles.breakdownPending}>Scores update as fights complete</div>
-      )}
-
+      {!hasScores && <div style={styles.breakdownPending}>Scores update as fights complete</div>}
       <div style={{ ...styles.breakdownRow, marginTop: 4 }}>
         <span style={styles.totalsLabel}>Season total</span>
         <span style={styles.totalsSeason}>{seasonPts.toFixed(1)}</span>
@@ -339,7 +403,26 @@ const styles: Record<string, React.CSSProperties> = {
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
+  currentBtn: { background: 'transparent', border: '1px solid #333', borderRadius: 6, color: '#888', fontSize: 12, padding: '4px 10px', cursor: 'pointer' },
   empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
+
+  // History strip
+  historyStrip: {
+    display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 24px',
+    background: '#0d0d0d', borderBottom: '1px solid #1a1a1a',
+    scrollbarWidth: 'none',
+  },
+  historyChip: {
+    flexShrink: 0, background: '#1a1a1a', border: '1px solid #2a2a2a',
+    borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 90,
+  },
+  historyChipActive: { border: '1px solid #c8102e', background: '#1a0808' },
+  chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
+  chipOpp: { color: '#555', fontSize: 10, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  chipScore: { color: '#fff', fontSize: 13, fontWeight: 800 },
+  chipResult: { fontSize: 11, fontWeight: 800 },
+  chipPending: { color: '#444', fontSize: 13 },
 
   eventHeader: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '16px 24px', textAlign: 'center' },
   eventName: { color: '#fff', fontSize: 20, fontWeight: 800, marginBottom: 4 },
@@ -350,9 +433,11 @@ const styles: Record<string, React.CSSProperties> = {
   teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
   teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
   teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  matchupScore: { color: '#fff', fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  matchupScore: { fontSize: 52, fontWeight: 800, lineHeight: 1 },
   scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  vsBlock: { color: '#333', fontWeight: 700, fontSize: 18, padding: '0 24px' },
+  vsBlock: { flex: 1, textAlign: 'center' as const, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
+  vsText: { color: '#333', fontWeight: 700, fontSize: 18 },
+  resultBadge: { color: '#ffd700', fontSize: 11, fontWeight: 700, textAlign: 'center' },
 
   section: { padding: '0 24px 8px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px' },
@@ -374,7 +459,6 @@ const styles: Record<string, React.CSSProperties> = {
   rosterGrid: { display: 'flex', gap: 0 },
   rosterDivider: { width: 1, background: '#1a1a1a', margin: '0 16px' },
   rosterTeamLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, width: '100%' },
-  slotLabel: { color: '#333', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, margin: '6px 0 4px', width: '100%' },
   rosterRow: { display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #0f0f0f' },
   fighterName: { color: '#ccc', fontSize: 13, fontWeight: 600 },
   rankBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700 },
@@ -384,7 +468,6 @@ const styles: Record<string, React.CSSProperties> = {
   totalsBar: { background: '#111', borderTop: '1px solid #1e1e1e', padding: '20px 32px', display: 'flex', marginTop: 16 },
   totalsDivider: { width: 1, background: '#222', margin: '0 24px' },
   totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
-  totalsRow: { display: 'flex', alignItems: 'baseline', gap: 8 },
   totalsLabel: { color: '#444', fontSize: 12 },
   totalsMatchup: { color: '#c8102e', fontSize: 20, fontWeight: 800 },
   totalsSeason: { color: '#ff8c42', fontSize: 20, fontWeight: 800 },
