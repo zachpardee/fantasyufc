@@ -8,6 +8,12 @@ export const matchupsRouter = Router({ mergeParams: true });
 
 matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
     const { rows } = await db.query(`
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
@@ -75,6 +81,12 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
 // /standings must be before /:matchupId to avoid Express matching 'standings' as a param
 matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
     const cacheKey = `standings:${req.params.leagueId}`;
     const cached = await redis.get(cacheKey);
     if (cached) { res.json(JSON.parse(cached)); return; }
@@ -94,6 +106,12 @@ matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next
 
 matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
     const { rows: [matchup] } = await db.query(`
       SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
         e.venue, e.location,

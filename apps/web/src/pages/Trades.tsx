@@ -179,7 +179,7 @@ export function TradesPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Add a note..."
-                  maxLength={200}
+                  maxLength={500}
                 />
               </div>
 
