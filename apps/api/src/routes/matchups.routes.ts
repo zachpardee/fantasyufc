@@ -96,6 +96,7 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
   try {
     const { rows: [matchup] } = await db.query(`
       SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
+        e.venue, e.location,
         ht.team_name as home_team_name, at2.team_name as away_team_name,
         ht.total_points as home_season_points, at2.total_points as away_season_points
       FROM matchups m

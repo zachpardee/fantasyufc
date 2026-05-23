@@ -78,20 +78,35 @@ export function MatchupPage() {
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
-        <span style={styles.navTitle}>{matchup.eventName}</span>
+        <span style={styles.navTitle}>Matchup</span>
         {isLive && <span style={styles.liveBadge}>LIVE</span>}
       </nav>
+
+      <div style={styles.eventHeader}>
+        <div style={styles.eventName}>{matchup.eventName}</div>
+        {(matchup.venue || matchup.location) && (
+          <div style={styles.eventLocation}>
+            {[matchup.venue, matchup.location].filter(Boolean).join(' · ')}
+          </div>
+        )}
+      </div>
 
       {/* Scoreboard */}
       <div style={styles.scoreboard}>
         <div style={styles.teamBlock}>
-          <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
+          <div style={styles.teamLabelRow}>
+            <div style={styles.teamAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+            <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
+          </div>
           <div style={styles.matchupScore}>{(+matchup.homeScore).toFixed(0)}</div>
           <div style={styles.scoreUnit}>matchup pts</div>
         </div>
         <div style={styles.vsBlock}>VS</div>
         <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
-          <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
+          <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
+            <div style={styles.teamAvatar}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+            <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
+          </div>
           <div style={styles.matchupScore}>{(+matchup.awayScore).toFixed(0)}</div>
           <div style={styles.scoreUnit}>matchup pts</div>
         </div>
@@ -334,8 +349,14 @@ const styles: Record<string, React.CSSProperties> = {
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
 
+  eventHeader: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '16px 24px', textAlign: 'center' },
+  eventName: { color: '#fff', fontSize: 20, fontWeight: 800, marginBottom: 4 },
+  eventLocation: { color: '#555', fontSize: 13 },
+
   scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
   teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
+  teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
+  teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
   teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
   matchupScore: { color: '#fff', fontSize: 52, fontWeight: 800, lineHeight: 1 },
   scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
