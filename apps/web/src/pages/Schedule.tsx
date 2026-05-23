@@ -84,6 +84,11 @@ export function SchedulePage() {
   const isCommissioner = league?.commissionerId === session?.user.id;
   const isActive = league?.status === 'active';
 
+  const now = new Date();
+  const hasFutureEvent = schedule.some((ev) => new Date(ev.scheduledAt) > now);
+  // Show the manual-add panel only when there's no upcoming event yet
+  const showAddPanel = isCommissioner && !hasFutureEvent;
+
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
@@ -102,19 +107,27 @@ export function SchedulePage() {
 
       {msg && <div style={styles.flashMsg}>{msg}</div>}
 
+      <div style={styles.autoNote}>
+        {hasFutureEvent
+          ? 'The next event will be added automatically 2 days after each event ends.'
+          : isCommissioner
+            ? 'Add the first event to start the season. After that, events are added automatically 2 days after each event ends.'
+            : 'Events are added automatically 2 days after each event ends.'}
+      </div>
+
       <div style={styles.content}>
         {/* Current schedule */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>League Schedule ({schedule.length} events)</h2>
           {schedule.length === 0 ? (
-            <p style={styles.empty}>No events on the schedule yet.{isCommissioner ? ' Add events below.' : ''}</p>
+            <p style={styles.empty}>No events scheduled yet.</p>
           ) : (
             schedule.map((ev) => (
               <div key={ev.id} style={styles.eventCard}>
                 <div style={styles.eventInfo}>
                   <div style={styles.eventName}>{ev.name}</div>
                   <div style={styles.eventMeta}>
-                    {ev.venue} · {ev.location} · {fmtDate(ev.scheduledAt)}
+                    {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
                   </div>
                   <div style={styles.eventStats}>
                     <span style={ev.status === 'live' ? styles.liveBadge : styles.statusBadge}>
@@ -139,28 +152,31 @@ export function SchedulePage() {
           )}
         </section>
 
-        {/* Add events (commissioner only) */}
-        {isCommissioner && (
+        {/* Add first event (commissioner only, when no future event exists) */}
+        {showAddPanel && (
           <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>Available Events</h2>
-            {available.length === 0 ? (
-              <p style={styles.empty}>No upcoming events available.</p>
+            <h2 style={styles.sectionTitle}>Add First Event</h2>
+            {available.filter((ev) => !ev.isAdded).length === 0 ? (
+              <p style={styles.empty}>No upcoming events available to add.</p>
             ) : (
-              available.map((ev) => (
-                <div key={ev.id} style={{ ...styles.eventCard, ...(ev.isAdded ? styles.eventCardAdded : {}) }}>
+              available.filter((ev) => !ev.isAdded).map((ev) => (
+                <div key={ev.id} style={styles.eventCard}>
                   <div style={styles.eventInfo}>
                     <div style={styles.eventName}>{ev.name}</div>
                     <div style={styles.eventMeta}>
-                      {ev.venue} · {ev.location} · {fmtDate(ev.scheduledAt)}
+                      {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
                     </div>
                     {ev.fightCount > 0 && (
                       <span style={styles.stat}>{ev.fightCount} fights</span>
                     )}
                   </div>
-                  {ev.isAdded
-                    ? <span style={styles.addedTag}>Added</span>
-                    : <button style={styles.addBtn} onClick={() => addMutation.mutate(ev.id)} disabled={addMutation.isPending}>+ Add</button>
-                  }
+                  <button
+                    style={styles.addBtn}
+                    onClick={() => addMutation.mutate(ev.id)}
+                    disabled={addMutation.isPending}
+                  >
+                    + Add
+                  </button>
                 </div>
               ))
             )}
@@ -187,6 +203,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
   regenBtn: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 6, color: '#ccc', padding: '7px 14px', cursor: 'pointer', fontSize: 13 },
   flashMsg: { background: '#1a2a1a', borderBottom: '1px solid #4caf50', padding: '10px 24px', color: '#4caf50', fontSize: 14 },
+  autoNote: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '10px 24px', color: '#555', fontSize: 13 },
   content: { maxWidth: 800, margin: '0 auto', padding: 24 },
   section: { marginBottom: 40 },
   sectionTitle: { color: '#888', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 14px' },
