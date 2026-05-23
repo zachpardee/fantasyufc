@@ -58,8 +58,7 @@ export function SchedulePage() {
     .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0 }));
 
   const upcoming = [...scheduleRows, ...availableRows]
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-    .slice(0, 6);
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   return (
     <div style={styles.page}>
