@@ -61,6 +61,11 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
               : <span style={styles.rankNR}>NR</span>}
           </div>
           <div style={styles.meta}>{fighter.weightClassName} · via {fighter.acquiredVia}</div>
+          <div style={styles.nextEvent}>
+            {fighter.nextEventName
+              ? <>{fighter.nextEventName} · {new Date(fighter.nextEventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
+              : 'TBD'}
+          </div>
         </div>
       </div>
       <div style={styles.rowRight}>
@@ -92,6 +97,7 @@ const styles: Record<string, React.CSSProperties> = {
   rankChamp: { background: '#2a2400', color: '#ffd700', fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4 },
   rankNR: { color: '#444', fontSize: 11 },
   meta: { color: '#666', fontSize: 12, marginTop: 2 },
+  nextEvent: { color: '#555', fontSize: 11, marginTop: 3 },
   rowRight: { display: 'flex', alignItems: 'center', gap: 16 },
   avgPts: { color: '#888', fontSize: 13 },
   dropBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 5, color: '#888', padding: '5px 12px', cursor: 'pointer', fontSize: 12 },
