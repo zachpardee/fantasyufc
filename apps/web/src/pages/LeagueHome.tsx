@@ -89,6 +89,7 @@ export function LeagueHomePage() {
 
   const isCommissioner = session?.user.id === league.commissionerId;
   const canStartDraft = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
+  const myMember = members.find((m) => m.userId === session?.user.id);
 
   function copyInviteCode() {
     navigator.clipboard.writeText(league!.inviteCode);
@@ -166,6 +167,13 @@ export function LeagueHomePage() {
               >✎</button>
             )}
           </span>
+        )}
+        {myMember && (
+          <div style={styles.myTeamRow}>
+            <span style={styles.myTeamName}>{myMember.teamName}</span>
+            <span style={styles.myTeamDot}>·</span>
+            <span style={styles.myTeamPts}>{myMember.totalPoints} pts</span>
+          </div>
         )}
       </div>
 
@@ -355,6 +363,10 @@ const styles: Record<string, React.CSSProperties> = {
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   leagueHeader: { padding: '20px 24px 4px', textAlign: 'center' },
   leagueName: { color: '#fff', fontWeight: 700, fontSize: 24, display: 'inline-flex', alignItems: 'center', gap: 8 },
+  myTeamRow: { marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  myTeamName: { color: '#888', fontSize: 13, fontWeight: 600 },
+  myTeamDot: { color: '#444', fontSize: 13 },
+  myTeamPts: { color: '#888', fontSize: 13 },
   onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
   onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 },
   onlineCount: { color: '#555', fontSize: 11, whiteSpace: 'nowrap' },
