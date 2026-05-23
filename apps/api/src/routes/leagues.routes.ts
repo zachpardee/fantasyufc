@@ -167,6 +167,20 @@ leaguesRouter.get('/:leagueId/members', requireAuth, async (req: AuthRequest, re
   } catch (err) { next(err); }
 });
 
+leaguesRouter.patch('/:leagueId/members/me', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { teamName } = z.object({ teamName: z.string().min(1).max(100) }).parse(req.body);
+    const { rows: [member] } = await db.query(
+      `UPDATE league_members SET team_name = $1
+       WHERE league_id = $2 AND user_id = $3
+       RETURNING *`,
+      [teamName, req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(404, 'Not a member of this league');
+    res.json(member);
+  } catch (err) { next(err); }
+});
+
 leaguesRouter.patch('/:leagueId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { name } = z.object({ name: z.string().min(1).max(100) }).parse(req.body);

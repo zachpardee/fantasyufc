@@ -14,6 +14,8 @@ export function LeagueHomePage() {
   const [copyMsg, setCopyMsg] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [teamNameInput, setTeamNameInput] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
 
   const { data: league } = useQuery<League>({
@@ -49,6 +51,14 @@ export function LeagueHomePage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['league', leagueId] });
       setEditingName(false);
+    },
+  });
+
+  const renameTeamMutation = useMutation({
+    mutationFn: (teamName: string) => apiClient.patch(`/leagues/${leagueId}/members/me`, { teamName }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league-members', leagueId] });
+      setEditingTeamName(false);
     },
   });
 
@@ -170,9 +180,32 @@ export function LeagueHomePage() {
         )}
         {myMember && (
           <div style={styles.myTeamRow}>
-            <span style={styles.myTeamName}>{myMember.teamName}</span>
-            <span style={styles.myTeamDot}>·</span>
-            <span style={styles.myTeamPts}>{myMember.totalPoints} pts</span>
+            {editingTeamName ? (
+              <form
+                style={styles.teamNameForm}
+                onSubmit={(e) => { e.preventDefault(); renameTeamMutation.mutate(teamNameInput.trim()); }}
+              >
+                <input
+                  style={styles.teamNameInput}
+                  value={teamNameInput}
+                  onChange={(e) => setTeamNameInput(e.target.value)}
+                  autoFocus
+                  maxLength={100}
+                />
+                <button type="submit" style={styles.nameSaveBtn} disabled={renameTeamMutation.isPending || !teamNameInput.trim()}>Save</button>
+                <button type="button" style={styles.nameCancelBtn} onClick={() => setEditingTeamName(false)}>Cancel</button>
+              </form>
+            ) : (
+              <>
+                <span style={styles.myTeamName}>{myMember.teamName}</span>
+                <button
+                  style={styles.editNameBtn}
+                  onClick={() => { setTeamNameInput(myMember.teamName); setEditingTeamName(true); }}
+                >✎</button>
+                <span style={styles.myTeamDot}>·</span>
+                <span style={styles.myTeamPts}>{myMember.totalPoints} pts</span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -367,6 +400,8 @@ const styles: Record<string, React.CSSProperties> = {
   myTeamName: { color: '#888', fontSize: 13, fontWeight: 600 },
   myTeamDot: { color: '#444', fontSize: 13 },
   myTeamPts: { color: '#888', fontSize: 13 },
+  teamNameForm: { display: 'flex', alignItems: 'center', gap: 6 },
+  teamNameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 600, padding: '3px 8px', outline: 'none', width: 160 },
   onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
   onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 },
   onlineCount: { color: '#555', fontSize: 11, whiteSpace: 'nowrap' },
