@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { syncEvents } from '../jobs/eventSync.job';
 import { syncAllFighters } from '../jobs/fighterSync.job';
+import { autoScheduleNextEvents } from '../jobs/autoSchedule.job';
 import { AppError } from '../middleware/error.middleware';
 import { db } from '../config/database';
 
@@ -27,6 +28,13 @@ adminRouter.post('/sync/fighters', requireAuth, requireAdmin, async (_req, res, 
   try {
     syncAllFighters().catch(console.error); // Fire and forget
     res.json({ ok: true, message: 'Fighter sync started (this takes several minutes)' });
+  } catch (err) { next(err); }
+});
+
+adminRouter.post('/schedule/auto', requireAuth, requireAdmin, async (_req, res, next) => {
+  try {
+    await autoScheduleNextEvents();
+    res.json({ ok: true, message: 'Auto-schedule run complete' });
   } catch (err) { next(err); }
 });
 

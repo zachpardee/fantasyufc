@@ -7,6 +7,7 @@ import { startDraftTimerJob } from './jobs/draftTimer.job';
 import { startEventSyncJob } from './jobs/eventSync.job';
 import { startFighterSyncJob } from './jobs/fighterSync.job';
 import { startLivePollerJob } from './jobs/livePoller.job';
+import { startAutoScheduleJob } from './jobs/autoSchedule.job';
 async function main() {
   await db.connect();
   await redis.connect().catch((err: unknown) => {
@@ -17,6 +18,7 @@ async function main() {
   startEventSyncJob();
   startFighterSyncJob();
   startLivePollerJob();
+  startAutoScheduleJob();
 
   app.listen(env.PORT, () => {
     console.log(`API running on port ${env.PORT} (${env.NODE_ENV})`);
