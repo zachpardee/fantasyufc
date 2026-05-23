@@ -119,7 +119,7 @@ export function parseResultsString(raw: string): ParsedFightResult[] {
       results.push({
         winnerName: nameA,
         loserName: nameB,
-        method: methodRaw.toLowerCase().includes('majority') ? 'draw' : 'draw',
+        method: methodRaw.toLowerCase().includes('majority') ? 'decision_majority' : 'draw',
         round,
         timeSeconds,
         weightClassText,

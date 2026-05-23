@@ -37,6 +37,8 @@ export interface EspnFight {
   period: number;
   redCorner: EspnFighter;
   blueCorner: EspnFighter;
+  redOdds?: number;
+  blueOdds?: number;
 }
 
 export interface EspnFighter {
@@ -141,6 +143,11 @@ function parseFight(c: any): EspnFight | null {
     const status = c.status ?? {};
     const scheduledRounds = c.format?.regulation?.periods ?? 3;
 
+    // Try to extract moneyline odds from competition-level odds block
+    const oddsBlock = c.odds?.[0];
+    const redOdds = parseMoneyline(oddsBlock?.homeTeamOdds?.moneyLine ?? red.odds?.moneyLine);
+    const blueOdds = parseMoneyline(oddsBlock?.awayTeamOdds?.moneyLine ?? blue.odds?.moneyLine);
+
     return {
       espnFightId: String(c.id),
       weightClassText: c.type?.text ?? c.type?.abbreviation ?? '',
@@ -150,10 +157,18 @@ function parseFight(c: any): EspnFight | null {
       period: status.period ?? 0,
       redCorner: parseFighter(red),
       blueCorner: parseFighter(blue),
+      redOdds,
+      blueOdds,
     };
   } catch {
     return null;
   }
+}
+
+function parseMoneyline(raw: unknown): number | undefined {
+  if (raw == null) return undefined;
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  return isNaN(n) ? undefined : n;
 }
 
 function parseFighter(comp: any): EspnFighter {

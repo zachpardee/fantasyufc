@@ -67,9 +67,9 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     if (!existingFight || existingFight.result_id) continue; // Already processed
 
     // Determine winner
-    const winner = espnFight.redCorner.isWinner ? espnFight.redCorner : espnFight.blueCorner;
-    const winnerSide = espnFight.redCorner.isWinner ? 'red' : 'blue';
     const isDraw = !espnFight.redCorner.isWinner && !espnFight.blueCorner.isWinner;
+    const winner = isDraw ? null : (espnFight.redCorner.isWinner ? espnFight.redCorner : espnFight.blueCorner);
+    const winnerSide = isDraw ? null : (espnFight.redCorner.isWinner ? 'red' : 'blue');
 
     if (!winner && !isDraw) continue;
 
@@ -78,12 +78,16 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       espnFight.clockSeconds >= espnFight.scheduledRounds * 300 - 5;
     const inferredOutcome = isDecision ? 'decision_unanimous' : 'ko_tko'; // Optimistic — updated by SportsDB
 
-    // Resolve winner fighter ID
-    const { rows: [winnerFighter] } = await db.query(
-      `SELECT id FROM fighters WHERE ufc_fighter_id = $1`,
-      [winner.espnAthleteId],
-    );
-    if (!winnerFighter && !isDraw) continue;
+    // Resolve winner fighter ID (null for draws)
+    let winnerId: string | null = null;
+    if (winner) {
+      const { rows: [winnerFighter] } = await db.query(
+        `SELECT id FROM fighters WHERE ufc_fighter_id = $1`,
+        [winner.espnAthleteId],
+      );
+      if (!winnerFighter) continue;
+      winnerId = winnerFighter.id;
+    }
 
     // Insert basic result (method will be corrected by SportsDB enrichment)
     const { rows: [fightResult] } = await db.query(`
@@ -95,8 +99,8 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       RETURNING id
     `, [
       existingFight.id,
-      winnerFighter?.id ?? null,
-      isDraw ? null : winnerSide,
+      winnerId,
+      winnerSide,
       isDraw ? 'draw' : inferredOutcome,
       espnFight.period,
       espnFight.clockSeconds,
@@ -109,7 +113,7 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       console.error('[LivePoller] Scoring error for fight:', espnFight.espnFightId, err),
     );
 
-    console.log(`[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${winner.displayName} wins R${espnFight.period}`);
+    console.log(`[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${isDraw ? 'DRAW' : winner!.displayName + ' wins'} R${espnFight.period}`);
   }
 
   // If event just completed, enrich methods from SportsDB then finalize matchup W/L records

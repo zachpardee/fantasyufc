@@ -97,13 +97,16 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
   await client.query(`
     INSERT INTO fights (
       ufc_fight_id, event_id, red_fighter_id, blue_fighter_id,
-      weight_class_id, scheduled_rounds, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      weight_class_id, scheduled_rounds, status,
+      red_fighter_odds, blue_fighter_odds
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     ON CONFLICT (ufc_fight_id) DO UPDATE SET
       status = CASE
         WHEN EXCLUDED.status = 'completed' THEN 'completed'
         ELSE fights.status
-      END
+      END,
+      red_fighter_odds = COALESCE(EXCLUDED.red_fighter_odds, fights.red_fighter_odds),
+      blue_fighter_odds = COALESCE(EXCLUDED.blue_fighter_odds, fights.blue_fighter_odds)
   `, [
     fight.espnFightId,
     eventId,
@@ -112,6 +115,8 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
     weightClass.id,
     fight.scheduledRounds,
     fight.completed ? 'completed' : 'scheduled',
+    fight.redOdds ?? null,
+    fight.blueOdds ?? null,
   ]);
 }
 
