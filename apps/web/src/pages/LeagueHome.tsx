@@ -112,6 +112,35 @@ export function LeagueHomePage() {
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to="/" style={styles.back}>← Home</Link>
+        <span style={{ flex: 1 }} />
+        <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
+        {onlineUsers.length > 0 && (
+          <div style={styles.onlineRow}>
+            {onlineUsers.map((u) => {
+              const memberId = members.find((m) => m.userId === u.userId)?.id;
+              return (
+                <div
+                  key={u.userId}
+                  style={{
+                    ...styles.onlineAvatar,
+                    background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
+                    borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
+                    cursor: memberId ? 'pointer' : 'default',
+                  }}
+                  title={u.teamName}
+                  onClick={() => memberId && navigate(`/league/${leagueId}/team/${memberId}`)}
+                >
+                  {u.teamName.charAt(0).toUpperCase()}
+                </div>
+              );
+            })}
+            <span style={styles.onlineCount}>{onlineUsers.length} online</span>
+          </div>
+        )}
+      </nav>
+
+      {/* League name header */}
+      <div style={styles.leagueHeader}>
         {editingName ? (
           <form
             style={styles.nameForm}
@@ -138,31 +167,7 @@ export function LeagueHomePage() {
             )}
           </span>
         )}
-        <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
-        {onlineUsers.length > 0 && (
-          <div style={styles.onlineRow}>
-            {onlineUsers.map((u) => {
-              const memberId = members.find((m) => m.userId === u.userId)?.id;
-              return (
-                <div
-                  key={u.userId}
-                  style={{
-                    ...styles.onlineAvatar,
-                    background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
-                    borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
-                    cursor: memberId ? 'pointer' : 'default',
-                  }}
-                  title={u.teamName}
-                  onClick={() => memberId && navigate(`/league/${leagueId}/team/${memberId}`)}
-                >
-                  {u.teamName.charAt(0).toUpperCase()}
-                </div>
-              );
-            })}
-            <span style={styles.onlineCount}>{onlineUsers.length} online</span>
-          </div>
-        )}
-      </nav>
+      </div>
 
       {/* Current matchup banner */}
       {matchup && (() => {
@@ -348,7 +353,8 @@ const styles: Record<string, React.CSSProperties> = {
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
-  leagueName: { color: '#fff', fontWeight: 700, fontSize: 22, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  leagueHeader: { padding: '20px 24px 4px', textAlign: 'center' },
+  leagueName: { color: '#fff', fontWeight: 700, fontSize: 24, display: 'inline-flex', alignItems: 'center', gap: 8 },
   onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
   onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 },
   onlineCount: { color: '#555', fontSize: 11, whiteSpace: 'nowrap' },
