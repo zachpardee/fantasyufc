@@ -23,7 +23,7 @@ export function DashboardPage() {
     queryFn: () => apiClient.get('/events'),
   });
 
-  const nextEvent = events?.find((e) => e.status === 'scheduled' || e.status === 'live');
+  const nextEvent = events?.find((e) => e.status === 'live') ?? events?.find((e) => e.status === 'scheduled');
 
   async function joinLeague() {
     await apiClient.post('/leagues/join', { inviteCode, teamName });
