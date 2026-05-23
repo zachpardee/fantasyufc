@@ -25,6 +25,16 @@ type AvailableEvent = {
   isAdded: boolean;
 };
 
+type RecentPastEvent = {
+  id: string;
+  name: string;
+  venue: string;
+  location: string;
+  scheduledAt: string;
+  status: string;
+  fightCount: number;
+};
+
 export function SchedulePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
 
@@ -38,7 +48,12 @@ export function SchedulePage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule/available`),
   });
 
-  const isLoading = loadingSchedule || loadingAvailable;
+  const { data: recentPast = [], isLoading: loadingRecentPast } = useQuery<RecentPastEvent[]>({
+    queryKey: ['schedule-recent-past', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule/recent-past`),
+  });
+
+  const isLoading = loadingSchedule || loadingAvailable || loadingRecentPast;
 
   // Build a merged list: schedule events (have matchup data) take precedence over available.
   // Filter out completed/cancelled and events >24h past their scheduled date.
@@ -71,7 +86,12 @@ export function SchedulePage() {
     .filter((ev) => !scheduleIds.has(ev.id))
     .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0 }));
 
-  const sorted = [...scheduleRows, ...availableRows]
+  // Recent completed events not already on the league schedule (for context display)
+  const recentPastRows = recentPast
+    .filter((ev) => !scheduleIds.has(ev.id))
+    .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0, isAdded: false }));
+
+  const sorted = [...scheduleRows, ...availableRows, ...recentPastRows]
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   // Only the first live event is active; only the first non-completed schedule event

@@ -8,6 +8,24 @@ import { z } from 'zod';
 
 export const scheduleRouter = Router({ mergeParams: true });
 
+// Last 3 completed UFC events (for display context — regardless of league schedule)
+scheduleRouter.get('/recent-past', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT e.id, e.name, e.short_name, e.scheduled_at, e.status,
+             e.venue, e.location,
+             COUNT(f.id)::int AS fight_count
+      FROM ufc_events e
+      LEFT JOIN fights f ON f.event_id = e.id
+      WHERE e.status = 'completed' AND e.is_scoring_event = true
+      GROUP BY e.id
+      ORDER BY e.scheduled_at DESC
+      LIMIT 3
+    `);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
 // List UFC events available to add to a league's schedule
 scheduleRouter.get('/available', requireAuth, async (req: AuthRequest, res, next) => {
   try {
