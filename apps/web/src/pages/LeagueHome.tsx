@@ -348,7 +348,7 @@ const styles: Record<string, React.CSSProperties> = {
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
-  leagueName: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1, display: 'flex', alignItems: 'center', gap: 8 },
+  leagueName: { color: '#fff', fontWeight: 700, fontSize: 22, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
   onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
   onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 },
   onlineCount: { color: '#555', fontSize: 11, whiteSpace: 'nowrap' },
