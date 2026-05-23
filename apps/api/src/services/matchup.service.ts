@@ -101,81 +101,45 @@ export async function generateMatchupsForLeague(leagueId: string) {
   return { events: events.length, rounds: schedule.length, teams: teamIds.length };
 }
 
-function milestoneBonus(correct: number): number {
-  return correct >= 6 ? 300 : correct >= 5 ? 200 : correct >= 4 ? 100 : 0;
-}
-
 export async function finalizeMatchupResults(leagueId: string, eventId: string) {
-  // After an event completes, determine winners and update W/L records
   const { rows: matchups } = await db.query(`
     SELECT id, home_team_id, away_team_id, home_score, away_score
     FROM matchups
     WHERE league_id = $1 AND event_id = $2 AND winner_id IS NULL
   `, [leagueId, eventId]);
 
-  // Correct pick counts per member — drives milestone and perfect card bonuses
-  const { rows: pickRows } = await db.query<{
-    member_id: string; total_picks: string; correct_picks: string;
-  }>(`
-    SELECT ep.member_id,
-      COUNT(*) AS total_picks,
-      SUM(CASE WHEN ep.is_correct THEN 1 ELSE 0 END) AS correct_picks
-    FROM event_picks ep
-    JOIN fights f ON f.id = ep.fight_id AND f.status = 'completed'
-    WHERE ep.league_id = $1 AND f.event_id = $2
-    GROUP BY ep.member_id
-  `, [leagueId, eventId]);
-
-  const bonusByMember: Record<string, number> = {};
-  for (const row of pickRows) {
-    bonusByMember[row.member_id] = milestoneBonus(parseInt(row.correct_picks));
-  }
-
   const client = await db.connect();
   try {
     await client.query('BEGIN');
 
     for (const m of matchups) {
-      const homeBonus = bonusByMember[m.home_team_id] ?? 0;
-      const awayBonus = bonusByMember[m.away_team_id] ?? 0;
-
-      // Apply milestone bonus to matchup scores before deciding winner
-      const homeScore = parseFloat(m.home_score) + homeBonus;
-      const awayScore = parseFloat(m.away_score) + awayBonus;
-
-      await client.query(
-        `UPDATE matchups SET home_score = $1, away_score = $2 WHERE id = $3`,
-        [homeScore, awayScore, m.id],
-      );
+      const homeScore = parseFloat(m.home_score);
+      const awayScore = parseFloat(m.away_score);
 
       let winnerId: string | null = null;
       let isTie = false;
-      if (homeScore > awayScore) {
-        winnerId = m.home_team_id;
-      } else if (awayScore > homeScore) {
-        winnerId = m.away_team_id;
-      } else {
-        isTie = true;
-      }
+      if (homeScore > awayScore) winnerId = m.home_team_id;
+      else if (awayScore > homeScore) winnerId = m.away_team_id;
+      else isTie = true;
 
-      await client.query(
-        `UPDATE matchups SET winner_id = $1 WHERE id = $2`,
-        [winnerId, m.id],
-      );
+      await client.query(`UPDATE matchups SET winner_id = $1 WHERE id = $2`, [winnerId, m.id]);
 
       const MATCHUP_WIN_BONUS = 250;
 
       if (isTie) {
-        await client.query(`
-          UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
-          WHERE id = $1
-        `, [m.home_team_id, homeScore]);
-        await client.query(`
-          UPDATE league_members SET ties = ties + 1, total_points = total_points + $2
-          WHERE id = $1
-        `, [m.away_team_id, awayScore]);
+        await client.query(
+          `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 WHERE id = $1`,
+          [m.home_team_id, homeScore],
+        );
+        await client.query(
+          `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 WHERE id = $1`,
+          [m.away_team_id, awayScore],
+        );
       } else {
         const winnerScore = winnerId === m.home_team_id ? homeScore : awayScore;
+        const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
+        const loserScore = winnerId === m.home_team_id ? awayScore : homeScore;
+
         await client.query(`
           UPDATE league_members
           SET wins = wins + 1,
@@ -184,8 +148,6 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
           WHERE id = $1
         `, [winnerId, winnerScore, MATCHUP_WIN_BONUS]);
 
-        const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
-        const loserScore = winnerId === m.home_team_id ? awayScore : homeScore;
         await client.query(`
           UPDATE league_members
           SET losses = losses + 1,
@@ -193,29 +155,6 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
               total_points = total_points + $2
           WHERE id = $1
         `, [loserId, loserScore]);
-      }
-    }
-
-    // Perfect card bonus: (n-3) × 100 pts → season total (not matchup score)
-    for (const row of pickRows) {
-      const picked = parseInt(row.total_picks);
-      const correct = parseInt(row.correct_picks);
-      if (picked >= 4 && picked === correct) {
-        const bonus = (picked - 3) * 100;
-        const { rowCount } = await client.query(`
-          INSERT INTO perfect_card_bonuses
-            (league_id, member_id, event_id, fights_correct, points_awarded)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (league_id, member_id, event_id) DO NOTHING
-        `, [leagueId, row.member_id, eventId, picked, bonus]);
-
-        if (rowCount) {
-          await client.query(
-            `UPDATE league_members SET total_points = total_points + $1 WHERE id = $2`,
-            [bonus, row.member_id],
-          );
-          console.log(`[Scoring] Perfect card bonus: ${bonus} pts → member ${row.member_id} (${picked} fights)`);
-        }
       }
     }
 

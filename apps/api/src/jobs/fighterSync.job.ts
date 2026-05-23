@@ -39,9 +39,6 @@ export async function syncAllFighters() {
     }
   }
 
-  // Recalculate average fantasy points for all fighters after sync
-  await updateAveragePoints();
-
   await redis.del('fighters:*');
   console.log(`[FighterSync] Complete — synced ${total} fighters`);
 }
@@ -95,22 +92,6 @@ async function upsertFighter(athlete: EspnAthlete) {
     athlete.reachInches ?? null,
     athlete.dateOfBirth ?? null,
   ]);
-}
-
-async function updateAveragePoints() {
-  // Calculate rolling average fantasy points per fighter from all matchup scores
-  await db.query(`
-    UPDATE fighters f SET
-      average_fantasy_points = (
-        SELECT AVG(ms.total_points)
-        FROM matchup_scores ms
-        WHERE ms.fighter_id = f.id
-          AND ms.scored_at IS NOT NULL
-      )
-    WHERE EXISTS (
-      SELECT 1 FROM matchup_scores ms WHERE ms.fighter_id = f.id
-    )
-  `);
 }
 
 function sleep(ms: number) {

@@ -51,7 +51,7 @@ export function MatchupPage() {
   useEffect(() => {
     if (!matchup?.id) return;
     const channel = supabase.channel(`matchup:${matchup.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matchup_scores', filter: `matchup_id=eq.${matchup.id}` }, () => refetch())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchups', filter: `id=eq.${matchup.id}` }, () => refetch())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [matchup?.id, refetch]);
@@ -283,29 +283,21 @@ function FighterRow({ fighter, align }: { fighter: any; align: 'left' | 'right' 
   );
 }
 
-function calcMilestoneBonus(correctCount: number): number {
-  return correctCount >= 6 ? 300 : correctCount >= 5 ? 200 : correctCount >= 4 ? 100 : 0;
-}
-
-function ScoreBreakdown({ label, picks, matchupPts, seasonPts, isFinalized }: {
+function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   label: string; picks: any[]; matchupPts: number; seasonPts: number;
   isFinalized?: boolean; align?: 'left' | 'right';
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
-  const correctCount = correct.length;
-  const milestone = calcMilestoneBonus(correctCount);
   const totalPickPts = correct.reduce((sum, p) => sum + (+p.pointsEarned), 0);
-  const basePts = correctCount * 200;
-  const bonusPts = totalPickPts - basePts; // method + underdog bonuses combined
-  // Milestone is only added to matchupPts after finalization; subtract only then
-  const rosterBonus = Math.round(matchupPts - totalPickPts - (isFinalized ? milestone : 0));
+  const basePts = correct.length * 200;
+  const bonusPts = totalPickPts - basePts;
+  const rosterBonus = Math.round(matchupPts - totalPickPts);
   const hasScores = scored.length > 0;
 
   const rows = [
     { label: 'Correct picks', pts: basePts },
     ...(bonusPts > 0 ? [{ label: 'Pick bonuses', pts: bonusPts }] : []),
-    ...(milestone > 0 ? [{ label: `${correctCount}/6 correct bonus`, pts: milestone }] : []),
     ...(rosterBonus > 0 ? [{ label: 'Drafted fighter wins', pts: rosterBonus }] : []),
   ];
 

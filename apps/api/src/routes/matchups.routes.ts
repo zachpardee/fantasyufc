@@ -107,17 +107,6 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
     `, [req.params.matchupId, req.params.leagueId]);
     if (!matchup) throw new AppError(404, 'Matchup not found');
 
-    const { rows: scores } = await db.query(`
-      SELECT ms.*, f.first_name, f.last_name, f.image_url, lm.id as team_id
-      FROM matchup_scores ms
-      JOIN fighters f ON f.id = ms.fighter_id
-      JOIN roster_fighters rf ON rf.id = ms.roster_fighter_id
-      JOIN rosters r ON r.id = rf.roster_id
-      JOIN league_members lm ON lm.id = r.league_member_id
-      WHERE ms.matchup_id = $1
-      ORDER BY ms.total_points DESC
-    `, [req.params.matchupId]);
-
-    res.json({ ...matchup, scores });
+    res.json(matchup);
   } catch (err) { next(err); }
 });
