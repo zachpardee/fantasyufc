@@ -188,7 +188,7 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
       {/* Fight info */}
       <div style={styles.fightInfo}>
         <div style={styles.fightName}>
-          {fight.redFirstName?.split(' ').pop()} vs {fight.blueFirstName?.split(' ').pop()}
+          {fight.redLastName} vs {fight.blueLastName}
         </div>
         <div style={styles.fightWeight}>{fight.weightClassName}</div>
         {resultWinner && (

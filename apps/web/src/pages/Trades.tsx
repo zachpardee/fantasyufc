@@ -2,13 +2,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/auth.store';
 import type { Trade } from '@fantasy-ufc/shared';
 
 export function TradesPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
   const qc = useQueryClient();
 
-  const { data: trades } = useQuery<(Trade & { proposing_team_name: string; receiving_team_name: string })[]>({
+  const { data: members = [] } = useQuery<{ id: string; userId: string }[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+  const myMemberId = members.find((m) => m.userId === session?.user.id)?.id;
+
+  const { data: trades } = useQuery<(Trade & { proposingTeamName: string; receivingTeamName: string; proposingTeamId: string; receivingTeamId: string })[]>({
     queryKey: ['trades', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/trades`),
   });
@@ -35,18 +43,24 @@ export function TradesPage() {
       {trades?.map((trade) => (
         <div key={trade.id} style={styles.tradeCard}>
           <div style={styles.tradeHeader}>
-            <span style={styles.teams}>{(trade as any).proposingTeamName} → {(trade as any).receivingTeamName}</span>
+            <span style={styles.teams}>{trade.proposingTeamName} → {trade.receivingTeamName}</span>
             <span style={{ ...styles.statusBadge, ...(styles[`status_${trade.status}`] ?? {}) }}>
               {trade.status}
             </span>
           </div>
           {trade.message && <p style={styles.message}>"{trade.message}"</p>}
           <p style={styles.expires}>Expires: {new Date(trade.expiresAt).toLocaleDateString()}</p>
-          {trade.status === 'pending' && (
+          {trade.status === 'pending' && myMemberId && (
             <div style={styles.actions}>
-              <button style={styles.acceptBtn} onClick={() => acceptMutation.mutate(trade.id)}>Accept</button>
-              <button style={styles.rejectBtn} onClick={() => rejectMutation.mutate(trade.id)}>Reject</button>
-              <button style={styles.cancelBtn} onClick={() => cancelMutation.mutate(trade.id)}>Cancel</button>
+              {(trade as any).receivingTeamId === myMemberId && (
+                <>
+                  <button style={styles.acceptBtn} onClick={() => acceptMutation.mutate(trade.id)}>Accept</button>
+                  <button style={styles.rejectBtn} onClick={() => rejectMutation.mutate(trade.id)}>Reject</button>
+                </>
+              )}
+              {(trade as any).proposingTeamId === myMemberId && (
+                <button style={styles.cancelBtn} onClick={() => cancelMutation.mutate(trade.id)}>Cancel</button>
+              )}
             </div>
           )}
         </div>
