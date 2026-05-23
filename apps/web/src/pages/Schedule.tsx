@@ -65,12 +65,19 @@ export function SchedulePage() {
   const sorted = [...scheduleRows, ...availableRows]
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
-  // Only the first live event in the list is treated as active; extras are shown as scheduled
+  // Only the first live event is active; only the first non-completed schedule event
+  // shows the "On Schedule" badge — subsequent league events show as plain upcoming.
   let seenLive = false;
+  let seenOnSchedule = false;
   const upcoming = sorted.map((ev) => {
     if (ev.status === 'live') {
-      if (seenLive) return { ...ev, status: 'scheduled' };
+      if (seenLive) return { ...ev, status: 'scheduled', isOnSchedule: false };
       seenLive = true;
+      return ev;
+    }
+    if (ev.isOnSchedule && ev.status !== 'completed') {
+      if (seenOnSchedule) return { ...ev, isOnSchedule: false };
+      seenOnSchedule = true;
     }
     return ev;
   });
