@@ -62,6 +62,13 @@ export function LeagueRulesPage() {
         <Row label="Drafted fighter wins this event" value="+50 pts" />
       </Section>
 
+      {/* Matchup win bonus */}
+      <Section title="Season Points">
+        <Row label="Win the event matchup" value="+250 pts" />
+        <Row label="Lose the event matchup" value="—" />
+        <Row label="Tie" value="—" />
+      </Section>
+
       {/* Trades */}
       <Section title="Trades">
         <Row label="Roster changes" value="Trade only" />
