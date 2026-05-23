@@ -102,6 +102,7 @@ export function LeagueHomePage() {
     { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
     { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' },
+    { label: 'Waivers', path: 'waivers', icon: '📝', show: league.status === 'active' },
     { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' || league.status === 'active' },
     { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' },
     { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
