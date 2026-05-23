@@ -16,6 +16,7 @@ import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
 import { PicksPage } from './pages/Picks';
 import { TeamPage } from './pages/TeamPage';
+import { LeagueSubLayout } from './components/LeagueSubLayout';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null };
@@ -87,14 +88,16 @@ export default function App() {
         <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
         <Route path="/league/create" element={<RequireAuth><CreateLeaguePage /></RequireAuth>} />
         <Route path="/league/:leagueId" element={<RequireAuth><LeagueHomePage /></RequireAuth>} />
-        <Route path="/league/:leagueId/draft" element={<RequireAuth><DraftRoomPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/roster" element={<RequireAuth><RosterPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/matchup" element={<RequireAuth><MatchupPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/standings" element={<RequireAuth><StandingsPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/trades" element={<RequireAuth><TradesPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/schedule" element={<RequireAuth><SchedulePage /></RequireAuth>} />
-        <Route path="/league/:leagueId/picks" element={<RequireAuth><PicksPage /></RequireAuth>} />
-        <Route path="/league/:leagueId/team/:memberId" element={<RequireAuth><TeamPage /></RequireAuth>} />
+        <Route element={<RequireAuth><LeagueSubLayout /></RequireAuth>}>
+          <Route path="/league/:leagueId/draft" element={<DraftRoomPage />} />
+          <Route path="/league/:leagueId/roster" element={<RosterPage />} />
+          <Route path="/league/:leagueId/matchup" element={<MatchupPage />} />
+          <Route path="/league/:leagueId/standings" element={<StandingsPage />} />
+          <Route path="/league/:leagueId/trades" element={<TradesPage />} />
+          <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
+          <Route path="/league/:leagueId/picks" element={<PicksPage />} />
+          <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
+        </Route>
         <Route path="/fighters" element={<RequireAuth><FighterBrowserPage /></RequireAuth>} />
       </Routes>
     </BrowserRouter>
