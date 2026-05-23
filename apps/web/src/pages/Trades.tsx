@@ -36,7 +36,7 @@ export function TradesPage() {
   });
   const myMemberId = members.find((m) => m.userId === session?.user.id)?.id;
 
-  const { data: trades } = useQuery<TradeRow[]>({
+  const { data: trades, isLoading: tradesLoading, isError: tradesError } = useQuery<TradeRow[]>({
     queryKey: ['trades', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/trades`),
   });
@@ -201,7 +201,9 @@ export function TradesPage() {
       )}
 
       {/* Trade list */}
-      {!proposing && trades?.length === 0 && (
+      {!proposing && tradesLoading && <div style={styles.empty}>Loading trades...</div>}
+      {!proposing && tradesError && <div style={styles.empty}>Could not load trades. Check your connection.</div>}
+      {!proposing && !tradesLoading && trades?.length === 0 && (
         <div style={styles.empty}>No trades yet. Propose one!</div>
       )}
 
