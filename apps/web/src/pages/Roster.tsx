@@ -1,19 +1,13 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 
 export function RosterPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
 
-  const { data: fighters, isLoading, refetch } = useQuery<any[]>({
+  const { data: fighters, isLoading } = useQuery<any[]>({
     queryKey: ['roster', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/roster`),
-  });
-
-  const dropMutation = useMutation({
-    mutationFn: (fighterId: string) =>
-      apiClient.delete(`/leagues/${leagueId}/roster/${fighterId}`),
-    onSuccess: () => refetch(),
   });
 
   const all = fighters ?? [];
@@ -39,7 +33,7 @@ export function RosterPage() {
         {!isEmpty && !isLoading && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Roster <span style={styles.count}>{all.length}</span></h2>
-            {all.map((f) => <FighterRow key={f.id} fighter={f} onDrop={() => dropMutation.mutate(f.fighterId)} />)}
+            {all.map((f) => <FighterRow key={f.id} fighter={f} />)}
           </div>
         )}
       </div>
@@ -47,7 +41,7 @@ export function RosterPage() {
   );
 }
 
-function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isBench?: boolean }) {
+function FighterRow({ fighter }: { fighter: any }) {
   return (
     <div style={styles.row}>
       <div style={styles.rowLeft}>
@@ -70,7 +64,6 @@ function FighterRow({ fighter, onDrop }: { fighter: any; onDrop: () => void; isB
       </div>
       <div style={styles.rowRight}>
         <span style={styles.avgPts}>{fighter.averageFantasyPoints != null ? (+fighter.averageFantasyPoints).toFixed(1) : '--'} avg pts</span>
-        <button style={styles.dropBtn} onClick={onDrop}>Drop</button>
       </div>
     </div>
   );
@@ -100,5 +93,4 @@ const styles: Record<string, React.CSSProperties> = {
   nextEvent: { color: '#555', fontSize: 11, marginTop: 3 },
   rowRight: { display: 'flex', alignItems: 'center', gap: 16 },
   avgPts: { color: '#888', fontSize: 13 },
-  dropBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 5, color: '#888', padding: '5px 12px', cursor: 'pointer', fontSize: 12 },
 };
