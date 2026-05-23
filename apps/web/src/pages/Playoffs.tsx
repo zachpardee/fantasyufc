@@ -184,30 +184,37 @@ export function PlayoffsPage() {
       {phase !== 'none' && (
         <div style={styles.bracketWrap}>
           <p style={styles.sectionLabel}>Bracket</p>
-          <div style={styles.bracket}>
-            {/* Semis column */}
-            <div style={styles.bracketCol}>
-              <p style={styles.roundLabel}>Semifinals</p>
-              {semisMatchups.length > 0
-                ? semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} />)
-                : <TBDCard label="Semifinals" />}
-            </div>
+          {semisMatchups.length > 0 ? (
+            <div style={styles.bracket}>
+              {/* Semis column */}
+              <div style={styles.bracketCol}>
+                <p style={styles.roundLabel}>Semifinals</p>
+                {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} />)}
+              </div>
 
-            {/* Connector */}
-            <div style={styles.connector}>
-              <div style={styles.connectorLine} />
-              <span style={styles.connectorArrow}>→</span>
-              <div style={styles.connectorLine} />
-            </div>
+              {/* Connector */}
+              <div style={styles.connector}>
+                <div style={styles.connectorLine} />
+                <span style={styles.connectorArrow}>→</span>
+                <div style={styles.connectorLine} />
+              </div>
 
-            {/* Finals column */}
-            <div style={styles.bracketCol}>
+              {/* Finals column */}
+              <div style={styles.bracketCol}>
+                <p style={styles.roundLabel}>Finals</p>
+                {finalsMatchup
+                  ? <MatchupCard matchup={finalsMatchup} />
+                  : <TBDCard label="Finals" subtitle="Awaiting semifinal results" />}
+              </div>
+            </div>
+          ) : (
+            <div style={styles.bracketSingle}>
               <p style={styles.roundLabel}>Finals</p>
               {finalsMatchup
                 ? <MatchupCard matchup={finalsMatchup} />
-                : <TBDCard label="Finals" subtitle="Awaiting semifinal results" />}
+                : <TBDCard label="Finals" subtitle="TBD" />}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -239,6 +246,7 @@ const styles: Record<string, React.CSSProperties> = {
   seedPts: { color: '#888', fontSize: 13 },
   bracketWrap: { padding: '0 24px 32px' },
   bracket: { display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 0, alignItems: 'center' },
+  bracketSingle: { maxWidth: 480 },
   bracketCol: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
   roundLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, margin: '0 0 8px' },
   connector: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 4, color: '#333' },
