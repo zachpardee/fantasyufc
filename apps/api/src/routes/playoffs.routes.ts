@@ -146,9 +146,20 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
 
     if (semis.length < 1) throw new AppError(400, 'No semis matchups found');
 
-    // Determine winner of each semis (higher score; home team wins tie)
+    // Get season points for tiebreaking
+    const { rows: seasonPts } = await db.query(
+      `SELECT id, total_points FROM league_members WHERE league_id = $1`,
+      [req.params.leagueId],
+    );
+    const pts = new Map(seasonPts.map((r: any) => [r.id, +r.total_points]));
+
+    // Determine winner: higher matchup score; tie broken by season points
     function winner(m: any) {
-      return +m.home_score >= +m.away_score ? { id: m.home_team_id, seed: m.home_seed } : { id: m.away_team_id, seed: m.away_seed };
+      const hs = +m.home_score, as_ = +m.away_score;
+      if (hs !== as_) return hs > as_ ? { id: m.home_team_id, seed: m.home_seed } : { id: m.away_team_id, seed: m.away_seed };
+      return (pts.get(m.home_team_id) ?? 0) >= (pts.get(m.away_team_id) ?? 0)
+        ? { id: m.home_team_id, seed: m.home_seed }
+        : { id: m.away_team_id, seed: m.away_seed };
     }
 
     const w1 = winner(semis[0]);
