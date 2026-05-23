@@ -39,6 +39,10 @@ export interface EspnFight {
   blueCorner: EspnFighter;
   redOdds?: number;
   blueOdds?: number;
+  boutOrder: number;
+  isMainEvent: boolean;
+  isCoMain: boolean;
+  cardSegment: 'main' | 'prelims' | 'early_prelims';
 }
 
 export interface EspnFighter {
@@ -117,6 +121,10 @@ function parseEvent(e: any): EspnEvent | null {
     const statusType = firstComp.status?.type ?? {};
     const statusState: 'pre' | 'in' | 'post' = statusType.state ?? 'pre';
 
+    const fights = competitions
+      .map((c: any, i: number) => parseFight(c, i, competitions.length))
+      .filter(Boolean) as EspnFight[];
+
     return {
       espnEventId: String(e.id),
       espnCompetitionId: String(firstComp.id),
@@ -127,14 +135,14 @@ function parseEvent(e: any): EspnEvent | null {
       venueName: firstComp.venue?.fullName,
       venueCity: firstComp.venue?.address?.city,
       venueCountry: firstComp.venue?.address?.country,
-      fights: competitions.map(parseFight).filter(Boolean) as EspnFight[],
+      fights,
     };
   } catch {
     return null;
   }
 }
 
-function parseFight(c: any): EspnFight | null {
+function parseFight(c: any, index: number, total: number): EspnFight | null {
   try {
     const comps: any[] = c.competitors ?? [];
     if (comps.length < 2) return null;
@@ -142,6 +150,26 @@ function parseFight(c: any): EspnFight | null {
     const [red, blue] = comps;
     const status = c.status ?? {};
     const scheduledRounds = c.format?.regulation?.periods ?? 3;
+
+    // ESPN provides c.order (1-based); fall back to array position
+    // Higher order = later on the card = main event last
+    const boutOrder: number = typeof c.order === 'number' ? c.order : index + 1;
+
+    // Check notes array for "Main Event" / "Co-Main Event" labels
+    const notes: string[] = (c.notes ?? []).map((n: any) =>
+      (n.headline ?? n.type ?? '').toLowerCase(),
+    );
+    const isMainEvent = notes.some((n) => n.includes('main event') && !n.includes('co'));
+    const isCoMain = notes.some((n) => n.includes('co-main') || n.includes('co main'));
+
+    // Infer card segment from bout order relative to card size
+    // Rough split: top third = main, middle = prelims, bottom = early prelims
+    let cardSegment: 'main' | 'prelims' | 'early_prelims' = 'main';
+    if (total >= 9) {
+      const rank = boutOrder / total; // 0–1; higher = later on card
+      if (rank <= 0.33) cardSegment = 'early_prelims';
+      else if (rank <= 0.67) cardSegment = 'prelims';
+    }
 
     // Try to extract moneyline odds from competition-level odds block
     const oddsBlock = c.odds?.[0];
@@ -159,6 +187,10 @@ function parseFight(c: any): EspnFight | null {
       blueCorner: parseFighter(blue),
       redOdds,
       blueOdds,
+      boutOrder,
+      isMainEvent,
+      isCoMain,
+      cardSegment,
     };
   } catch {
     return null;
