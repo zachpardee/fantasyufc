@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -70,11 +70,14 @@ export function LeagueHomePage() {
     },
   });
 
+  const membersRef = useRef(members);
+  useEffect(() => { membersRef.current = members; }, [members]);
+
   // Track presence: who's on this league page right now
+  // Only re-run when leagueId/session change — not on every members refetch,
+  // which would create ghost presences from rapid channel reconnects.
   useEffect(() => {
     if (!leagueId || !session) return;
-    const myMember = members.find((m) => m.userId === session.user.id);
-    const teamName = myMember?.teamName ?? session.user.email ?? 'Unknown';
 
     const channel = supabase.channel(`league-presence:${leagueId}`, {
       config: { presence: { key: session.user.id } },
@@ -83,17 +86,20 @@ export function LeagueHomePage() {
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ userId: string; teamName: string }>();
-        const users = Object.values(state).flatMap((s) => s);
-        setOnlineUsers(users);
+        const seen = new Map<string, { userId: string; teamName: string }>();
+        Object.values(state).flatMap((s) => s).forEach((u) => seen.set(u.userId, u));
+        setOnlineUsers(Array.from(seen.values()));
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          const myMember = membersRef.current.find((m) => m.userId === session.user.id);
+          const teamName = myMember?.teamName ?? session.user.email ?? 'Unknown';
           await channel.track({ userId: session.user.id, teamName });
         }
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [leagueId, session, members]);
+  }, [leagueId, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!league) return <div style={styles.loading}>Loading...</div>;
 
@@ -472,7 +478,7 @@ const styles: Record<string, React.CSSProperties> = {
   draftingDot: { width: 8, height: 8, borderRadius: '50%', background: '#ffd700' },
   draftingText: { color: '#ffd700', fontWeight: 700, fontSize: 14, flex: 1 },
   draftingLink: { color: '#4caf50', textDecoration: 'none', fontSize: 13, fontWeight: 700 },
-  navGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, padding: 24 },
+  navGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 24 },
   navCard: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
     padding: 24, textDecoration: 'none', display: 'flex', flexDirection: 'column',
