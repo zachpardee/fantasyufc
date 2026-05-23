@@ -46,16 +46,25 @@ export function SchedulePage() {
   const scheduleIds = new Set(schedule.map((e) => e.id));
 
   // All events already on the league schedule (completed shown muted, live/upcoming highlighted)
-  const scheduleRows = schedule
+  const allScheduleRows = schedule
     .filter((ev) => ev.status !== 'cancelled')
     .filter((ev) => {
-      // Keep completed events that are genuinely on the schedule
       if (ev.status === 'completed') return true;
       if (ev.status === 'live') return true;
-      // Drop stale "scheduled" rows whose date is >24h past
       return new Date(ev.scheduledAt) > cutoff;
     })
     .map((ev) => ({ ...ev, isOnSchedule: true, matchupCount: ev.matchupCount }));
+
+  // Keep only the 3 most recent completed events
+  const completedRows = allScheduleRows
+    .filter((ev) => ev.status === 'completed')
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+    .slice(0, 3);
+  const completedIds = new Set(completedRows.map((ev) => ev.id));
+
+  const scheduleRows = allScheduleRows.filter(
+    (ev) => ev.status !== 'completed' || completedIds.has(ev.id),
+  );
 
   // Upcoming UFC events not yet added to this league
   const availableRows = available
