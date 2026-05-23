@@ -32,7 +32,7 @@ export function LeagueHomePage() {
       try { return await apiClient.get(`/leagues/${leagueId}/picks/current-event`) as any; }
       catch { return null; }
     },
-    enabled: league?.status === 'active',
+    enabled: !!league && league.status === 'active',
   });
 
   const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
@@ -41,7 +41,7 @@ export function LeagueHomePage() {
       try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
       catch { return null; }
     },
-    enabled: league?.status === 'active',
+    enabled: !!league && league.status === 'active',
   });
 
   const renameMutation = useMutation({

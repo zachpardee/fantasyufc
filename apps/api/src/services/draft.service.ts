@@ -112,8 +112,11 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
 
     const nextPick = overallPick + 1;
     const totalPicks = session.total_rounds * memberCount;
+    const nextRound = Math.ceil(nextPick / memberCount);
 
     let draftCompleted = false;
+    let nextTeamId: string | null = null;
+
     if (nextPick > totalPicks) {
       await client.query(
         `UPDATE draft_sessions SET status = 'completed', current_pick = $1, completed_at = NOW() WHERE id = $2`,
@@ -122,11 +125,11 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
       await client.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [leagueId]);
       draftCompleted = true;
     } else {
-      const nextTeamId = await getNextTeamId(client, session.id, nextPick, await getMemberCount(client, leagueId));
+      nextTeamId = await getNextTeamId(client, session.id, nextPick, memberCount);
       const nextDeadline = new Date(Date.now() + session.pick_time_seconds * 1000).toISOString();
       await client.query(
-        `UPDATE draft_sessions SET current_pick = $1, current_team_id = $2, current_pick_deadline = $3 WHERE id = $4`,
-        [nextPick, nextTeamId, nextDeadline, session.id],
+        `UPDATE draft_sessions SET current_pick = $1, current_round = $2, current_team_id = $3, current_pick_deadline = $4 WHERE id = $5`,
+        [nextPick, nextRound, nextTeamId, nextDeadline, session.id],
       );
     }
 
@@ -141,7 +144,7 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
     await supabaseAdmin.channel(`draft:${leagueId}`).send({
       type: 'broadcast',
       event: 'pick_made',
-      payload: { pick, nextTeamId: session.current_team_id },
+      payload: { pick, nextTeamId },
     });
 
     return pick;

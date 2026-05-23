@@ -67,14 +67,14 @@ export function DraftRoomPage() {
 
   // Countdown timer
   useEffect(() => {
-    if (!draft?.session.currentPickDeadline) return;
+    if (!draft?.session.currentPickDeadline || draft.session.status === 'completed') return;
     const id = setInterval(() => {
       setTimeLeft(Math.max(0, Math.floor(
         (new Date(draft.session.currentPickDeadline!).getTime() - Date.now()) / 1000,
       )));
     }, 1000);
     return () => clearInterval(id);
-  }, [draft?.session.currentPickDeadline]);
+  }, [draft?.session.currentPickDeadline, draft?.session.status]);
 
   const pickMutation = useMutation({
     mutationFn: (fighterId: string) => {
