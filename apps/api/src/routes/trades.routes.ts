@@ -15,7 +15,7 @@ tradesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows } = await db.query(`
+    const { rows: trades } = await db.query(`
       SELECT t.*, pt.team_name as proposing_team_name, rt.team_name as receiving_team_name
       FROM trades t
       JOIN league_members pt ON pt.id = t.proposing_team_id
@@ -25,7 +25,24 @@ tradesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       ORDER BY t.proposed_at DESC
       LIMIT 50
     `, [req.params.leagueId, member.id]);
-    res.json(rows);
+
+    // Attach fighter items to each trade
+    const tradeIds = trades.map((t) => t.id);
+    let itemsByTrade: Record<string, any[]> = {};
+    if (tradeIds.length) {
+      const { rows: items } = await db.query(`
+        SELECT ti.*, f.first_name, f.last_name, ti.from_team_id, ti.to_team_id
+        FROM trade_items ti
+        JOIN fighters f ON f.id = ti.fighter_id
+        WHERE ti.trade_id = ANY($1)
+      `, [tradeIds]);
+      for (const item of items) {
+        if (!itemsByTrade[item.trade_id]) itemsByTrade[item.trade_id] = [];
+        itemsByTrade[item.trade_id].push(item);
+      }
+    }
+
+    res.json(trades.map((t) => ({ ...t, items: itemsByTrade[t.id] ?? [] })));
   } catch (err) { next(err); }
 });
 

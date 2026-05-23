@@ -6,11 +6,14 @@ import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import type { Trade } from '@fantasy-ufc/shared';
 
-type TradeRow = Trade & {
+type TradeFighterItem = { id: string; tradeId: string; fromTeamId: string; toTeamId: string; fighterId: string; firstName: string; lastName: string };
+
+type TradeRow = Omit<Trade, 'items'> & {
   proposingTeamName: string;
   receivingTeamName: string;
   proposingTeamId: string;
   receivingTeamId: string;
+  items: TradeFighterItem[];
 };
 
 type Member = { id: string; userId: string; teamName: string };
@@ -210,6 +213,19 @@ export function TradesPage() {
               {trade.status}
             </span>
           </div>
+          {trade.items?.length > 0 && (
+            <div style={styles.itemsRow}>
+              <span style={styles.itemsLabel}>{trade.proposingTeamName} sends: </span>
+              <span style={styles.itemNames}>
+                {trade.items.filter((i) => i.fromTeamId === trade.proposingTeamId).map((i) => `${i.firstName} ${i.lastName}`).join(', ')}
+              </span>
+              <span style={styles.itemsSep}> · </span>
+              <span style={styles.itemsLabel}>{trade.receivingTeamName} sends: </span>
+              <span style={styles.itemNames}>
+                {trade.items.filter((i) => i.fromTeamId === trade.receivingTeamId).map((i) => `${i.firstName} ${i.lastName}`).join(', ')}
+              </span>
+            </div>
+          )}
           {trade.message && <p style={styles.message}>"{trade.message}"</p>}
           <p style={styles.expires}>Expires: {new Date(trade.expiresAt).toLocaleDateString()}</p>
           {trade.status === 'pending' && myMemberId && (
@@ -265,6 +281,10 @@ const styles: Record<string, React.CSSProperties> = {
   tradeHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   teams: { color: '#fff', fontWeight: 600, fontSize: 15 },
   statusBadge: { background: '#222', color: '#888', padding: '3px 10px', borderRadius: 4, fontSize: 12, fontWeight: 700 },
+  itemsRow: { fontSize: 12, marginBottom: 8, lineHeight: 1.6, flexWrap: 'wrap' as const, display: 'flex', alignItems: 'center', gap: 2 },
+  itemsLabel: { color: '#555', fontWeight: 600 },
+  itemNames: { color: '#ccc' },
+  itemsSep: { color: '#444' },
   message: { color: '#888', fontSize: 13, fontStyle: 'italic', marginBottom: 6 },
   expires: { color: '#555', fontSize: 12 },
   actions: { display: 'flex', gap: 10, marginTop: 14 },
