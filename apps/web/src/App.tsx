@@ -16,6 +16,7 @@ import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
 import { PicksPage } from './pages/Picks';
 import { TeamPage } from './pages/TeamPage';
+import { WaiversPage } from './pages/Waivers';
 import { LeagueSubLayout } from './components/LeagueSubLayout';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
           <Route path="/league/:leagueId/picks" element={<PicksPage />} />
           <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
+          <Route path="/league/:leagueId/waivers" element={<WaiversPage />} />
         </Route>
         <Route path="/fighters" element={<RequireAuth><FighterBrowserPage /></RequireAuth>} />
       </Routes>
