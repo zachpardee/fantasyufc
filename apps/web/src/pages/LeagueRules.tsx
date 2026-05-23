@@ -66,7 +66,7 @@ export function LeagueRulesPage() {
       <Section title="Season Points">
         <Row label="Win the event matchup" value="+250 pts" />
         <Row label="Lose the event matchup" value="—" />
-        <Row label="Tie" value="—" />
+        <Row label="Tie" value="+100 pts" />
       </Section>
 
       {/* Trades */}
