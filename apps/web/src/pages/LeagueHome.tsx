@@ -122,7 +122,9 @@ export function LeagueHomePage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to="/" style={styles.back}>← Home</Link>
+        <Link to="/" style={styles.logoLink}>
+          <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+        </Link>
         <span style={{ flex: 1 }} />
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
         {onlineUsers.length > 0 && (
@@ -168,16 +170,29 @@ export function LeagueHomePage() {
             <button type="button" style={styles.nameCancelBtn} onClick={() => setEditingName(false)}>Cancel</button>
           </form>
         ) : (
-          <span style={styles.leagueName}>
-            {league.name}
+          <div style={styles.leagueNameRow}>
+            <span style={styles.leagueName}>{league.name}</span>
             {isCommissioner && (
               <button
                 style={styles.editNameBtn}
                 onClick={() => { setNameInput(league.name); setEditingName(true); }}
               >✎</button>
             )}
-          </span>
+          </div>
         )}
+        <div style={styles.leagueMeta}>
+          <span>Season {league.seasonYear}</span>
+          <span style={styles.metaDot}>·</span>
+          <span>{league.memberCount} / {league.maxTeams} teams</span>
+          <span style={styles.metaDot}>·</span>
+          <span>{league.rosterSize}-man roster</span>
+          {league.status === 'setup' && (
+            <>
+              <span style={styles.metaDot}>·</span>
+              <span style={styles.inviteInline}>Code: <strong>{league.inviteCode}</strong></span>
+            </>
+          )}
+        </div>
         {myMember && (
           <div style={styles.myTeamRow}>
             {editingTeamName ? (
@@ -203,7 +218,9 @@ export function LeagueHomePage() {
                   onClick={() => { setTeamNameInput(myMember.teamName); setEditingTeamName(true); }}
                 >✎</button>
                 <span style={styles.myTeamDot}>·</span>
-                <span style={styles.myTeamPts}>{myMember.totalPoints} pts</span>
+                <span style={styles.myTeamPts}>{(+myMember.totalPoints).toFixed(0)} pts</span>
+                <span style={styles.myTeamDot}>·</span>
+                <span style={styles.myTeamRecord}>{myMember.wins}–{myMember.losses}</span>
               </>
             )}
           </div>
@@ -366,12 +383,6 @@ export function LeagueHomePage() {
         </div>
       )}
 
-      <div style={styles.meta}>
-        <span>{league.memberCount} / {league.maxTeams} teams</span>
-        <span>Roster: {league.rosterSize}</span>
-        <span>Season {league.seasonYear}</span>
-        {league.status === 'setup' && <span style={styles.metaCode}>Code: {league.inviteCode}</span>}
-      </div>
     </div>
   );
 }
@@ -393,13 +404,19 @@ const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
-  back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
+  logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
+  logo: { height: 36, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 4px', textAlign: 'center' },
   leagueName: { color: '#fff', fontWeight: 700, fontSize: 24, display: 'inline-flex', alignItems: 'center', gap: 8 },
+  leagueNameRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 6 },
+  leagueMeta: { color: '#555', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' as const, marginBottom: 4 },
+  metaDot: { color: '#333' },
+  inviteInline: { color: '#888' },
   myTeamRow: { marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
   myTeamName: { color: '#888', fontSize: 13, fontWeight: 600 },
   myTeamDot: { color: '#444', fontSize: 13 },
   myTeamPts: { color: '#888', fontSize: 13 },
+  myTeamRecord: { color: '#888', fontSize: 13 },
   teamNameForm: { display: 'flex', alignItems: 'center', gap: 6 },
   teamNameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 600, padding: '3px 8px', outline: 'none', width: 160 },
   onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
@@ -469,8 +486,6 @@ const styles: Record<string, React.CSSProperties> = {
   teamPill: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: '6px 14px', display: 'flex', gap: 10, alignItems: 'center' },
   teamPillName: { color: '#ddd', fontSize: 13, fontWeight: 600 },
   teamPillRecord: { color: '#555', fontSize: 12 },
-  meta: { padding: '0 24px 24px', display: 'flex', gap: 24, color: '#555', fontSize: 13, flexWrap: 'wrap' },
-  metaCode: { color: '#888', fontFamily: 'monospace', fontWeight: 700 },
   eventCard: { margin: '0 24px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' },
   eventCardNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
   eventCardLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
