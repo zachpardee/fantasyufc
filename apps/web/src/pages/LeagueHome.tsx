@@ -131,19 +131,24 @@ export function LeagueHomePage() {
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
         {onlineUsers.length > 0 && (
           <div style={styles.onlineRow}>
-            {onlineUsers.map((u) => (
-              <div
-                key={u.userId}
-                style={{
-                  ...styles.onlineAvatar,
-                  background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
-                  borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
-                }}
-                title={u.teamName}
-              >
-                {u.teamName.charAt(0).toUpperCase()}
-              </div>
-            ))}
+            {onlineUsers.map((u) => {
+              const memberId = members.find((m) => m.userId === u.userId)?.id;
+              return (
+                <div
+                  key={u.userId}
+                  style={{
+                    ...styles.onlineAvatar,
+                    background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
+                    borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
+                    cursor: memberId ? 'pointer' : 'default',
+                  }}
+                  title={u.teamName}
+                  onClick={() => memberId && navigate(`/league/${leagueId}/team/${memberId}`)}
+                >
+                  {u.teamName.charAt(0).toUpperCase()}
+                </div>
+              );
+            })}
             <span style={styles.onlineCount}>{onlineUsers.length} online</span>
           </div>
         )}
