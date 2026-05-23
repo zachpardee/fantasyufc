@@ -3,6 +3,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { generateMatchupsForLeague } from '../services/matchup.service';
+import { seasonWindow } from '../jobs/autoSchedule.job';
 import { z } from 'zod';
 
 export const scheduleRouter = Router({ mergeParams: true });
@@ -60,7 +61,7 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
     // Only commissioner can modify schedule
     const { rows: [league] } = await db.query(
-      `SELECT commissioner_id, status FROM leagues WHERE id = $1`,
+      `SELECT commissioner_id, status, season_year FROM leagues WHERE id = $1`,
       [req.params.leagueId],
     );
     if (!league) throw new AppError(404, 'League not found');
@@ -73,6 +74,13 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
       [eventId],
     );
     if (!event) throw new AppError(404, 'Event not found or cancelled');
+
+    // Enforce season window: Jan 1 – Jun 30
+    const { start, end } = seasonWindow(league.season_year);
+    const eventDate = new Date(event.scheduled_at);
+    if (eventDate < start || eventDate > end) {
+      throw new AppError(400, `Events must fall within the season window (Jan 1 – Jun 30 ${league.season_year})`);
+    }
 
     await db.query(`
       INSERT INTO league_events (league_id, event_id, is_scoring)

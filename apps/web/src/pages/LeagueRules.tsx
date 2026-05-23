@@ -39,13 +39,25 @@ export function LeagueRulesPage() {
         <span style={styles.title}>Rules & Scoring</span>
       </nav>
 
+      {/* Season window */}
+      {league && (
+        <Section title="Season">
+          <Row label="Season year" value={String(league.seasonYear)} />
+          <Row label="Start date" value={`January 1, ${league.seasonYear}`} />
+          <Row label="End date" value={`June 30, ${league.seasonYear}`} />
+          <Row label="Duration" value="6 months" />
+          <Row label="Events" value="All UFC cards Jan 1 – Jun 30" />
+        </Section>
+      )}
+
       {/* League format */}
       {league && (
         <Section title="League Format">
-          <Row label="Roster size" value={String(league.rosterSize)} />
+          <Row label="Roster size" value={`${league.rosterSize} fighters`} />
+          <Row label="Starters" value={`${league.starterSlots} per event`} />
+          <Row label="Bench" value={`${league.rosterSize - league.starterSlots} spots`} />
           <Row label="Max teams" value={String(league.maxTeams)} />
           <Row label="Draft format" value={league.draftType === 'snake' ? 'Snake draft' : league.draftType ?? '—'} />
-          <Row label="Season" value={String(league.seasonYear)} />
         </Section>
       )}
 
@@ -60,20 +72,23 @@ export function LeagueRulesPage() {
       {/* Roster win bonus */}
       <Section title="Roster Bonus">
         <Row label="Drafted fighter wins this event" value="+50 pts" />
+        <Row label="Roster lock" value="Locked during live events" />
       </Section>
 
-      {/* Matchup win bonus */}
-      <Section title="Season Points">
-        <Row label="Win the event matchup" value="+250 pts" />
-        <Row label="Lose the event matchup" value="—" />
+      {/* Matchup */}
+      <Section title="Weekly Matchups">
+        <Row label="Format" value="Head-to-head per event" />
+        <Row label="Win matchup" value="+250 pts" />
         <Row label="Tie" value="+100 pts" />
+        <Row label="Loss" value="—" />
+        <Row label="Standings" value="W-L-T then total points" />
       </Section>
 
       {/* Trades */}
       <Section title="Trades">
         <Row label="Roster changes" value="Trade only" />
         <Row label="Waiver pickups" value="Not available" />
-        <Row label="Roster lock" value="Locked during live events" />
+        <Row label="Trade deadline" value={league ? `June 23, ${league.seasonYear}` : '—'} />
       </Section>
 
       <div style={styles.spacer} />
