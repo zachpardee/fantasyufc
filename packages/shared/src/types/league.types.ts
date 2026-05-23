@@ -1,4 +1,4 @@
-export type LeagueStatus = 'setup' | 'drafting' | 'active' | 'completed';
+export type LeagueStatus = 'setup' | 'drafting' | 'active' | 'playoffs' | 'completed';
 export type DraftType = 'snake' | 'auction';
 
 export interface League {

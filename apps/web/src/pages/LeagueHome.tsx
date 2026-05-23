@@ -115,12 +115,13 @@ export function LeagueHomePage() {
 
   const navLinks = [
     { label: 'My Roster', path: 'roster', icon: '👊', show: league.status !== 'setup' },
-    { label: 'Picks', path: 'picks', icon: '🎯', show: league.status === 'active' },
-    { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' },
+    { label: 'Picks', path: 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
-    { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' },
+    { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' || league.status === 'active' },
-    { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' },
+    { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Playoffs', path: 'playoffs', icon: '🏆', show: league.status === 'playoffs' || (league.status === 'active' && isCommissioner) },
     { label: 'Rules', path: 'rules', icon: '📋', show: true },
     { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
   ];
