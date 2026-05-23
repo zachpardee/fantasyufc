@@ -39,6 +39,7 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
           body.rosterSize - body.starterSlots, body.draftType, body.isPublic,
           body.draftPickTimeSeconds]);
 
+      const d = DEFAULT_SCORING_SETTINGS;
       const { rows: [ss] } = await client.query(`
         INSERT INTO scoring_settings (league_id, pts_win, pts_ko_tko, pts_submission, pts_decision,
           pts_draw, pts_no_contest, pts_finish_rd1, pts_finish_rd2, pts_finish_rd3, pts_finish_rd4,
@@ -48,7 +49,15 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
           pts_loss, pts_ko_loss_penalty, title_fight_multiplier)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
         RETURNING id
-      `, [league.id, ...Object.values(DEFAULT_SCORING_SETTINGS).filter((v) => typeof v === 'number')]);
+      `, [
+        league.id,
+        d.ptsWin, d.ptsKoTko, d.ptsSubmission, d.ptsDecision,
+        d.ptsDraw, d.ptsNoContest, d.ptsFinishRd1, d.ptsFinishRd2, d.ptsFinishRd3, d.ptsFinishRd4,
+        d.ptsFinishRd5, d.ptsKnockdown, d.ptsSigStrikeLanded, d.ptsSigStrikeAttempted,
+        d.ptsTotalStrikeLanded, d.ptsTakedownLanded, d.ptsTakedownAttempted,
+        d.ptsSubmissionAttempt, d.ptsPerformanceOfNight, d.ptsFightOfNight,
+        d.ptsLoss, d.ptsKoLossPenalty, d.titleFightMultiplier,
+      ]);
 
       await client.query(
         `UPDATE leagues SET scoring_settings_id = $1 WHERE id = $2`,
@@ -93,6 +102,12 @@ leaguesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
 
 leaguesRouter.get('/:leagueId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    const { rows: [membership] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!membership) throw new AppError(403, 'Not a member of this league');
+
     const { rows: [league] } = await db.query(`
       SELECT l.*, COUNT(lm.id) as member_count
       FROM leagues l

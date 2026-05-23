@@ -109,6 +109,7 @@ rosterRouter.post('/set-lineup', requireAuth, async (req: AuthRequest, res, next
     const { rows: [roster] } = await db.query(
       `SELECT id FROM rosters WHERE league_member_id = $1`, [member.id],
     );
+    if (!roster) throw new AppError(500, 'Roster record not found');
 
     for (const slot of slots) {
       await db.query(`
