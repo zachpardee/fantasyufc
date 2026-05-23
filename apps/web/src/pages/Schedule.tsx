@@ -45,20 +45,35 @@ export function SchedulePage() {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const scheduleIds = new Set(schedule.map((e) => e.id));
 
+  // All events already on the league schedule (completed shown muted, live/upcoming highlighted)
   const scheduleRows = schedule
+    .filter((ev) => ev.status !== 'cancelled')
     .filter((ev) => {
-      if (ev.status === 'completed' || ev.status === 'cancelled') return false;
+      // Keep completed events that are genuinely on the schedule
+      if (ev.status === 'completed') return true;
       if (ev.status === 'live') return true;
+      // Drop stale "scheduled" rows whose date is >24h past
       return new Date(ev.scheduledAt) > cutoff;
     })
     .map((ev) => ({ ...ev, isOnSchedule: true, matchupCount: ev.matchupCount }));
 
+  // Upcoming UFC events not yet added to this league
   const availableRows = available
     .filter((ev) => !scheduleIds.has(ev.id))
     .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0 }));
 
-  const upcoming = [...scheduleRows, ...availableRows]
+  const sorted = [...scheduleRows, ...availableRows]
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+  // Only the first live event in the list is treated as active; extras are shown as scheduled
+  let seenLive = false;
+  const upcoming = sorted.map((ev) => {
+    if (ev.status === 'live') {
+      if (seenLive) return { ...ev, status: 'scheduled' };
+      seenLive = true;
+    }
+    return ev;
+  });
 
   return (
     <div style={styles.page}>
@@ -76,10 +91,11 @@ export function SchedulePage() {
 
         {upcoming.map((ev) => {
           const isLive = ev.status === 'live';
+          const isDone = ev.status === 'completed';
           return (
-            <div key={ev.id} style={{ ...styles.eventCard, ...(isLive ? styles.eventCardLive : {}) }}>
+            <div key={ev.id} style={{ ...styles.eventCard, ...(isLive ? styles.eventCardLive : {}), ...(isDone ? styles.eventCardDone : {}) }}>
               <div style={styles.eventInfo}>
-                <div style={{ ...styles.eventName, ...(isLive ? styles.eventNameLive : {}) }}>
+                <div style={{ ...styles.eventName, ...(isLive ? styles.eventNameLive : {}), ...(isDone ? styles.eventNameDone : {}) }}>
                   {ev.name}
                 </div>
                 <div style={styles.eventMeta}>
@@ -87,7 +103,8 @@ export function SchedulePage() {
                 </div>
                 <div style={styles.eventStats}>
                   {isLive && <span style={styles.liveBadge}>LIVE</span>}
-                  {ev.isOnSchedule && !isLive && <span style={styles.onScheduleBadge}>On Schedule</span>}
+                  {isDone && <span style={styles.doneBadge}>COMPLETED</span>}
+                  {ev.isOnSchedule && !isLive && !isDone && <span style={styles.onScheduleBadge}>On Schedule</span>}
                   {ev.matchupCount > 0 && <span style={styles.stat}>{ev.matchupCount} matchups</span>}
                   {ev.fightCount > 0 && <span style={styles.stat}>{ev.fightCount} fights</span>}
                 </div>
@@ -130,7 +147,10 @@ const styles: Record<string, React.CSSProperties> = {
   eventNameLive: { fontWeight: 800 },
   eventMeta: { color: '#666', fontSize: 12, marginBottom: 6 },
   eventStats: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
+  eventCardDone: { opacity: 0.45 },
+  eventNameDone: { color: '#888' },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
+  doneBadge: { background: '#1a1a1a', color: '#555', border: '1px solid #333', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   onScheduleBadge: { background: '#1a2a1a', color: '#4caf50', border: '1px solid #2a4a2a', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   stat: { color: '#555', fontSize: 12 },
   note: { color: '#444', fontSize: 12, textAlign: 'center', marginTop: 24 },
