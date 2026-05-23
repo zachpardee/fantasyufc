@@ -104,6 +104,7 @@ export function LeagueHomePage() {
     { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' },
     { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' || league.status === 'active' },
     { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' },
+    { label: 'Rules', path: 'rules', icon: '📋', show: true },
     { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
   ];
 
