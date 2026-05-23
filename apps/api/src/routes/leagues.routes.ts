@@ -12,6 +12,7 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const body = z.object({
       name: z.string().min(3).max(100),
+      teamName: z.string().min(1).max(100).default('My Team'),
       description: z.string().max(500).optional(),
       maxTeams: z.number().int().min(2).max(20).default(10),
       rosterSize: z.number().int().min(5).max(20).default(10),
@@ -58,7 +59,7 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
         INSERT INTO league_members (league_id, user_id, team_name)
         VALUES ($1, $2, $3)
         RETURNING *
-      `, [league.id, req.user!.id, 'My Team']);
+      `, [league.id, req.user!.id, body.teamName]);
 
       await client.query(
         `INSERT INTO rosters (league_member_id) VALUES ($1)`,
@@ -119,7 +120,9 @@ leaguesRouter.post('/join', requireAuth, async (req: AuthRequest, res, next) => 
         `SELECT * FROM leagues WHERE invite_code = $1`, [inviteCode],
       );
       if (!league) throw new AppError(404, 'Invalid invite code');
-      if (league.status === 'completed') throw new AppError(400, 'League season is over');
+      if (league.status !== 'setup') throw new AppError(400,
+        league.status === 'completed' ? 'League season is over' : 'League draft has already started',
+      );
 
       const { rows: [existing] } = await client.query(
         `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,

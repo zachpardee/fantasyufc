@@ -63,13 +63,13 @@ export async function generateMatchupsForLeague(leagueId: string) {
   const teamIds = members.map((m) => m.id);
   const schedule = buildRoundRobinSchedule(teamIds);
 
-  // Delete any existing non-completed matchups for this league
+  // Delete unplayed matchups only — preserve any with a winner or non-zero scores (ties)
   await db.query(`
     DELETE FROM matchups
     WHERE league_id = $1
-      AND id NOT IN (
-        SELECT id FROM matchups WHERE league_id = $1 AND winner_id IS NOT NULL
-      )
+      AND winner_id IS NULL
+      AND home_score = 0
+      AND away_score = 0
   `, [leagueId]);
 
   const client = await db.connect();

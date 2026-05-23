@@ -8,6 +8,7 @@ export function CreateLeaguePage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
+    teamName: '',
     maxTeams: '10',
     rosterSize: '10',
     starterSlots: '5',
@@ -25,6 +26,7 @@ export function CreateLeaguePage() {
     try {
       const league = await apiClient.post<any, any>('/leagues', {
         name: form.name,
+        teamName: form.teamName || 'My Team',
         maxTeams: parseInt(form.maxTeams),
         rosterSize: parseInt(form.rosterSize),
         starterSlots: parseInt(form.starterSlots),
@@ -49,6 +51,11 @@ export function CreateLeaguePage() {
           <Field label="League Name">
             <input style={styles.input} placeholder="My Fantasy League" value={form.name}
               onChange={(e) => set('name', e.target.value)} required maxLength={100} />
+          </Field>
+
+          <Field label="Your Team Name">
+            <input style={styles.input} placeholder="My Team" value={form.teamName}
+              onChange={(e) => set('teamName', e.target.value)} maxLength={100} />
           </Field>
 
           <div style={styles.row}>
