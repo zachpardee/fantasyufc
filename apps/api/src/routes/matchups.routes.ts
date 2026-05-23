@@ -116,7 +116,24 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
       SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
         e.venue, e.location,
         ht.team_name as home_team_name, at2.team_name as away_team_name,
-        ht.total_points as home_season_points, at2.total_points as away_season_points
+        (
+          SELECT COALESCE(SUM(CASE WHEN m2.home_team_id = ht.id THEN m2.home_score
+                                   WHEN m2.away_team_id = ht.id THEN m2.away_score
+                                   ELSE 0 END), 0)
+          FROM matchups m2
+          WHERE m2.league_id = m.league_id
+            AND (m2.home_team_id = ht.id OR m2.away_team_id = ht.id)
+            AND (m2.home_score > 0 OR m2.away_score > 0)
+        ) AS home_season_points,
+        (
+          SELECT COALESCE(SUM(CASE WHEN m2.home_team_id = at2.id THEN m2.home_score
+                                   WHEN m2.away_team_id = at2.id THEN m2.away_score
+                                   ELSE 0 END), 0)
+          FROM matchups m2
+          WHERE m2.league_id = m.league_id
+            AND (m2.home_team_id = at2.id OR m2.away_team_id = at2.id)
+            AND (m2.home_score > 0 OR m2.away_score > 0)
+        ) AS away_season_points
       FROM matchups m
       JOIN ufc_events e ON e.id = m.event_id
       JOIN league_members ht ON ht.id = m.home_team_id
