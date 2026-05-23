@@ -136,7 +136,7 @@ export function PlayoffsPage() {
         </div>
       )}
 
-      {isCommissioner && phase === 'semis' && (
+      {isCommissioner && phase === 'semis' && semisMatchups.length >= 2 && (
         <div style={styles.commCard}>
           <p style={styles.commTitle}>Set Finals Event</p>
           <p style={styles.commSub}>Semis winners will advance to the Finals on the event you pick.</p>

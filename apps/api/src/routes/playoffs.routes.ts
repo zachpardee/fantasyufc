@@ -96,19 +96,19 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
 
     const [s1, s2, s3, s4] = topTeams;
 
-    // 1v4 and 2v3 (fall back to 1v2 if only 2 or 3 teams)
-    const matchupPairs = topTeams.length >= 4
+    // 4+ teams: standard semis (1v4, 2v3) then finals
+    // <4 teams: skip semis, go straight to finals (1v2)
+    const fullBracket = topTeams.length >= 4;
+    const round = fullBracket ? 'semis' : 'finals';
+    const matchupPairs: [any, any, number, number][] = fullBracket
       ? [[s1, s4, 1, 4], [s2, s3, 2, 3]]
-      : topTeams.length === 3
-      ? [[s1, s3, 1, 3], [s2, null, 2, null]]
       : [[s1, s2, 1, 2]];
 
     for (const [home, away, hs, as_] of matchupPairs) {
-      if (!away) continue;
       await db.query(`
         INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
-        VALUES ($1, $2, $3, $4, true, 'semis', $5, $6)
-      `, [req.params.leagueId, semisEventId, (home as any).id, (away as any).id, hs, as_]);
+        VALUES ($1, $2, $3, $4, true, $5, $6, $7)
+      `, [req.params.leagueId, semisEventId, home.id, away.id, round, hs, as_]);
     }
 
     await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [req.params.leagueId]);
