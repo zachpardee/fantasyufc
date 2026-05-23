@@ -12,7 +12,6 @@ export function CreateLeaguePage() {
     rosterSize: '10',
     starterSlots: '5',
     draftPickTimeSeconds: '90',
-    waiverDay: '2',
   });
 
   function set(field: string, value: string) {
@@ -30,7 +29,6 @@ export function CreateLeaguePage() {
         rosterSize: parseInt(form.rosterSize),
         starterSlots: parseInt(form.starterSlots),
         draftPickTimeSeconds: parseInt(form.draftPickTimeSeconds),
-        waiverDay: parseInt(form.waiverDay),
       });
       navigate(`/league/${league.id}`);
     } catch (err: any) {
@@ -38,8 +36,6 @@ export function CreateLeaguePage() {
       setLoading(false);
     }
   }
-
-  const waiverDays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
   return (
     <div style={styles.page}>
@@ -84,12 +80,6 @@ export function CreateLeaguePage() {
               </select>
             </Field>
           </div>
-
-          <Field label="Waiver Day">
-            <select style={styles.input} value={form.waiverDay} onChange={(e) => set('waiverDay', e.target.value)}>
-              {waiverDays.map((d, i) => <option key={i} value={i}>{d}</option>)}
-            </select>
-          </Field>
 
           {error && <p style={styles.error}>{error}</p>}
 

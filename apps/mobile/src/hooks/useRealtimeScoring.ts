@@ -9,14 +9,14 @@ export function useRealtimeScoring(matchupId: string | undefined) {
     if (!matchupId) return;
 
     const channel = supabase
-      .channel(`matchup-scores:${matchupId}`)
+      .channel(`matchup:${matchupId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'matchup_scores',
-          filter: `matchup_id=eq.${matchupId}`,
+          table: 'matchups',
+          filter: `id=eq.${matchupId}`,
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['matchup', matchupId] });

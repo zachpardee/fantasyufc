@@ -8,7 +8,7 @@ function toCamel(s: string): string {
 // Postgres NUMERIC columns arrive as strings — coerce known score/stat fields to numbers.
 const NUMERIC_FIELDS = new Set([
   'homeScore', 'awayScore', 'totalPoints', 'homePoints', 'awayPoints',
-  'averageFantasyPoints', 'waiverPriority', 'memberCount',
+  'averageFantasyPoints', 'memberCount',
   'wins', 'losses', 'ties', 'streak',
   'ranking', 'recordWins', 'recordLosses', 'recordDraws', 'recordNc',
   'fightCount', 'matchupCount',

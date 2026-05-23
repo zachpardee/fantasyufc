@@ -108,31 +108,3 @@ rosterRouter.post('/set-lineup', requireAuth, async (req: AuthRequest, res, next
     res.json({ ok: true });
   } catch (err) { next(err); }
 });
-
-rosterRouter.delete('/:fighterId', requireAuth, async (req: AuthRequest, res, next) => {
-  try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
-    if (!member) throw new AppError(403, 'Not a member of this league');
-
-    const { rows: [roster] } = await db.query(
-      `SELECT id FROM rosters WHERE league_member_id = $1`, [member.id],
-    );
-
-    const { rowCount } = await db.query(
-      `DELETE FROM roster_fighters WHERE roster_id = $1 AND fighter_id = $2`,
-      [roster.id, req.params.fighterId],
-    );
-    if (!rowCount) throw new AppError(404, 'Fighter not on your roster');
-
-    await db.query(`
-      INSERT INTO fighter_transactions (league_id, fighter_id, from_team_id, transaction_type)
-      VALUES ($1, $2, $3, 'drop')
-    `, [req.params.leagueId, req.params.fighterId, member.id]);
-
-    await redis.del(`free-agents:${req.params.leagueId}`);
-    res.json({ ok: true });
-  } catch (err) { next(err); }
-});

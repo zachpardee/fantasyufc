@@ -50,7 +50,6 @@ authRouter.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
         fightResults: z.boolean(),
         draftPicks: z.boolean(),
         eventStarting: z.boolean(),
-        waiverResults: z.boolean(),
       }).optional(),
     }).parse(req.body);
 

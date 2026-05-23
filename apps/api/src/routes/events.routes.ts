@@ -5,6 +5,12 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { processFightResult } from '../services/scoring.service';
 import { z } from 'zod';
 
+function requireAdmin(req: AuthRequest, _res: any, next: any) {
+  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean);
+  if (!adminIds.includes(req.user!.id)) return next(new AppError(403, 'Admin only'));
+  next();
+}
+
 export const eventsRouter = Router();
 
 eventsRouter.get('/', async (_req, res, next) => {
@@ -63,8 +69,7 @@ eventsRouter.get('/:eventId/results', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Admin endpoint — in production this would be gated by an admin role check
-eventsRouter.post('/admin/:eventId/results', requireAuth, async (req: AuthRequest, res, next) => {
+eventsRouter.post('/admin/:eventId/results', requireAuth, requireAdmin, async (req: AuthRequest, res, next) => {
   try {
     const body = z.object({
       fightId: z.string().uuid(),
