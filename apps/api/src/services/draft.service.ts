@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { supabaseAdmin } from '../config/supabase';
+import { generateMatchupsForLeague } from './matchup.service';
 
 export function snakePickTeamPosition(overallPick: number, teamCount: number): number {
   const round = Math.ceil(overallPick / teamCount);
@@ -112,12 +113,14 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
     const nextPick = overallPick + 1;
     const totalPicks = session.total_rounds * memberCount;
 
+    let draftCompleted = false;
     if (nextPick > totalPicks) {
       await client.query(
         `UPDATE draft_sessions SET status = 'completed', current_pick = $1, completed_at = NOW() WHERE id = $2`,
         [nextPick, session.id],
       );
       await client.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [leagueId]);
+      draftCompleted = true;
     } else {
       const nextTeamId = await getNextTeamId(client, session.id, nextPick, await getMemberCount(client, leagueId));
       const nextDeadline = new Date(Date.now() + session.pick_time_seconds * 1000).toISOString();
@@ -128,6 +131,12 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
     }
 
     await client.query('COMMIT');
+
+    if (draftCompleted) {
+      generateMatchupsForLeague(leagueId).catch((err) =>
+        console.error('[Draft] Failed to generate matchups after draft completion:', err),
+      );
+    }
 
     await supabaseAdmin.channel(`draft:${leagueId}`).send({
       type: 'broadcast',

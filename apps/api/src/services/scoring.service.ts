@@ -133,7 +133,7 @@ export async function processFightResult(fightResultId: string) {
     }
 
     // Score event picks:
-    //   correct winner                         = 100 pts
+    //   correct winner                         = 200 pts
     //   correct winner + method                = 300 pts
     //   correct winner + underdog (≥ +350 odds)= +100 bonus on top
     if (fightResult.winner_id) {

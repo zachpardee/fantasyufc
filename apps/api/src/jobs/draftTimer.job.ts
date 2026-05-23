@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../config/database';
 import { supabaseAdmin } from '../config/supabase';
+import { generateMatchupsForLeague } from '../services/matchup.service';
 
 export function startDraftTimerJob() {
   // Check every 10 seconds for expired draft picks
@@ -38,6 +39,9 @@ export function startDraftTimerJob() {
             );
             await client.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [session.league_id]);
             await client.query('COMMIT');
+            generateMatchupsForLeague(session.league_id).catch((err) =>
+              console.error('[DraftTimer] Failed to generate matchups:', err),
+            );
             continue;
           }
 
@@ -67,12 +71,14 @@ export function startDraftTimerJob() {
           const nextPick = overall + 1;
           const totalPicks = session.total_rounds * n;
 
+          let autoPickCompleted = false;
           if (nextPick > totalPicks) {
             await client.query(
               `UPDATE draft_sessions SET status = 'completed', completed_at = NOW() WHERE id = $1`,
               [session.id],
             );
             await client.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [session.league_id]);
+            autoPickCompleted = true;
           } else {
             // Compute next team using snake order
             const nextRound = Math.ceil(nextPick / n);
@@ -92,6 +98,12 @@ export function startDraftTimerJob() {
           }
 
           await client.query('COMMIT');
+
+          if (autoPickCompleted) {
+            generateMatchupsForLeague(session.league_id).catch((err) =>
+              console.error('[DraftTimer] Failed to generate matchups:', err),
+            );
+          }
 
           await supabaseAdmin.channel(`draft:${session.league_id}`).send({
             type: 'broadcast',

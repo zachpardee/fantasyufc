@@ -26,7 +26,16 @@ export function LeagueHomePage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
   });
 
-  const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string }) | null>({
+  const { data: currentEvent } = useQuery<{ id: string; name: string; venue: string; location: string; scheduledAt: string; status: string } | null>({
+    queryKey: ['current-event', leagueId],
+    queryFn: async () => {
+      try { return await apiClient.get(`/leagues/${leagueId}/picks/current-event`) as any; }
+      catch { return null; }
+    },
+    enabled: league?.status === 'active',
+  });
+
+  const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
     queryKey: ['matchup-current', leagueId],
     queryFn: async () => {
       try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
@@ -155,20 +164,39 @@ export function LeagueHomePage() {
       </nav>
 
       {/* Current matchup banner */}
-      {matchup && (
-        <div style={styles.matchupBanner}>
-          <div style={styles.teamScore}>
-            <span style={styles.teamName}>{matchup.homeTeamName}</span>
-            <span style={styles.score}>{(+matchup.homeScore).toFixed(1)}</span>
+      {matchup && (() => {
+        const home = +matchup.homeScore;
+        const away = +matchup.awayScore;
+        const isLive = matchup.eventStatus === 'live';
+        const diff = Math.abs(home - away);
+        const leading = home > away ? matchup.homeTeamName : away > home ? matchup.awayTeamName : null;
+        return (
+          <div style={styles.matchupBanner}>
+            <div style={styles.matchupEventRow}>
+              <span style={styles.matchupEventName}>{matchup.eventName ?? 'Current Event'}</span>
+              {isLive && <span style={styles.livePip}>LIVE</span>}
+            </div>
+            <div style={styles.matchupScoreRow}>
+              <div style={styles.matchupTeam}>
+                <div style={styles.matchupAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={styles.matchupTeamName}>{matchup.homeTeamName}</div>
+                <div style={{ ...styles.matchupScore, color: home > away ? '#fff' : '#666' }}>{home.toFixed(0)}</div>
+              </div>
+              <div style={styles.matchupVs}>
+                {leading
+                  ? <span style={styles.leadLabel}>{leading} leads by {diff.toFixed(0)}</span>
+                  : <span style={styles.tiedLabel}>TIED</span>}
+              </div>
+              <div style={{ ...styles.matchupTeam, alignItems: 'flex-end' }}>
+                <div style={styles.matchupAvatar}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={styles.matchupTeamName}>{matchup.awayTeamName}</div>
+                <div style={{ ...styles.matchupScore, color: away > home ? '#fff' : '#666' }}>{away.toFixed(0)}</div>
+              </div>
+            </div>
+            <Link to={`/league/${leagueId}/matchup`} style={styles.detailsBtn}>Matchup Details →</Link>
           </div>
-          <span style={styles.vs}>VS</span>
-          <div style={{ ...styles.teamScore, alignItems: 'flex-end' }}>
-            <span style={styles.teamName}>{matchup.awayTeamName}</span>
-            <span style={styles.score}>{(+matchup.awayScore).toFixed(1)}</span>
-          </div>
-          <Link to={`/league/${leagueId}/matchup`} style={styles.matchupLink}>View Matchup →</Link>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Setup / pre-draft lobby */}
       {league.status === 'setup' && (
@@ -254,6 +282,30 @@ export function LeagueHomePage() {
         </div>
       )}
 
+      {/* Current event */}
+      {currentEvent && (
+        <div style={styles.eventCard}>
+          <div style={styles.eventCardLeft}>
+            <span style={styles.eventCardLabel}>Next Event</span>
+            <span style={styles.eventCardName}>{currentEvent.name}</span>
+            {(currentEvent.venue || currentEvent.location) && (
+              <span style={styles.eventCardLocation}>
+                {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </div>
+          <div style={styles.eventCardRight}>
+            {currentEvent.status === 'live'
+              ? <span style={styles.eventLiveBadge}>LIVE</span>
+              : <span style={styles.eventDate}>
+                  {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+            }
+            <Link to={`/league/${leagueId}/picks`} style={styles.eventPicksLink}>Make Picks →</Link>
+          </div>
+        </div>
+      )}
+
       {/* Members roster (active leagues) */}
       {league.status === 'active' && members.length > 0 && (
         <div style={styles.memberSection}>
@@ -308,13 +360,20 @@ const styles: Record<string, React.CSSProperties> = {
   nameCancelBtn: { background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: 6, padding: '5px 12px', fontSize: 13, cursor: 'pointer' },
   matchupBanner: {
     background: '#1a1a1a', borderBottom: '1px solid #c8102e33',
-    padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 24,
+    padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12,
   },
-  teamScore: { display: 'flex', flexDirection: 'column', gap: 4 },
-  teamName: { color: '#888', fontSize: 12 },
-  score: { color: '#fff', fontSize: 36, fontWeight: 800 },
-  vs: { color: '#555', fontWeight: 700, flex: 1, textAlign: 'center' },
-  matchupLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginLeft: 'auto' },
+  matchupEventRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  matchupEventName: { color: '#555', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
+  livePip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 3, letterSpacing: 0.5 },
+  matchupScoreRow: { display: 'flex', alignItems: 'center' },
+  matchupTeam: { flex: 1, display: 'flex', flexDirection: 'column', gap: 3 },
+  matchupAvatar: { width: 28, height: 28, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' },
+  matchupTeamName: { color: '#888', fontSize: 11, fontWeight: 600 },
+  matchupScore: { fontSize: 34, fontWeight: 800, lineHeight: 1 },
+  matchupVs: { flex: 1, textAlign: 'center' as const },
+  leadLabel: { color: '#888', fontSize: 11 },
+  tiedLabel: { color: '#ffd700', fontSize: 11, fontWeight: 700 },
+  detailsBtn: { alignSelf: 'flex-end' as const, color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
   lobbyCard: { margin: 24, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: 28 },
   lobbyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   lobbyTitle: { color: '#fff', fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 4 },
@@ -360,4 +419,13 @@ const styles: Record<string, React.CSSProperties> = {
   teamPillRecord: { color: '#555', fontSize: 12 },
   meta: { padding: '0 24px 24px', display: 'flex', gap: 24, color: '#555', fontSize: 13, flexWrap: 'wrap' },
   metaCode: { color: '#888', fontFamily: 'monospace', fontWeight: 700 },
+  eventCard: { margin: '0 24px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  eventCardLeft: { display: 'flex', flexDirection: 'column', gap: 3 },
+  eventCardLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
+  eventCardName: { color: '#fff', fontSize: 15, fontWeight: 700 },
+  eventCardLocation: { color: '#555', fontSize: 12 },
+  eventCardRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 },
+  eventDate: { color: '#888', fontSize: 13, fontWeight: 600 },
+  eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 3 },
+  eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
 };
