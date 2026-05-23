@@ -378,7 +378,7 @@ const styles: Record<string, React.CSSProperties> = {
   matchupVs: { flex: 1, textAlign: 'center' as const },
   leadLabel: { color: '#888', fontSize: 11 },
   tiedLabel: { color: '#ffd700', fontSize: 11, fontWeight: 700 },
-  detailsBtn: { alignSelf: 'flex-end' as const, color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
+  detailsBtn: { alignSelf: 'center' as const, color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
   lobbyCard: { margin: 24, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: 28 },
   lobbyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   lobbyTitle: { color: '#fff', fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 4 },
