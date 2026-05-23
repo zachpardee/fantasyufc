@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
@@ -13,6 +14,7 @@ export function LeagueHomePage() {
   const [copyMsg, setCopyMsg] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
@@ -48,6 +50,31 @@ export function LeagueHomePage() {
       navigate(`/league/${leagueId}/draft`);
     },
   });
+
+  // Track presence: who's on this league page right now
+  useEffect(() => {
+    if (!leagueId || !session) return;
+    const myMember = members.find((m) => m.userId === session.user.id);
+    const teamName = myMember?.teamName ?? session.user.email ?? 'Unknown';
+
+    const channel = supabase.channel(`league-presence:${leagueId}`, {
+      config: { presence: { key: session.user.id } },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState<{ userId: string; teamName: string }>();
+        const users = Object.values(state).flatMap((s) => s);
+        setOnlineUsers(users);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ userId: session.user.id, teamName });
+        }
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, [leagueId, session, members]);
 
   if (!league) return <div style={styles.loading}>Loading...</div>;
 
@@ -102,6 +129,24 @@ export function LeagueHomePage() {
           </span>
         )}
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
+        {onlineUsers.length > 0 && (
+          <div style={styles.onlineRow}>
+            {onlineUsers.map((u) => (
+              <div
+                key={u.userId}
+                style={{
+                  ...styles.onlineAvatar,
+                  background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
+                  borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
+                }}
+                title={u.teamName}
+              >
+                {u.teamName.charAt(0).toUpperCase()}
+              </div>
+            ))}
+            <span style={styles.onlineCount}>{onlineUsers.length} online</span>
+          </div>
+        )}
       </nav>
 
       {/* Current matchup banner */}
@@ -248,6 +293,9 @@ const styles: Record<string, React.CSSProperties> = {
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   leagueName: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1, display: 'flex', alignItems: 'center', gap: 8 },
+  onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
+  onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 },
+  onlineCount: { color: '#555', fontSize: 11, whiteSpace: 'nowrap' },
   editNameBtn: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
   nameForm: { display: 'flex', alignItems: 'center', gap: 8, flex: 1 },
   nameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 16, fontWeight: 700, padding: '4px 10px', outline: 'none', flex: 1, maxWidth: 320 },
