@@ -1,5 +1,4 @@
 export type TradeStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired';
-export type WaiverStatus = 'pending' | 'processed' | 'approved' | 'denied';
 
 export interface TradeItem {
   id: string;
@@ -38,28 +37,4 @@ export interface Trade {
   };
   createdAt: string;
   updatedAt: string;
-}
-
-export interface WaiverClaim {
-  id: string;
-  leagueId: string;
-  claimingTeamId: string;
-  fighterId: string;
-  dropFighterId?: string;
-  priority: number;
-  status: WaiverStatus;
-  submittedAt: string;
-  processedAt?: string;
-  denialReason?: string;
-  fighter?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    imageUrl?: string;
-  };
-  dropFighter?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
 }

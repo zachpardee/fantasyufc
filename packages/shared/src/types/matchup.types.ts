@@ -24,8 +24,6 @@ export interface Matchup {
     teamName: string;
     userId: string;
   };
-  homeScores?: import('./scoring.types').MatchupScore[];
-  awayScores?: import('./scoring.types').MatchupScore[];
   createdAt: string;
   updatedAt: string;
 }
@@ -36,7 +34,7 @@ export interface RosterFighter {
   fighterId: string;
   slotType: 'starter' | 'bench' | 'ir';
   slotPosition: number;
-  acquiredVia: 'draft' | 'waiver' | 'trade' | 'free_agent';
+  acquiredVia: 'draft' | 'trade';
   acquiredAt: string;
   fighter?: import('./fighter.types').Fighter;
 }

@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { useAuthStore } from '../store/auth.store';
 
 type ScheduleEvent = {
   id: string;
@@ -17,171 +15,71 @@ type ScheduleEvent = {
   isScoring: boolean;
 };
 
-type AvailableEvent = {
-  id: string;
-  name: string;
-  shortName: string;
-  venue: string;
-  location: string;
-  scheduledAt: string;
-  status: string;
-  fightCount: number;
-  isAdded: boolean;
-};
-
 export function SchedulePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
-  const { session } = useAuthStore();
-  const qc = useQueryClient();
-  const [msg, setMsg] = useState('');
 
-  const { data: league } = useQuery<{ commissionerId: string; status: string }>({
-    queryKey: ['league', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
-  });
-
-  const { data: schedule = [] } = useQuery<ScheduleEvent[]>({
+  const { data: schedule = [], isLoading } = useQuery<ScheduleEvent[]>({
     queryKey: ['schedule', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule`),
   });
 
-  const { data: available = [] } = useQuery<AvailableEvent[]>({
-    queryKey: ['schedule-available', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule/available`),
-  });
-
-  const addMutation = useMutation({
-    mutationFn: (eventId: string) =>
-      apiClient.post(`/leagues/${leagueId}/schedule`, { eventId, isScoring: true }),
-    onSuccess: (res: any) => {
-      qc.invalidateQueries({ queryKey: ['schedule', leagueId] });
-      qc.invalidateQueries({ queryKey: ['schedule-available', leagueId] });
-      const count = res?.matchupsGenerated?.created ?? 0;
-      setMsg(count > 0 ? `Added event and generated ${count} matchups.` : 'Event added to schedule.');
-      setTimeout(() => setMsg(''), 4000);
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (eventId: string) =>
-      apiClient.delete(`/leagues/${leagueId}/schedule/${eventId}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['schedule', leagueId] });
-      qc.invalidateQueries({ queryKey: ['schedule-available', leagueId] });
-    },
-  });
-
-  const regenMutation = useMutation({
-    mutationFn: () =>
-      apiClient.post(`/leagues/${leagueId}/schedule/regenerate-matchups`, {}),
-    onSuccess: (res: any) => {
-      qc.invalidateQueries({ queryKey: ['schedule', leagueId] });
-      setMsg(`Regenerated: ${res?.created ?? 0} matchups created.`);
-      setTimeout(() => setMsg(''), 4000);
-    },
-  });
-
-  const isCommissioner = league?.commissionerId === session?.user.id;
-  const isActive = league?.status === 'active';
-
-  const now = new Date();
-  const hasFutureEvent = schedule.some((ev) => new Date(ev.scheduledAt) > now);
-  // Show the manual-add panel only when there's no upcoming event yet
-  const showAddPanel = isCommissioner && !hasFutureEvent;
+  // Show live event + next upcoming events.
+  // Exclude completed/cancelled and any event whose scheduled date is >24h in the past
+  // (guards against stale 'live'/'scheduled' status on old events in the DB).
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const upcoming = schedule
+    .filter((ev) => {
+      if (ev.status === 'completed' || ev.status === 'cancelled') return false;
+      if (ev.status === 'live') return true;
+      return new Date(ev.scheduledAt) > cutoff;
+    })
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+    .slice(0, 6);
 
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Schedule</span>
-        {isCommissioner && isActive && (
-          <button
-            style={styles.regenBtn}
-            onClick={() => regenMutation.mutate()}
-            disabled={regenMutation.isPending}
-          >
-            {regenMutation.isPending ? 'Regenerating...' : 'Regen Matchups'}
-          </button>
-        )}
       </nav>
 
-      {msg && <div style={styles.flashMsg}>{msg}</div>}
-
-      <div style={styles.autoNote}>
-        {hasFutureEvent
-          ? 'The next event will be added automatically 2 days after each event ends.'
-          : isCommissioner
-            ? 'Add the first event to start the season. After that, events are added automatically 2 days after each event ends.'
-            : 'Events are added automatically 2 days after each event ends.'}
-      </div>
-
       <div style={styles.content}>
-        {/* Current schedule */}
-        <section style={styles.section}>
-          <h2 style={styles.sectionTitle}>League Schedule ({schedule.length} events)</h2>
-          {schedule.length === 0 ? (
-            <p style={styles.empty}>No events scheduled yet.</p>
-          ) : (
-            schedule.map((ev) => (
-              <div key={ev.id} style={styles.eventCard}>
-                <div style={styles.eventInfo}>
-                  <div style={styles.eventName}>{ev.name}</div>
-                  <div style={styles.eventMeta}>
-                    {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
-                  </div>
-                  <div style={styles.eventStats}>
-                    <span style={ev.status === 'live' ? styles.liveBadge : styles.statusBadge}>
-                      {ev.status.toUpperCase()}
-                    </span>
-                    {ev.matchupCount > 0 && (
-                      <span style={styles.stat}>{ev.matchupCount} matchups</span>
-                    )}
-                  </div>
-                </div>
-                {isCommissioner && ev.status === 'scheduled' && (
-                  <button
-                    style={styles.removeBtn}
-                    onClick={() => removeMutation.mutate(ev.id)}
-                    disabled={removeMutation.isPending}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </section>
+        {isLoading && <div style={styles.empty}>Loading...</div>}
 
-        {/* Add first event (commissioner only, when no future event exists) */}
-        {showAddPanel && (
-          <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>Add First Event</h2>
-            {available.filter((ev) => !ev.isAdded).length === 0 ? (
-              <p style={styles.empty}>No upcoming events available to add.</p>
-            ) : (
-              available.filter((ev) => !ev.isAdded).map((ev) => (
-                <div key={ev.id} style={styles.eventCard}>
-                  <div style={styles.eventInfo}>
-                    <div style={styles.eventName}>{ev.name}</div>
-                    <div style={styles.eventMeta}>
-                      {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
-                    </div>
-                    {ev.fightCount > 0 && (
-                      <span style={styles.stat}>{ev.fightCount} fights</span>
-                    )}
-                  </div>
-                  <button
-                    style={styles.addBtn}
-                    onClick={() => addMutation.mutate(ev.id)}
-                    disabled={addMutation.isPending}
-                  >
-                    + Add
-                  </button>
-                </div>
-              ))
-            )}
-          </section>
+        {!isLoading && upcoming.length === 0 && (
+          <div style={styles.empty}>No upcoming events scheduled.</div>
         )}
+
+        {upcoming.map((ev) => {
+          const isLive = ev.status === 'live';
+          return (
+            <div key={ev.id} style={{ ...styles.eventCard, ...(isLive ? styles.eventCardLive : {}) }}>
+              <div style={styles.eventInfo}>
+                <div style={{ ...styles.eventName, ...(isLive ? styles.eventNameLive : {}) }}>
+                  {ev.name}
+                </div>
+                <div style={styles.eventMeta}>
+                  {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
+                </div>
+                <div style={styles.eventStats}>
+                  <span style={isLive ? styles.liveBadge : styles.statusBadge}>
+                    {isLive ? 'LIVE' : ev.status.toUpperCase()}
+                  </span>
+                  {ev.matchupCount > 0 && (
+                    <span style={styles.stat}>{ev.matchupCount} matchups</span>
+                  )}
+                  {ev.fightCount > 0 && (
+                    <span style={styles.stat}>{ev.fightCount} fights</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <div style={styles.note}>
+          Events are added automatically 2 days after each event ends.
+        </div>
       </div>
     </div>
   );
@@ -200,27 +98,21 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16,
   },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
-  title: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
-  regenBtn: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 6, color: '#ccc', padding: '7px 14px', cursor: 'pointer', fontSize: 13 },
-  flashMsg: { background: '#1a2a1a', borderBottom: '1px solid #4caf50', padding: '10px 24px', color: '#4caf50', fontSize: 14 },
-  autoNote: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '10px 24px', color: '#555', fontSize: 13 },
-  content: { maxWidth: 800, margin: '0 auto', padding: 24 },
-  section: { marginBottom: 40 },
-  sectionTitle: { color: '#888', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 14px' },
-  empty: { color: '#555', fontSize: 14, fontStyle: 'italic' },
+  title: { color: '#fff', fontWeight: 700, fontSize: 18 },
+  content: { maxWidth: 700, margin: '0 auto', padding: 24 },
+  empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: '40px 0' },
   eventCard: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: '16px 20px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 16,
+    padding: '16px 20px', marginBottom: 8,
   },
-  eventCardAdded: { opacity: 0.6 },
-  eventInfo: { flex: 1, minWidth: 0 },
-  eventName: { color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 4 },
+  eventCardLive: { border: '1px solid #c8102e', background: '#1a0808' },
+  eventInfo: {},
+  eventName: { color: '#fff', fontSize: 15, fontWeight: 600, marginBottom: 4 },
+  eventNameLive: { fontWeight: 800 },
   eventMeta: { color: '#666', fontSize: 12, marginBottom: 6 },
   eventStats: { display: 'flex', gap: 10, alignItems: 'center' },
   statusBadge: { background: '#2a2a2a', color: '#888', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   stat: { color: '#555', fontSize: 12 },
-  addBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 700, flexShrink: 0 },
-  addedTag: { color: '#4caf50', fontSize: 13, fontWeight: 700, flexShrink: 0 },
-  removeBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', padding: '7px 14px', cursor: 'pointer', fontSize: 12, flexShrink: 0 },
+  note: { color: '#444', fontSize: 12, textAlign: 'center', marginTop: 24 },
 };

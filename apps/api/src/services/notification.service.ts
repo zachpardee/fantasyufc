@@ -55,8 +55,6 @@ function notifTypeToPrefKey(type: NotificationType): string | null {
     trade_offer: 'tradeOffers',
     trade_accepted: 'tradeOffers',
     trade_rejected: 'tradeOffers',
-    waiver_approved: 'waiverResults',
-    waiver_denied: 'waiverResults',
     draft_pick: 'draftPicks',
     fight_result: 'fightResults',
     event_starting: 'eventStarting',

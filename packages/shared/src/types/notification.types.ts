@@ -2,8 +2,6 @@ export type NotificationType =
   | 'trade_offer'
   | 'trade_accepted'
   | 'trade_rejected'
-  | 'waiver_approved'
-  | 'waiver_denied'
   | 'draft_pick'
   | 'fight_result'
   | 'event_starting'

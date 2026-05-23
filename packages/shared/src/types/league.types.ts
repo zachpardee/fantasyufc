@@ -1,6 +1,5 @@
 export type LeagueStatus = 'setup' | 'drafting' | 'active' | 'completed';
 export type DraftType = 'snake' | 'auction';
-export type WaiverOrderType = 'inverse_standings' | 'fcfs';
 
 export interface League {
   id: string;
@@ -15,8 +14,6 @@ export interface League {
   draftType: DraftType;
   draftScheduledAt?: string;
   draftPickTimeSeconds: number;
-  waiverOrderType: WaiverOrderType;
-  waiverDay: number;
   tradeDeadlineDays: number;
   status: LeagueStatus;
   isPublic: boolean;
@@ -38,7 +35,6 @@ export interface LeagueMember {
   losses: number;
   ties: number;
   streak: number;
-  waiverPriority: number;
   auctionBudget?: number;
   isActive: boolean;
   joinedAt: string;

@@ -10,7 +10,6 @@ export interface UserProfile {
     fightResults: boolean;
     draftPicks: boolean;
     eventStarting: boolean;
-    waiverResults: boolean;
   };
   createdAt: string;
   updatedAt: string;
