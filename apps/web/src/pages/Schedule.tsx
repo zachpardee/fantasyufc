@@ -5,7 +5,6 @@ import { apiClient } from '../api/client';
 type ScheduleEvent = {
   id: string;
   name: string;
-  shortName: string;
   venue: string;
   location: string;
   scheduledAt: string;
@@ -15,24 +14,50 @@ type ScheduleEvent = {
   isScoring: boolean;
 };
 
+type AvailableEvent = {
+  id: string;
+  name: string;
+  venue: string;
+  location: string;
+  scheduledAt: string;
+  status: string;
+  fightCount: number;
+  isAdded: boolean;
+};
+
 export function SchedulePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
 
-  const { data: schedule = [], isLoading } = useQuery<ScheduleEvent[]>({
+  const { data: schedule = [], isLoading: loadingSchedule } = useQuery<ScheduleEvent[]>({
     queryKey: ['schedule', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule`),
   });
 
-  // Show live event + next upcoming events.
-  // Exclude completed/cancelled and any event whose scheduled date is >24h in the past
-  // (guards against stale 'live'/'scheduled' status on old events in the DB).
+  const { data: available = [], isLoading: loadingAvailable } = useQuery<AvailableEvent[]>({
+    queryKey: ['schedule-available', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule/available`),
+  });
+
+  const isLoading = loadingSchedule || loadingAvailable;
+
+  // Build a merged list: schedule events (have matchup data) take precedence over available.
+  // Filter out completed/cancelled and events >24h past their scheduled date.
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const upcoming = schedule
+  const scheduleIds = new Set(schedule.map((e) => e.id));
+
+  const scheduleRows = schedule
     .filter((ev) => {
       if (ev.status === 'completed' || ev.status === 'cancelled') return false;
       if (ev.status === 'live') return true;
       return new Date(ev.scheduledAt) > cutoff;
     })
+    .map((ev) => ({ ...ev, isOnSchedule: true, matchupCount: ev.matchupCount }));
+
+  const availableRows = available
+    .filter((ev) => !scheduleIds.has(ev.id))
+    .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0 }));
+
+  const upcoming = [...scheduleRows, ...availableRows]
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 6);
 
@@ -47,7 +72,7 @@ export function SchedulePage() {
         {isLoading && <div style={styles.empty}>Loading...</div>}
 
         {!isLoading && upcoming.length === 0 && (
-          <div style={styles.empty}>No upcoming events scheduled.</div>
+          <div style={styles.empty}>No upcoming events found.</div>
         )}
 
         {upcoming.map((ev) => {
@@ -62,15 +87,10 @@ export function SchedulePage() {
                   {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
                 </div>
                 <div style={styles.eventStats}>
-                  <span style={isLive ? styles.liveBadge : styles.statusBadge}>
-                    {isLive ? 'LIVE' : ev.status.toUpperCase()}
-                  </span>
-                  {ev.matchupCount > 0 && (
-                    <span style={styles.stat}>{ev.matchupCount} matchups</span>
-                  )}
-                  {ev.fightCount > 0 && (
-                    <span style={styles.stat}>{ev.fightCount} fights</span>
-                  )}
+                  {isLive && <span style={styles.liveBadge}>LIVE</span>}
+                  {ev.isOnSchedule && !isLive && <span style={styles.onScheduleBadge}>On Schedule</span>}
+                  {ev.matchupCount > 0 && <span style={styles.stat}>{ev.matchupCount} matchups</span>}
+                  {ev.fightCount > 0 && <span style={styles.stat}>{ev.fightCount} fights</span>}
                 </div>
               </div>
             </div>
@@ -78,7 +98,7 @@ export function SchedulePage() {
         })}
 
         <div style={styles.note}>
-          Events are added automatically 2 days after each event ends.
+          Events are added to your league automatically 2 days after each event ends.
         </div>
       </div>
     </div>
@@ -110,9 +130,9 @@ const styles: Record<string, React.CSSProperties> = {
   eventName: { color: '#fff', fontSize: 15, fontWeight: 600, marginBottom: 4 },
   eventNameLive: { fontWeight: 800 },
   eventMeta: { color: '#666', fontSize: 12, marginBottom: 6 },
-  eventStats: { display: 'flex', gap: 10, alignItems: 'center' },
-  statusBadge: { background: '#2a2a2a', color: '#888', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
+  eventStats: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
+  onScheduleBadge: { background: '#1a2a1a', color: '#4caf50', border: '1px solid #2a4a2a', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
   stat: { color: '#555', fontSize: 12 },
   note: { color: '#444', fontSize: 12, textAlign: 'center', marginTop: 24 },
 };
