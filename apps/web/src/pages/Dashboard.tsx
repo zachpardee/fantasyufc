@@ -31,7 +31,7 @@ export function DashboardPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <span style={styles.logo}>Fantasy UFC</span>
+        <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         <Link to="/fighters" style={styles.navLink}>Fighters</Link>
       </nav>
 
@@ -87,7 +87,7 @@ export function DashboardPage() {
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { color: '#c8102e', fontSize: 22, fontWeight: 800 },
+  logo: { height: 48 },
   navLink: { color: '#aaa', textDecoration: 'none', fontSize: 14 },
   content: { maxWidth: 1200, margin: '0 auto', padding: 24 },
   eventCard: {

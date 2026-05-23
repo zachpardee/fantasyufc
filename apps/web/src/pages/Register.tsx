@@ -60,6 +60,7 @@ export function RegisterPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <img src="/logo.jpg" alt="Fantasy Fighting League" style={styles.logo} />
         <h1 style={styles.title}>Create Account</h1>
         <form onSubmit={handleSubmit} style={styles.form}>
           <input style={styles.input} type="email" placeholder="Email" value={email}
@@ -84,7 +85,8 @@ export function RegisterPage() {
 const styles: Record<string, React.CSSProperties> = {
   container: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0a' },
   card: { background: '#1a1a1a', borderRadius: 12, padding: 40, width: '100%', maxWidth: 440, border: '1px solid #333' },
-  title: { color: '#fff', fontSize: 28, marginBottom: 28 },
+  logo: { width: 180, display: 'block', margin: '0 auto 8px' },
+  title: { color: '#fff', fontSize: 28, marginBottom: 28, textAlign: 'center' },
   form: { display: 'flex', flexDirection: 'column', gap: 14 },
   input: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 8, padding: '14px 16px', color: '#fff', fontSize: 15, outline: 'none' },
   button: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 16px', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
