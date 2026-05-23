@@ -96,10 +96,10 @@ draftRouter.post('/pause', requireAuth, async (req: AuthRequest, res, next) => {
 draftRouter.post('/resume', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [league] } = await db.query(
-      `SELECT commissioner_id FROM leagues WHERE id = $1`, [req.params.leagueId],
+      `SELECT commissioner_id, draft_pick_time_seconds FROM leagues WHERE id = $1`, [req.params.leagueId],
     );
     if (league?.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
-    const deadline = new Date(Date.now() + 90000).toISOString();
+    const deadline = new Date(Date.now() + league.draft_pick_time_seconds * 1000).toISOString();
     await db.query(
       `UPDATE draft_sessions SET status = 'active', current_pick_deadline = $2 WHERE league_id = $1 AND status = 'paused'`,
       [req.params.leagueId, deadline],

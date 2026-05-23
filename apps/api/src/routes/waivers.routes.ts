@@ -19,10 +19,11 @@ waiversRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       SELECT
         wc.id, wc.status, wc.priority, wc.submitted_at, wc.processed_at, wc.denial_reason,
         f.id as fighter_id, f.first_name || ' ' || f.last_name AS fighter_name,
-        f.weight_class, f.status as fighter_status,
+        wc_class.name as weight_class_name, f.status as fighter_status,
         df.id as drop_fighter_id, df.first_name || ' ' || df.last_name AS drop_fighter_name
       FROM waiver_claims wc
       JOIN fighters f ON f.id = wc.fighter_id
+      JOIN weight_classes wc_class ON wc_class.id = f.weight_class_id
       LEFT JOIN fighters df ON df.id = wc.drop_fighter_id
       WHERE wc.league_id = $1 AND wc.claiming_team_id = $2
       ORDER BY

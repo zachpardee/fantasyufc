@@ -45,13 +45,13 @@ export function StandingsPage() {
                   </td>
                   <td style={styles.tdTeam}>
                     <div style={styles.teamName}>
-                      {member.teamName ?? member.team_name}
+                      {member.teamName}
                       {isMe && <span style={styles.youBadge}>YOU</span>}
                     </div>
                     <div style={styles.username}>@{member.username}</div>
                   </td>
                   <td style={{ ...styles.td, ...styles.ptsCol }}>
-                    {(+(member.totalPoints ?? member.total_points ?? 0)).toFixed(1)}
+                    {(+(member.totalPoints ?? 0)).toFixed(1)}
                   </td>
                   <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
                   <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>

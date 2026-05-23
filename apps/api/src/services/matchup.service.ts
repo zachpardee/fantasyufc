@@ -1,5 +1,6 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
+import { redis } from '../config/redis';
 
 /**
  * Generates round-robin matchup schedule for a league across its events.
@@ -219,6 +220,7 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
     }
 
     await client.query('COMMIT');
+    await redis.del(`standings:${leagueId}`);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

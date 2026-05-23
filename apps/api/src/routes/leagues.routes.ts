@@ -18,6 +18,8 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
       starterSlots: z.number().int().min(1).max(10).default(5),
       draftType: z.enum(['snake', 'auction']).default('snake'),
       isPublic: z.boolean().default(false),
+      draftPickTimeSeconds: z.number().int().min(30).max(300).default(90),
+      waiverDay: z.number().int().min(0).max(6).default(2),
     }).parse(req.body);
 
     const client = await db.connect();
@@ -28,12 +30,14 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
       const { rows: [league] } = await client.query(`
         INSERT INTO leagues (name, description, commissioner_id, invite_code, max_teams,
-          roster_size, starter_slots, bench_slots, draft_type, is_public)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          roster_size, starter_slots, bench_slots, draft_type, is_public,
+          draft_pick_time_seconds, waiver_day)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         RETURNING *
       `, [body.name, body.description ?? null, req.user!.id, inviteCode,
           body.maxTeams, body.rosterSize, body.starterSlots,
-          body.rosterSize - body.starterSlots, body.draftType, body.isPublic]);
+          body.rosterSize - body.starterSlots, body.draftType, body.isPublic,
+          body.draftPickTimeSeconds, body.waiverDay]);
 
       const { rows: [ss] } = await client.query(`
         INSERT INTO scoring_settings (league_id, pts_win, pts_ko_tko, pts_submission, pts_decision,
