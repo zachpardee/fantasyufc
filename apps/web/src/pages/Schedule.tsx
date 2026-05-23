@@ -157,17 +157,10 @@ export function SchedulePage() {
                       <span style={styles.stat}>{ev.fightCount} fights</span>
                     )}
                   </div>
-                  {ev.isAdded ? (
-                    <span style={styles.addedTag}>Added</span>
-                  ) : (
-                    <button
-                      style={styles.addBtn}
-                      onClick={() => addMutation.mutate(ev.id)}
-                      disabled={addMutation.isPending}
-                    >
-                      + Add
-                    </button>
-                  )}
+                  {ev.isAdded
+                    ? <span style={styles.addedTag}>Added</span>
+                    : <button style={styles.addBtn} onClick={() => addMutation.mutate(ev.id)} disabled={addMutation.isPending}>+ Add</button>
+                  }
                 </div>
               ))
             )}
