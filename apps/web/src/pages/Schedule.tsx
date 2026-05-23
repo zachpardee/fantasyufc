@@ -121,7 +121,7 @@ export function SchedulePage() {
         })}
 
         <div style={styles.note}>
-          Events are added to your league automatically 2 days after each event ends.
+          Events within the season window (Jan 1 – Jun 30) are added automatically ~2 days after each event ends.
         </div>
       </div>
     </div>

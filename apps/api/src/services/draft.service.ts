@@ -105,6 +105,7 @@ export async function submitPick(leagueId: string, userId: string, fighterId: st
       `SELECT id FROM rosters WHERE league_member_id = $1`,
       [session.member_id],
     );
+    if (!roster) throw new AppError(500, 'Roster record not found for member');
     await client.query(
       `INSERT INTO roster_fighters (roster_id, fighter_id, slot_type, acquired_via) VALUES ($1, $2, 'starter', 'draft')`,
       [roster.id, fighterId],

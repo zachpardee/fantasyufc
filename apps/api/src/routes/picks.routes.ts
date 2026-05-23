@@ -34,8 +34,16 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    // Allow viewing another member's picks (for matchup page)
-    const targetMemberId = (req.query.memberId as string) || member.id;
+    // Allow viewing another member's picks (for matchup page) — verify they're in this league
+    let targetMemberId = member.id;
+    if (req.query.memberId && req.query.memberId !== member.id) {
+      const { rows: [targetMember] } = await db.query(
+        `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
+        [req.params.leagueId, req.query.memberId],
+      );
+      if (!targetMember) throw new AppError(404, 'Member not found in this league');
+      targetMemberId = targetMember.id;
+    }
 
     const { rows: fights } = await db.query(`
       SELECT
