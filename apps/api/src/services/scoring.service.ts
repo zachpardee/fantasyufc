@@ -1,5 +1,3 @@
-import { calculateFightScore } from '@fantasy-ufc/shared';
-import type { FightResult } from '@fantasy-ufc/shared';
 import { db } from '../config/database';
 
 export async function processFightResult(fightResultId: string) {
@@ -9,19 +7,9 @@ export async function processFightResult(fightResultId: string) {
 
     const { rows: [fightResult] } = await client.query<{
       id: string; fight_id: string; winner_id: string; outcome: string;
-      ending_round: number; ending_time_seconds: number;
-      winner_sig_strikes_landed: number; winner_sig_strikes_attempted: number;
-      winner_total_strikes_landed: number; winner_takedowns_landed: number;
-      winner_takedowns_attempted: number; winner_submission_attempts: number;
-      winner_knockdowns: number;
-      loser_sig_strikes_landed: number; loser_sig_strikes_attempted: number;
-      loser_total_strikes_landed: number; loser_takedowns_landed: number;
-      loser_takedowns_attempted: number; loser_submission_attempts: number;
-      loser_knockdowns: number;
-      performance_of_night: boolean; fight_of_night: boolean;
-      is_title_fight: boolean; event_id: string;
+      event_id: string;
     }>(`
-      SELECT fr.*, f.is_title_fight, f.event_id
+      SELECT fr.id, fr.fight_id, fr.winner_id, fr.outcome, f.event_id
       FROM fight_results fr
       JOIN fights f ON f.id = fr.fight_id
       WHERE fr.id = $1
@@ -29,108 +17,11 @@ export async function processFightResult(fightResultId: string) {
 
     if (!fightResult) throw new Error(`Fight result ${fightResultId} not found`);
 
-    const result: FightResult = {
-      id: fightResult.id,
-      fightId: fightResult.fight_id,
-      winnerId: fightResult.winner_id,
-      outcome: fightResult.outcome as FightResult['outcome'],
-      endingRound: fightResult.ending_round,
-      endingTimeSeconds: fightResult.ending_time_seconds,
-      performanceOfNight: fightResult.performance_of_night,
-      fightOfNight: fightResult.fight_of_night,
-      winnerStats: {
-        sigStrikesLanded: fightResult.winner_sig_strikes_landed,
-        sigStrikesAttempted: fightResult.winner_sig_strikes_attempted,
-        totalStrikesLanded: fightResult.winner_total_strikes_landed,
-        takedownsLanded: fightResult.winner_takedowns_landed,
-        takedownsAttempted: fightResult.winner_takedowns_attempted,
-        submissionAttempts: fightResult.winner_submission_attempts,
-        knockdowns: fightResult.winner_knockdowns,
-      },
-      loserStats: {
-        sigStrikesLanded: fightResult.loser_sig_strikes_landed,
-        sigStrikesAttempted: fightResult.loser_sig_strikes_attempted,
-        totalStrikesLanded: fightResult.loser_total_strikes_landed,
-        takedownsLanded: fightResult.loser_takedowns_landed,
-        takedownsAttempted: fightResult.loser_takedowns_attempted,
-        submissionAttempts: fightResult.loser_submission_attempts,
-        knockdowns: fightResult.loser_knockdowns,
-      },
-      recordedAt: new Date().toISOString(),
-    };
-
-    // Find all matchups for this event across all leagues
-    const { rows: matchupFighters } = await client.query<{
-      matchup_id: string; roster_fighter_id: string; fighter_id: string;
-      is_starter: boolean; league_id: string;
-      pts_win: string; pts_ko_tko: string; pts_submission: string;
-      pts_decision: string; pts_draw: string; pts_no_contest: string;
-      pts_finish_rd1: string; pts_finish_rd2: string; pts_finish_rd3: string;
-      pts_finish_rd4: string; pts_finish_rd5: string; pts_knockdown: string;
-      pts_sig_strike_landed: string; pts_sig_strike_attempted: string;
-      pts_total_strike_landed: string; pts_takedown_landed: string;
-      pts_takedown_attempted: string; pts_submission_attempt: string;
-      pts_performance_of_night: string; pts_fight_of_night: string;
-      pts_loss: string; pts_ko_loss_penalty: string; title_fight_multiplier: string;
-    }>(`
-      SELECT
-        m.id as matchup_id,
-        rf.id as roster_fighter_id,
-        rf.fighter_id,
-        rf.slot_type = 'starter' as is_starter,
-        m.league_id,
-        ss.*
-      FROM matchups m
-      JOIN league_members lm ON lm.id IN (m.home_team_id, m.away_team_id)
-      JOIN rosters r ON r.league_member_id = lm.id
-      JOIN roster_fighters rf ON rf.roster_id = r.id
-        AND rf.fighter_id IN ($1, $2)
-      JOIN scoring_settings ss ON ss.league_id = m.league_id
-      WHERE m.event_id = $3
-    `, [
-      /* red fighter */ await getFighterId(client, fightResult.fight_id, 'red'),
-      /* blue fighter */ await getFighterId(client, fightResult.fight_id, 'blue'),
-      fightResult.event_id,
-    ]);
-
-    // Always collect matchup IDs for this event — picks scoring applies regardless of roster
+    // Collect all matchup IDs for this event
     const { rows: eventMatchups } = await client.query<{ id: string }>(
       `SELECT id FROM matchups WHERE event_id = $1`, [fightResult.event_id],
     );
     const processedMatchupIds = new Set<string>(eventMatchups.map((m) => m.id));
-
-    for (const row of matchupFighters) {
-      const settings = rowToScoringSettings(row);
-      const breakdown = calculateFightScore(
-        result,
-        row.fighter_id,
-        settings,
-        fightResult.is_title_fight,
-        row.matchup_id,
-      );
-
-      await client.query(`
-        INSERT INTO matchup_scores (
-          matchup_id, roster_fighter_id, fight_id, fighter_id,
-          pts_win, pts_finish, pts_round_bonus, pts_sig_strikes,
-          pts_total_strikes, pts_knockdowns, pts_takedowns, pts_submissions,
-          pts_bonuses, title_multiplier, total_points, is_starter, scored_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW())
-        ON CONFLICT (matchup_id, fighter_id) DO UPDATE SET
-          pts_win=$5, pts_finish=$6, pts_round_bonus=$7, pts_sig_strikes=$8,
-          pts_total_strikes=$9, pts_knockdowns=$10, pts_takedowns=$11,
-          pts_submissions=$12, pts_bonuses=$13, title_multiplier=$14,
-          total_points=$15, scored_at=NOW()
-      `, [
-        row.matchup_id, row.roster_fighter_id, fightResult.fight_id, row.fighter_id,
-        breakdown.ptsWin, breakdown.ptsFinish, breakdown.ptsRoundBonus,
-        breakdown.ptsSigStrikes, breakdown.ptsTotalStrikes, breakdown.ptsKnockdowns,
-        breakdown.ptsTakedowns, breakdown.ptsSubmissions, breakdown.ptsBonuses,
-        breakdown.titleMultiplier, breakdown.totalPoints, row.is_starter,
-      ]);
-
-      processedMatchupIds.add(row.matchup_id);
-    }
 
     // Score event picks:
     //   correct winner                         = 200 pts
@@ -240,43 +131,3 @@ export async function processFightResult(fightResultId: string) {
   }
 }
 
-async function getFighterId(client: import('pg').PoolClient, fightId: string, side: 'red' | 'blue') {
-  const col = side === 'red' ? 'red_fighter_id' : 'blue_fighter_id';
-  const { rows: [row] } = await client.query<{ fighter_id: string }>(
-    `SELECT ${col} as fighter_id FROM fights WHERE id = $1`, [fightId],
-  );
-  return row.fighter_id;
-}
-
-function rowToScoringSettings(row: Record<string, unknown>) {
-  const s = row as Record<string, string>; // numeric columns come back as strings from pg
-  return {
-    id: '',
-    leagueId: s.league_id,
-    ptsWin: +s.pts_win,
-    ptsKoTko: +s.pts_ko_tko,
-    ptsSubmission: +s.pts_submission,
-    ptsDecision: +s.pts_decision,
-    ptsDraw: +s.pts_draw,
-    ptsNoContest: +s.pts_no_contest,
-    ptsFinishRd1: +s.pts_finish_rd1,
-    ptsFinishRd2: +s.pts_finish_rd2,
-    ptsFinishRd3: +s.pts_finish_rd3,
-    ptsFinishRd4: +s.pts_finish_rd4,
-    ptsFinishRd5: +s.pts_finish_rd5,
-    ptsKnockdown: +s.pts_knockdown,
-    ptsSigStrikeLanded: +s.pts_sig_strike_landed,
-    ptsSigStrikeAttempted: +s.pts_sig_strike_attempted,
-    ptsTotalStrikeLanded: +s.pts_total_strike_landed,
-    ptsTakedownLanded: +s.pts_takedown_landed,
-    ptsTakedownAttempted: +s.pts_takedown_attempted,
-    ptsSubmissionAttempt: +s.pts_submission_attempt,
-    ptsPerformanceOfNight: +s.pts_performance_of_night,
-    ptsFightOfNight: +s.pts_fight_of_night,
-    ptsLoss: +s.pts_loss,
-    ptsKoLossPenalty: +s.pts_ko_loss_penalty,
-    titleFightMultiplier: +s.title_fight_multiplier,
-    scorePrelims: true,
-    scoreEarlyPrelims: false,
-  };
-}
