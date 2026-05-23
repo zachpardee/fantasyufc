@@ -225,13 +225,22 @@ export function MatchupPage() {
             </div>
           </div>
 
+          {/* Season breakdown table */}
+          <SeasonTable
+            allMatchups={allMatchups}
+            homeTeamId={matchup.homeTeamId}
+            awayTeamId={matchup.awayTeamId}
+            homeTeamName={matchup.homeTeamName}
+            awayTeamName={matchup.awayTeamName}
+            currentEventId={matchup.eventId}
+          />
+
           {/* Score breakdown */}
           <div style={styles.totalsBar}>
             <ScoreBreakdown
               label={matchup.homeTeamName}
               picks={homePicks?.fights ?? []}
               matchupPts={+matchup.homeScore}
-              seasonPts={+(matchup.homeSeasonPoints ?? 0)}
               isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
               align="left"
             />
@@ -240,7 +249,6 @@ export function MatchupPage() {
               label={matchup.awayTeamName}
               picks={awayPicks?.fights ?? []}
               matchupPts={+matchup.awayScore}
-              seasonPts={+(matchup.awaySeasonPoints ?? 0)}
               isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
               align="right"
             />
@@ -352,8 +360,92 @@ function FighterRow({ fighter, align }: { fighter: any; align: 'left' | 'right' 
   );
 }
 
-function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
-  label: string; picks: any[]; matchupPts: number; seasonPts: number;
+type SeasonRow = {
+  eventId: string; eventName: string; scheduledAt: string;
+  homeScore: number; awayScore: number; homeBonus: number; awayBonus: number;
+  isCurrent: boolean;
+};
+
+function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, currentEventId }: {
+  allMatchups: any[]; homeTeamId: string; awayTeamId: string;
+  homeTeamName: string; awayTeamName: string; currentEventId: string;
+}) {
+  const WIN_BONUS = 250;
+  const TIE_BONUS = 100;
+
+  const rows: SeasonRow[] = allMatchups
+    .map((m): SeasonRow | null => {
+      const homeIsHome = m.homeTeamId === homeTeamId;
+      const homeScore = +(homeIsHome ? m.homeScore : m.awayScore);
+      const awayScore = +(homeIsHome ? m.awayScore : m.homeScore);
+      if (homeScore === 0 && awayScore === 0) return null;
+      const homeWon = m.winnerId === homeTeamId;
+      const awayWon = m.winnerId === awayTeamId;
+      const tied = homeScore > 0 && !m.winnerId;
+      return {
+        eventId: m.eventId,
+        eventName: m.eventName as string,
+        scheduledAt: m.scheduledAt as string,
+        homeScore, awayScore,
+        homeBonus: homeWon ? WIN_BONUS : tied ? TIE_BONUS : 0,
+        awayBonus: awayWon ? WIN_BONUS : tied ? TIE_BONUS : 0,
+        isCurrent: m.eventId === currentEventId,
+      };
+    })
+    .filter((r): r is SeasonRow => r !== null)
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+  if (rows.length === 0) return null;
+
+  const totalHome = rows.reduce((s, r) => s + r.homeScore + r.homeBonus, 0);
+  const totalAway = rows.reduce((s, r) => s + r.awayScore + r.awayBonus, 0);
+
+  return (
+    <div style={styles.seasonSection}>
+      <div style={styles.sectionHeader}>
+        <span style={styles.sectionTitle}>SEASON BREAKDOWN</span>
+      </div>
+      <div style={styles.seasonTable}>
+        {/* Header */}
+        <div style={styles.seasonHeaderRow}>
+          <div style={{ ...styles.seasonEventCell, color: '#444' }}>EVENT</div>
+          <div style={styles.seasonScoreCell}>{homeTeamName}</div>
+          <div style={styles.seasonScoreCell}>{awayTeamName}</div>
+        </div>
+        {/* Rows */}
+        {rows.map((r) => {
+          const short = r.eventName.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ').replace(/^UFC\s+/i, 'UFC ');
+          return (
+            <div key={r.eventId} style={{ ...styles.seasonRow, ...(r.isCurrent ? styles.seasonRowCurrent : {}) }}>
+              <div style={styles.seasonEventCell}>{short}</div>
+              <div style={styles.seasonScoreCell}>
+                <span style={styles.seasonPts}>{r.homeScore.toFixed(0)}</span>
+                {r.homeBonus > 0 && <span style={styles.seasonBonus}>+{r.homeBonus}</span>}
+              </div>
+              <div style={styles.seasonScoreCell}>
+                <span style={styles.seasonPts}>{r.awayScore.toFixed(0)}</span>
+                {r.awayBonus > 0 && <span style={styles.seasonBonus}>+{r.awayBonus}</span>}
+              </div>
+            </div>
+          );
+        })}
+        {/* Totals */}
+        <div style={styles.seasonTotalRow}>
+          <div style={styles.seasonEventCell}>SEASON TOTAL</div>
+          <div style={styles.seasonScoreCell}>
+            <span style={styles.seasonTotalPts}>{totalHome.toFixed(0)}</span>
+          </div>
+          <div style={styles.seasonScoreCell}>
+            <span style={styles.seasonTotalPts}>{totalAway.toFixed(0)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScoreBreakdown({ label, picks, matchupPts }: {
+  label: string; picks: any[]; matchupPts: number;
   isFinalized?: boolean; align?: 'left' | 'right';
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
@@ -389,10 +481,6 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
         </div>
       )}
       {!hasScores && <div style={styles.breakdownPending}>Scores update as fights complete</div>}
-      <div style={{ ...styles.breakdownRow, marginTop: 4 }}>
-        <span style={styles.totalsLabel}>Season total</span>
-        <span style={styles.totalsSeason}>{seasonPts.toFixed(1)}</span>
-      </div>
     </div>
   );
 }
@@ -465,6 +553,17 @@ const styles: Record<string, React.CSSProperties> = {
   champBadge: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3 },
   fighterMeta: { color: '#444', fontSize: 11 },
 
+  seasonSection: { padding: '0 24px 16px' },
+  seasonTable: { border: '1px solid #1e1e1e', borderRadius: 8, overflow: 'hidden' },
+  seasonHeaderRow: { display: 'flex', padding: '8px 12px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' },
+  seasonRow: { display: 'flex', padding: '9px 12px', borderBottom: '1px solid #111' },
+  seasonRowCurrent: { background: '#111' },
+  seasonTotalRow: { display: 'flex', padding: '10px 12px', background: '#0d0d0d', borderTop: '1px solid #222' },
+  seasonEventCell: { flex: 1, color: '#666', fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+  seasonScoreCell: { width: 100, display: 'flex', alignItems: 'center', gap: 6 },
+  seasonPts: { color: '#ccc', fontSize: 13, fontWeight: 700 },
+  seasonBonus: { color: '#4caf50', fontSize: 11, fontWeight: 700 },
+  seasonTotalPts: { color: '#ff8c42', fontSize: 15, fontWeight: 800 },
   totalsBar: { background: '#111', borderTop: '1px solid #1e1e1e', padding: '20px 32px', display: 'flex', marginTop: 16 },
   totalsDivider: { width: 1, background: '#222', margin: '0 24px' },
   totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
