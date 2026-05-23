@@ -292,7 +292,7 @@ function ScoreBreakdown({ label, picks, matchupPts, seasonPts }: {
   const totalPickPts = correct.reduce((sum, p) => sum + (+p.pointsEarned), 0);
   const basePts = correct.length * 200;
   const bonusPts = totalPickPts - basePts;
-  const rosterBonus = Math.round(matchupPts - totalPickPts);
+  const rosterBonus = Math.max(0, Math.round(matchupPts - totalPickPts));
   const hasScores = scored.length > 0;
 
   const rows = [

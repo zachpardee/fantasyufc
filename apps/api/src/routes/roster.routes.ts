@@ -42,6 +42,19 @@ rosterRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
 
 rosterRouter.get('/:memberId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
+    // Ensure the requesting user is in this league, and the target member also belongs to this league
+    const { rows: [viewer] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!viewer) throw new AppError(403, 'Not a member of this league');
+
+    const { rows: [target] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
+      [req.params.leagueId, req.params.memberId],
+    );
+    if (!target) throw new AppError(404, 'Member not found in this league');
+
     const { rows } = await db.query(`
       SELECT rf.*, f.first_name, f.last_name, f.nickname, f.image_url,
              f.record_wins, f.record_losses, f.ranking, f.is_champion,

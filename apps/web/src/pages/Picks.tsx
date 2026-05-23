@@ -61,9 +61,10 @@ export function PicksPage() {
   const fights: any[] = picksData?.fights ?? [];
   const locked: boolean = picksData?.locked ?? false;
 
-  const mainCard = fights.filter((f) => f.cardSegment === 'main' || f.isMainEvent || f.isCoMain);
-  const prelims = fights.filter((f) => f.cardSegment === 'prelims');
+  // Fights with no segment data default to main card
   const earlyPrelims = fights.filter((f) => f.cardSegment === 'early_prelims');
+  const prelims = fights.filter((f) => f.cardSegment === 'prelims');
+  const mainCard = fights.filter((f) => !earlyPrelims.includes(f) && !prelims.includes(f));
 
   const totalFights = fights.length;
   // A pick is complete only when both a winner and a method are selected

@@ -170,10 +170,19 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
     const sdbResult = sportsDbEvent.results.find((r) => {
       const wName = r.winnerName.toLowerCase();
       const lName = r.loserName.toLowerCase();
-      return (
-        (redName.includes(wName.split(' ').pop()!) || wName.includes(redName.split(' ').pop()!)) ||
-        (blueName.includes(lName.split(' ').pop()!) || lName.includes(blueName.split(' ').pop()!))
-      );
+      // Try exact full-name containment first, fall back to last-name matching
+      const fullNameMatch =
+        redName.includes(wName) || wName.includes(redName) ||
+        blueName.includes(wName) || wName.includes(blueName) ||
+        redName.includes(lName) || lName.includes(redName) ||
+        blueName.includes(lName) || lName.includes(blueName);
+      if (fullNameMatch) return true;
+      // Last-name fallback
+      const redLast = redName.split(' ').pop()!;
+      const blueLast = blueName.split(' ').pop()!;
+      const wLast = wName.split(' ').pop()!;
+      const lLast = lName.split(' ').pop()!;
+      return (redLast === wLast || redLast === lLast || blueLast === wLast || blueLast === lLast);
     });
 
     if (!sdbResult || sdbResult.method === fight.outcome) continue;
