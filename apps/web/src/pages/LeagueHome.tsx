@@ -285,24 +285,22 @@ export function LeagueHomePage() {
       {/* Current event */}
       {currentEvent && (
         <div style={styles.eventCard}>
-          <div style={styles.eventCardLeft}>
-            <span style={styles.eventCardLabel}>Next Event</span>
+          <span style={styles.eventCardLabel}>{currentEvent.status === 'live' ? 'Live Event' : 'Next Event'}</span>
+          <div style={styles.eventCardNameRow}>
             <span style={styles.eventCardName}>{currentEvent.name}</span>
-            {(currentEvent.venue || currentEvent.location) && (
-              <span style={styles.eventCardLocation}>
-                {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-              </span>
-            )}
+            {currentEvent.status === 'live' && <span style={styles.eventLiveBadge}>LIVE</span>}
           </div>
-          <div style={styles.eventCardRight}>
-            {currentEvent.status === 'live'
-              ? <span style={styles.eventLiveBadge}>LIVE</span>
-              : <span style={styles.eventDate}>
-                  {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
-            }
-            <Link to={`/league/${leagueId}/picks`} style={styles.eventPicksLink}>Make Picks →</Link>
-          </div>
+          {(currentEvent.venue || currentEvent.location) && (
+            <span style={styles.eventCardLocation}>
+              {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+            </span>
+          )}
+          {currentEvent.scheduledAt && (
+            <span style={styles.eventDate}>
+              {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+          )}
+          <Link to={`/league/${leagueId}/picks`} style={styles.eventPicksLink}>Make Picks →</Link>
         </div>
       )}
 
@@ -419,13 +417,12 @@ const styles: Record<string, React.CSSProperties> = {
   teamPillRecord: { color: '#555', fontSize: 12 },
   meta: { padding: '0 24px 24px', display: 'flex', gap: 24, color: '#555', fontSize: 13, flexWrap: 'wrap' },
   metaCode: { color: '#888', fontFamily: 'monospace', fontWeight: 700 },
-  eventCard: { margin: '0 24px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  eventCardLeft: { display: 'flex', flexDirection: 'column', gap: 3 },
+  eventCard: { margin: '0 24px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' },
+  eventCardNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
   eventCardLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
-  eventCardName: { color: '#fff', fontSize: 15, fontWeight: 700 },
+  eventCardName: { color: '#fff', fontSize: 17, fontWeight: 700 },
   eventCardLocation: { color: '#555', fontSize: 12 },
-  eventCardRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 },
-  eventDate: { color: '#888', fontSize: 13, fontWeight: 600 },
+  eventDate: { color: '#888', fontSize: 13, fontWeight: 600, marginTop: 2 },
   eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 3 },
-  eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600 },
+  eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginTop: 8 },
 };
