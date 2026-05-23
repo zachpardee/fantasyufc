@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { supabase } from '../api/supabase';
+import { useAuthStore } from '../store/auth.store';
 import type { League, UFCEvent } from '@fantasy-ufc/shared';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { session } = useAuthStore();
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [teamName, setTeamName] = useState('');
@@ -32,7 +35,16 @@ export function DashboardPage() {
     <div style={styles.page}>
       <nav style={styles.nav}>
         <img src="/logo.jpg" alt="FFL" style={styles.logo} />
-        <Link to="/fighters" style={styles.navLink}>Fighters</Link>
+        <div style={styles.navRight}>
+          <Link to="/fighters" style={styles.navLink}>Fighters</Link>
+          {session?.user.email && <span style={styles.navEmail}>{session.user.email}</span>}
+          <button
+            style={styles.logoutBtn}
+            onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }}
+          >
+            Sign Out
+          </button>
+        </div>
       </nav>
 
       <div style={styles.content}>
@@ -88,7 +100,10 @@ const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   logo: { height: 48 },
+  navRight: { display: 'flex', alignItems: 'center', gap: 16 },
   navLink: { color: '#aaa', textDecoration: 'none', fontSize: 14 },
+  navEmail: { color: '#555', fontSize: 13 },
+  logoutBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', padding: '6px 14px', cursor: 'pointer', fontSize: 13 },
   content: { maxWidth: 1200, margin: '0 auto', padding: 24 },
   eventCard: {
     background: '#1a1a1a', border: '1px solid #333', borderRadius: 12,
