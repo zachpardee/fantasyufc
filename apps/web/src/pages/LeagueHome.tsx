@@ -107,6 +107,10 @@ export function LeagueHomePage() {
   const canStartDraft = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
   const myMember = members.find((m) => m.userId === session?.user.id);
 
+  const champion = members.find((m) => m.isChampion);
+  const showChampionBanner = league.status === 'completed' && !!champion && !!league.completedAt
+    && Date.now() - new Date(league.completedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+
   function copyInviteCode() {
     navigator.clipboard.writeText(league!.inviteCode);
     setCopyMsg('Copied!');
@@ -269,6 +273,17 @@ export function LeagueHomePage() {
         );
       })()}
 
+      {/* Champion banner */}
+      {showChampionBanner && (
+        <div style={styles.championBanner}>
+          <span style={styles.championTrophy}>🏆</span>
+          <div style={styles.championText}>
+            <span style={styles.championLabel}>League Champion</span>
+            <span style={styles.championName}>{champion!.teamName}</span>
+          </div>
+        </div>
+      )}
+
       {/* Setup / pre-draft lobby */}
       {league.status === 'setup' && (
         <div style={styles.lobbyCard}>
@@ -399,6 +414,7 @@ function statusStyle(status: string): React.CSSProperties {
     setup: '#8888ff',
     drafting: '#ffd700',
     active: '#4caf50',
+    playoffs: '#c8102e',
     completed: '#888',
   };
   return {
@@ -501,4 +517,13 @@ const styles: Record<string, React.CSSProperties> = {
   eventDate: { color: '#888', fontSize: 13, fontWeight: 600, marginTop: 2 },
   eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 3 },
   eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginTop: 8 },
+  championBanner: {
+    background: 'linear-gradient(135deg, #1a0a0a 0%, #2a1010 50%, #1a0a0a 100%)',
+    border: '1px solid #c8102e66', borderLeft: '4px solid #c8102e',
+    padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20,
+  },
+  championTrophy: { fontSize: 40, lineHeight: 1, flexShrink: 0 },
+  championText: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
+  championLabel: { color: '#c8102e', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1 },
+  championName: { color: '#fff', fontSize: 22, fontWeight: 800 },
 };

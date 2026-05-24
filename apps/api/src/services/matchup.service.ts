@@ -103,7 +103,7 @@ export async function generateMatchupsForLeague(leagueId: string) {
 
 export async function finalizeMatchupResults(leagueId: string, eventId: string) {
   const { rows: matchups } = await db.query(`
-    SELECT id, home_team_id, away_team_id, home_score, away_score
+    SELECT id, home_team_id, away_team_id, home_score, away_score, is_playoffs, playoff_round
     FROM matchups
     WHERE league_id = $1 AND event_id = $2 AND winner_id IS NULL
   `, [leagueId, eventId]);
@@ -157,6 +157,18 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
           WHERE id = $1
         `, [loserId, loserScore]);
       }
+    }
+
+    // If a finals playoff matchup was just resolved, crown champion and complete league
+    const finalsM = matchups.find((m) => m.is_playoffs && m.playoff_round === 'finals');
+    if (finalsM) {
+      const hs = parseFloat(finalsM.home_score), as_ = parseFloat(finalsM.away_score);
+      const championId = hs >= as_ ? finalsM.home_team_id : finalsM.away_team_id;
+      await client.query(`UPDATE league_members SET is_champion = true WHERE id = $1`, [championId]);
+      await client.query(
+        `UPDATE leagues SET status = 'completed'::league_status, completed_at = NOW() WHERE id = $1`,
+        [leagueId],
+      );
     }
 
     await client.query('COMMIT');

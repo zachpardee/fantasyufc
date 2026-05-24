@@ -20,6 +20,7 @@ export interface League {
   seasonYear: number;
   memberCount?: number;
   scoringSettings?: ScoringSettings;
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +38,7 @@ export interface LeagueMember {
   streak: number;
   auctionBudget?: number;
   isActive: boolean;
+  isChampion?: boolean;
   joinedAt: string;
   user?: {
     username: string;
