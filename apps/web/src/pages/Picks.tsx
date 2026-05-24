@@ -188,6 +188,7 @@ function FightPickRow({ fight, picked, pickedMethod, locked, onChange, onMethodC
         <FighterPick
           firstName={fight.redFirstName}
           lastName={fight.redLastName}
+          imageUrl={fight.redImageUrl}
           ranking={fight.redRanking}
           isChampion={fight.redIsChampion}
           corner="red"
@@ -206,6 +207,7 @@ function FightPickRow({ fight, picked, pickedMethod, locked, onChange, onMethodC
         <FighterPick
           firstName={fight.blueFirstName}
           lastName={fight.blueLastName}
+          imageUrl={fight.blueImageUrl}
           ranking={fight.blueRanking}
           isChampion={fight.blueIsChampion}
           corner="blue"
@@ -264,8 +266,8 @@ function FightPickRow({ fight, picked, pickedMethod, locked, onChange, onMethodC
   );
 }
 
-function FighterPick({ firstName, lastName, ranking, isChampion, corner, odds, isPicked, isWinner, isLoser, locked, onPick, pointsEarned, isCorrect }: {
-  fighterId?: string; firstName: string; lastName: string;
+function FighterPick({ firstName, lastName, imageUrl, ranking, isChampion, corner, odds, isPicked, isWinner, isLoser, locked, onPick, pointsEarned, isCorrect }: {
+  fighterId?: string; firstName: string; lastName: string; imageUrl?: string;
   ranking?: number; isChampion?: boolean; corner: 'red' | 'blue';
   odds?: number | null;
   isPicked: boolean; isWinner: boolean; isLoser: boolean;
@@ -292,6 +294,12 @@ function FighterPick({ firstName, lastName, ranking, isChampion, corner, odds, i
       onClick={onPick}
       disabled={locked}
     >
+      {imageUrl && (
+        <div style={{ width: 64, height: 72, margin: '0 auto 6px', overflow: 'hidden', borderRadius: 6, background: '#222' }}>
+          <img src={imageUrl} alt={`${firstName} ${lastName}`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+        </div>
+      )}
       <div style={styles.fighterName}>{firstName} {lastName}</div>
       <div style={styles.fighterRank}>
         {isChampion ? <span style={styles.champBadge}>C</span>

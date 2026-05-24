@@ -47,10 +47,18 @@ export function FighterBrowserPage() {
               </td>
               <td style={styles.td}>
                 <div style={styles.nameRow}>
+                  {(f as any).imageUrl && (
+                    <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222' }}>
+                      <img src={(f as any).imageUrl} alt={`${f.firstName} ${f.lastName}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                    </div>
+                  )}
                   {f.isChampion && <span style={styles.champ}>C</span>}
-                  <span style={styles.name}>{f.firstName} {f.lastName}</span>
+                  <div>
+                    <span style={styles.name}>{f.firstName} {f.lastName}</span>
+                    {f.nickname && <div style={styles.nickname}>"{f.nickname}"</div>}
+                  </div>
                 </div>
-                {f.nickname && <div style={styles.nickname}>"{f.nickname}"</div>}
               </td>
               <td style={styles.td}><span style={styles.division}>{f.weightClassName}</span></td>
               <td style={styles.td}><span style={styles.record}>{f.record.wins}-{f.record.losses}-{f.record.draws}</span></td>
@@ -58,6 +66,7 @@ export function FighterBrowserPage() {
             </tr>
           ))}
         </tbody>
+
       </table>
     </div>
   );

@@ -41,10 +41,28 @@ export function RosterPage() {
   );
 }
 
+function FighterAvatar({ imageUrl, firstName, lastName }: { imageUrl?: string; firstName: string; lastName: string }) {
+  if (imageUrl) {
+    return (
+      <div style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', flexShrink: 0, background: '#222' }}>
+        <img src={imageUrl} alt={`${firstName} ${lastName}`}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+      </div>
+    );
+  }
+  const initials = `${firstName[0]}${lastName[0]}`.toUpperCase();
+  return (
+    <div style={{ width: 44, height: 44, borderRadius: 22, background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+      {initials}
+    </div>
+  );
+}
+
 function FighterRow({ fighter }: { fighter: any }) {
   return (
     <div style={styles.row}>
       <div style={styles.rowLeft}>
+        <FighterAvatar imageUrl={fighter.imageUrl} firstName={fighter.firstName} lastName={fighter.lastName} />
         <div>
           <div style={styles.nameRow}>
             <span style={styles.name}>{fighter.firstName} {fighter.lastName}</span>
