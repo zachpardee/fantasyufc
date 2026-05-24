@@ -1,5 +1,6 @@
 [build]
 builder = "nixpacks"
+buildCommand = "npm install --os=linux --cpu=x64"
 
 [deploy]
 startCommand = "npm run start --workspace=apps/api"
