@@ -17,6 +17,7 @@ type AvailableFighter = {
   firstName: string;
   lastName: string;
   nickname?: string;
+  imageUrl?: string;
   weightClassName?: string;
   averageFantasyPoints?: number;
   ranking?: number;
@@ -258,6 +259,16 @@ export function DraftRoomPage() {
                   onClick={() => canPick && pickMutation.mutate(f.id)}
                 >
                   <div style={styles.fighterLeft}>
+                    {f.imageUrl ? (
+                      <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222' }}>
+                        <img src={f.imageUrl} alt={`${f.firstName} ${f.lastName}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 36, height: 40, borderRadius: 4, background: '#2a2a2a', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 12, fontWeight: 700 }}>
+                        {f.firstName[0]}{f.lastName[0]}
+                      </div>
+                    )}
                     {f.isChampion && <span style={styles.champ}>C</span>}
                     <div>
                       <div style={styles.fighterName}>{f.firstName} {f.lastName}</div>
