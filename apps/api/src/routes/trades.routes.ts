@@ -57,6 +57,12 @@ tradesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
+    // Auto-expire any pending trades that have passed expires_at
+    await db.query(
+      `UPDATE trades SET status = 'expired' WHERE league_id = $1 AND status = 'pending' AND expires_at < NOW()`,
+      [req.params.leagueId],
+    );
+
     const { rows: trades } = await db.query(`
       SELECT t.*, pt.team_name as proposing_team_name, rt.team_name as receiving_team_name
       FROM trades t
@@ -161,6 +167,7 @@ tradesRouter.post('/:tradeId/accept', requireAuth, async (req: AuthRequest, res,
       );
       if (!trade) throw new AppError(404, 'Trade not found or not pending');
       if (trade.receiving_user_id !== req.user!.id) throw new AppError(403, 'Not the receiving team');
+      if (new Date(trade.expires_at) < new Date()) throw new AppError(400, 'Trade offer has expired');
 
       const window = await getTradeWindow(req.params.leagueId);
       if (!window.open) throw new AppError(400, window.reason ?? 'Trade deadline has passed');

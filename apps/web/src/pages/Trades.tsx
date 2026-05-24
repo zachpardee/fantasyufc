@@ -251,7 +251,9 @@ export function TradesPage() {
             </div>
           )}
           {trade.message && <p style={styles.message}>"{trade.message}"</p>}
-          <p style={styles.expires}>Expires: {new Date(trade.expiresAt).toLocaleDateString()}</p>
+          {trade.status === 'pending' && (
+            <p style={styles.expires}>Expires: {new Date(trade.expiresAt).toLocaleDateString()}</p>
+          )}
           {trade.status === 'pending' && myMemberId && (
             <div style={styles.actions}>
               {trade.receivingTeamId === myMemberId && (
@@ -275,6 +277,7 @@ const statusColors: Record<string, React.CSSProperties> = {
   accepted: { color: '#4caf50' },
   rejected: { color: '#ff5252' },
   cancelled: { color: '#555' },
+  expired: { color: '#555' },
 };
 
 const styles: Record<string, React.CSSProperties> = {
