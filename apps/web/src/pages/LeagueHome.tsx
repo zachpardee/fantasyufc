@@ -34,7 +34,7 @@ export function LeagueHomePage() {
       try { return await apiClient.get(`/leagues/${leagueId}/picks/current-event`) as any; }
       catch { return null; }
     },
-    enabled: !!league && league.status === 'active',
+    enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
 
   const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
@@ -43,7 +43,7 @@ export function LeagueHomePage() {
       try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
       catch { return null; }
     },
-    enabled: !!league && league.status === 'active',
+    enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
 
   const renameMutation = useMutation({
@@ -119,7 +119,7 @@ export function LeagueHomePage() {
     { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
     { label: 'Trades', path: 'trades', icon: '🤝', show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' || league.status === 'active' },
+    { label: 'Draft', path: 'draft', icon: '📋', show: league.status === 'drafting' },
     { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Playoffs', path: 'playoffs', icon: '🏆', show: league.status === 'playoffs' || (league.status === 'active' && isCommissioner) },
     { label: 'Rules', path: 'rules', icon: '📋', show: true },
