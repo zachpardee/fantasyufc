@@ -142,25 +142,6 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
     `, [req.params.matchupId, req.params.leagueId]);
     if (!matchup) throw new AppError(404, 'Matchup not found');
 
-    // Per-fighter scores for both teams
-    const { rows: scores } = await db.query(`
-      SELECT ms.fighter_id, ms.is_starter, ms.total_points,
-             ms.pts_win, ms.pts_finish, ms.pts_round_bonus,
-             ms.pts_sig_strikes, ms.pts_knockdowns, ms.pts_takedowns,
-             ms.pts_submissions, ms.pts_bonuses, ms.title_multiplier,
-             f.first_name, f.last_name, f.ranking, f.is_champion,
-             wc.name AS weight_class_name,
-             lm.id AS team_id
-      FROM matchup_scores ms
-      JOIN fighters f ON f.id = ms.fighter_id
-      JOIN weight_classes wc ON wc.id = f.weight_class_id
-      JOIN roster_fighters rf ON rf.id = ms.roster_fighter_id
-      JOIN rosters r ON r.id = rf.roster_id
-      JOIN league_members lm ON lm.id = r.league_member_id
-      WHERE ms.matchup_id = $1
-      ORDER BY ms.total_points DESC
-    `, [req.params.matchupId]);
-
-    res.json({ ...matchup, scores });
+    res.json(matchup);
   } catch (err) { next(err); }
 });

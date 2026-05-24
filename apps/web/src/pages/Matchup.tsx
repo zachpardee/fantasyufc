@@ -86,11 +86,6 @@ export function MatchupPage() {
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
 
-  const allScores: any[] = matchup?.scores ?? [];
-  const homeScores = allScores.filter((s) => s.teamId === matchup?.homeTeamId).sort((a, b) => b.totalPoints - a.totalPoints);
-  const awayScores = allScores.filter((s) => s.teamId === matchup?.awayTeamId).sort((a, b) => b.totalPoints - a.totalPoints);
-  const hasScores = allScores.length > 0;
-
   const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== myMatchups[0]?.id;
 
   return (
@@ -218,24 +213,16 @@ export function MatchupPage() {
             </div>
           )}
 
-          {/* Scores (when event is scored) or Rosters (when not yet) */}
+          {/* Rosters */}
           <div style={styles.section}>
             <div style={styles.sectionHeader}>
-              <span style={styles.sectionTitle}>{hasScores ? 'FIGHTER SCORES' : 'ROSTERS'}</span>
+              <span style={styles.sectionTitle}>ROSTERS</span>
             </div>
-            {hasScores ? (
-              <div style={styles.rosterGrid}>
-                <ScoreColumn label={matchup.homeTeamName} scores={homeScores} align="left" />
-                <div style={styles.rosterDivider} />
-                <ScoreColumn label={matchup.awayTeamName} scores={awayScores} align="right" />
-              </div>
-            ) : (
-              <div style={styles.rosterGrid}>
-                <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
-                <div style={styles.rosterDivider} />
-                <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
-              </div>
-            )}
+            <div style={styles.rosterGrid}>
+              <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
+              <div style={styles.rosterDivider} />
+              <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
+            </div>
           </div>
 
           {/* Season breakdown table */}
@@ -343,31 +330,6 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, method, isCor
           {isCorrect ? `+${(+pointsEarned!).toFixed(0)} pts` : '✗'}
         </div>
       )}
-    </div>
-  );
-}
-
-function ScoreColumn({ label, scores, align }: { label: string; scores: any[]; align: 'left' | 'right' }) {
-  return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ ...styles.rosterTeamLabel, textAlign: align }}>{label}</div>
-      {scores.map((s) => (
-        <div key={s.fighterId} style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
-              <span style={{ ...styles.fighterName, color: s.totalPoints > 0 ? '#fff' : '#555' }}>
-                {s.firstName} {s.lastName}
-              </span>
-              {!s.isStarter && <span style={styles.benchTag}>BENCH</span>}
-            </div>
-            <span style={styles.fighterMeta}>{s.weightClassName}</span>
-          </div>
-          <span style={{ ...styles.scorePts, color: s.totalPoints > 0 ? '#c8102e' : '#333' }}>
-            {s.totalPoints > 0 ? `+${(+s.totalPoints).toFixed(1)}` : '—'}
-          </span>
-        </div>
-      ))}
-      {scores.length === 0 && <div style={{ color: '#333', fontSize: 13, padding: '8px 0' }}>No scored fighters</div>}
     </div>
   );
 }
@@ -590,8 +552,6 @@ const styles: Record<string, React.CSSProperties> = {
   rankBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700 },
   champBadge: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3 },
   fighterMeta: { color: '#444', fontSize: 11 },
-  scorePts: { fontSize: 15, fontWeight: 800, flexShrink: 0 },
-  benchTag: { background: '#1a1a1a', color: '#555', fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3 },
 
   seasonSection: { padding: '0 24px 16px' },
   seasonTable: { border: '1px solid #1e1e1e', borderRadius: 8, overflow: 'hidden' },
