@@ -198,17 +198,50 @@ leaguesRouter.patch('/:leagueId/members/me', requireAuth, async (req: AuthReques
 
 leaguesRouter.patch('/:leagueId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { name } = z.object({ name: z.string().min(1).max(100) }).parse(req.body);
+    const body = z.object({
+      name: z.string().min(1).max(100).optional(),
+      maxTeams: z.number().int().min(2).max(20).optional(),
+      rosterSize: z.number().int().min(5).max(20).optional(),
+      starterSlots: z.number().int().min(1).max(10).optional(),
+      tradeDeadlineDays: z.number().int().min(0).max(14).optional(),
+      draftPickTimeSeconds: z.number().int().min(30).max(300).optional(),
+    }).parse(req.body);
+
     const { rows: [league] } = await db.query(
       `SELECT id FROM leagues WHERE id = $1 AND commissioner_id = $2`,
       [req.params.leagueId, req.user!.id],
     );
     if (!league) throw new AppError(403, 'Not the commissioner of this league');
+
+    const sets: string[] = [];
+    const vals: any[] = [];
+    let i = 1;
+    if (body.name !== undefined)               { sets.push(`name = $${i++}`);                  vals.push(body.name); }
+    if (body.maxTeams !== undefined)           { sets.push(`max_teams = $${i++}`);             vals.push(body.maxTeams); }
+    if (body.rosterSize !== undefined)         { sets.push(`roster_size = $${i++}`);           vals.push(body.rosterSize); }
+    if (body.starterSlots !== undefined)       { sets.push(`starter_slots = $${i++}`);         vals.push(body.starterSlots); }
+    if (body.tradeDeadlineDays !== undefined)  { sets.push(`trade_deadline_days = $${i++}`);   vals.push(body.tradeDeadlineDays); }
+    if (body.draftPickTimeSeconds !== undefined) { sets.push(`draft_pick_time_seconds = $${i++}`); vals.push(body.draftPickTimeSeconds); }
+    if (sets.length === 0) throw new AppError(400, 'No fields to update');
+
+    vals.push(req.params.leagueId);
     const { rows: [updated] } = await db.query(
-      `UPDATE leagues SET name = $1 WHERE id = $2 RETURNING *`,
-      [name, req.params.leagueId],
+      `UPDATE leagues SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`,
+      vals,
     );
     res.json(updated);
+  } catch (err) { next(err); }
+});
+
+leaguesRouter.delete('/:leagueId', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [league] } = await db.query(
+      `SELECT id FROM leagues WHERE id = $1 AND commissioner_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!league) throw new AppError(403, 'Not the commissioner of this league');
+    await db.query(`DELETE FROM leagues WHERE id = $1`, [req.params.leagueId]);
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

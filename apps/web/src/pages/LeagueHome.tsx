@@ -156,6 +156,7 @@ export function LeagueHomePage() {
     { label: 'Playoffs', path: 'playoffs', icon: '🏆', show: league.status === 'playoffs' || (league.status === 'active' && isCommissioner) },
     { label: 'Rules', path: 'rules', icon: '📋', show: true },
     { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
+    { label: 'Commissioner', path: 'commissioner', icon: '⚙️', show: isCommissioner },
   ];
 
   return (

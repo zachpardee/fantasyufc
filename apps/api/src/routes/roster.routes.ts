@@ -122,3 +122,62 @@ rosterRouter.post('/set-lineup', requireAuth, async (req: AuthRequest, res, next
     res.json({ ok: true });
   } catch (err) { next(err); }
 });
+
+// Commissioner: add any fighter to any member's roster
+rosterRouter.post('/:memberId/add', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { fighterId } = z.object({ fighterId: z.string().uuid() }).parse(req.body);
+    const { rows: [league] } = await db.query(
+      `SELECT l.commissioner_id FROM leagues l
+       JOIN league_members lm ON lm.league_id = l.id AND lm.id = $1
+       WHERE l.id = $2`,
+      [req.params.memberId, req.params.leagueId],
+    );
+    if (!league || league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
+
+    const { rows: [roster] } = await db.query(
+      `SELECT id FROM rosters WHERE league_member_id = $1`, [req.params.memberId],
+    );
+    if (!roster) throw new AppError(404, 'Roster not found');
+
+    // Check fighter not already on any roster in this league
+    const { rows: [existing] } = await db.query(`
+      SELECT rf.id FROM roster_fighters rf
+      JOIN rosters r ON r.id = rf.roster_id
+      JOIN league_members lm ON lm.id = r.league_member_id
+      WHERE lm.league_id = $1 AND rf.fighter_id = $2
+    `, [req.params.leagueId, fighterId]);
+    if (existing) throw new AppError(400, 'Fighter already on a roster in this league');
+
+    const { rows: [{ maxPos }] } = await db.query(
+      `SELECT COALESCE(MAX(slot_position), -1) as "maxPos" FROM roster_fighters WHERE roster_id = $1`,
+      [roster.id],
+    );
+    await db.query(
+      `INSERT INTO roster_fighters (roster_id, fighter_id, slot_type, slot_position, acquired_via)
+       VALUES ($1, $2, 'bench', $3, 'commissioner')`,
+      [roster.id, fighterId, maxPos + 1],
+    );
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// Commissioner: drop any fighter from any member's roster
+rosterRouter.delete('/:memberId/:fighterId', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [league] } = await db.query(
+      `SELECT l.commissioner_id FROM leagues l
+       JOIN league_members lm ON lm.league_id = l.id AND lm.id = $1
+       WHERE l.id = $2`,
+      [req.params.memberId, req.params.leagueId],
+    );
+    if (!league || league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
+
+    await db.query(`
+      DELETE FROM roster_fighters
+      WHERE roster_id = (SELECT id FROM rosters WHERE league_member_id = $1)
+        AND fighter_id = $2
+    `, [req.params.memberId, req.params.fighterId]);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
