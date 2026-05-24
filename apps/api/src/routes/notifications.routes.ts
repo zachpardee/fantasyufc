@@ -4,6 +4,16 @@ import { db } from '../config/database';
 
 export const notificationsRouter = Router();
 
+notificationsRouter.get('/unread-count', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [row] } = await db.query(
+      `SELECT COUNT(*) AS count FROM notifications WHERE user_id = $1 AND is_read = false`,
+      [req.user!.id],
+    );
+    res.json({ count: parseInt(row.count) });
+  } catch (err) { next(err); }
+});
+
 notificationsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;

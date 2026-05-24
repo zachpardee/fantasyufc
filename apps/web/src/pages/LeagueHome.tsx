@@ -17,6 +17,7 @@ export function LeagueHomePage() {
   const [editingTeamName, setEditingTeamName] = useState(false);
   const [teamNameInput, setTeamNameInput] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
+  const [showNotifs, setShowNotifs] = useState(false);
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
@@ -26,6 +27,18 @@ export function LeagueHomePage() {
   const { data: members = [] } = useQuery<(LeagueMember & { username: string; displayName?: string })[]>({
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+
+  const { data: unreadCount, refetch: refetchUnread } = useQuery<{ count: number }>({
+    queryKey: ['notif-unread'],
+    queryFn: () => apiClient.get('/notifications/unread-count'),
+    refetchInterval: 60_000,
+  });
+
+  const { data: notifications = [], refetch: refetchNotifs } = useQuery<import('@fantasy-ufc/shared').Notification[]>({
+    queryKey: ['notifications'],
+    queryFn: () => apiClient.get('/notifications'),
+    enabled: showNotifs,
   });
 
   const { data: currentEvent } = useQuery<{ id: string; name: string; venue: string; location: string; scheduledAt: string; status: string } | null>({
@@ -45,6 +58,21 @@ export function LeagueHomePage() {
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => apiClient.post('/notifications/read-all', {}),
+    onSuccess: () => { refetchUnread(); refetchNotifs(); },
+  });
+
+  function openNotifs() {
+    setShowNotifs((v) => {
+      if (!v) {
+        refetchNotifs();
+        if ((unreadCount?.count ?? 0) > 0) markAllReadMutation.mutate();
+      }
+      return !v;
+    });
+  }
 
   const renameMutation = useMutation({
     mutationFn: (name: string) => apiClient.patch(`/leagues/${leagueId}`, { name }),
@@ -137,6 +165,32 @@ export function LeagueHomePage() {
           <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         </Link>
         <span style={{ flex: 1 }} />
+        <div style={styles.bellWrap}>
+          <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
+            🔔
+            {(unreadCount?.count ?? 0) > 0 && (
+              <span style={styles.bellBadge}>{unreadCount!.count}</span>
+            )}
+          </button>
+          {showNotifs && (
+            <div style={styles.notifPanel}>
+              <div style={styles.notifHeader}>
+                <span style={styles.notifTitle}>Notifications</span>
+                <button style={styles.notifClose} onClick={() => setShowNotifs(false)}>✕</button>
+              </div>
+              {notifications.length === 0
+                ? <div style={styles.notifEmpty}>No notifications yet</div>
+                : notifications.map((n) => (
+                  <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
+                    <div style={styles.notifItemTitle}>{n.title}</div>
+                    <div style={styles.notifItemBody}>{n.body}</div>
+                    <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                  </div>
+                ))
+              }
+            </div>
+          )}
+        </div>
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
         {onlineUsers.length > 0 && (
           <div style={styles.onlineRow}>
@@ -517,6 +571,19 @@ const styles: Record<string, React.CSSProperties> = {
   eventDate: { color: '#888', fontSize: 13, fontWeight: 600, marginTop: 2 },
   eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 3 },
   eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginTop: 8 },
+  bellWrap: { position: 'relative' as const },
+  bellBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '2px 4px', position: 'relative' as const, lineHeight: 1 },
+  bellBadge: { position: 'absolute' as const, top: -4, right: -4, background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 800, borderRadius: 8, padding: '1px 4px', minWidth: 14, textAlign: 'center' as const },
+  notifPanel: { position: 'absolute' as const, top: 36, right: 0, width: 320, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 100, maxHeight: 400, overflowY: 'auto' as const },
+  notifHeader: { padding: '12px 16px', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  notifTitle: { color: '#fff', fontWeight: 700, fontSize: 13 },
+  notifClose: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer' },
+  notifEmpty: { color: '#555', fontSize: 13, padding: '24px 16px', textAlign: 'center' as const, fontStyle: 'italic' },
+  notifItem: { padding: '12px 16px', borderBottom: '1px solid #1f1f1f' },
+  notifUnread: { background: '#1f1010' },
+  notifItemTitle: { color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 2 },
+  notifItemBody: { color: '#888', fontSize: 12, marginBottom: 4 },
+  notifItemTime: { color: '#444', fontSize: 11 },
   championBanner: {
     background: 'linear-gradient(135deg, #1a0a0a 0%, #2a1010 50%, #1a0a0a 100%)',
     border: '1px solid #c8102e66', borderLeft: '4px solid #c8102e',

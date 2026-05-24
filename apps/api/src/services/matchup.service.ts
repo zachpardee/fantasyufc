@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { redis } from '../config/redis';
+import { sendNotification } from './notification.service';
 
 /**
  * Generates round-robin matchup schedule for a league across its events.
@@ -173,6 +174,39 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
 
     await client.query('COMMIT');
     await redis.del(`standings:${leagueId}`);
+
+    // Notify both teams in each finalized matchup
+    for (const m of matchups) {
+      const { rows: [matchupRow] } = await db.query(`
+        SELECT m.home_score, m.away_score, m.winner_id,
+               hm.user_id AS home_user, hm.team_name AS home_team,
+               am.user_id AS away_user, am.team_name AS away_team
+        FROM matchups m
+        JOIN league_members hm ON hm.id = m.home_team_id
+        JOIN league_members am ON am.id = m.away_team_id
+        WHERE m.id = $1
+      `, [m.id]);
+      if (!matchupRow) continue;
+
+      const homeScore = parseFloat(matchupRow.home_score).toFixed(0);
+      const awayScore = parseFloat(matchupRow.away_score).toFixed(0);
+      const homeWon = matchupRow.winner_id === m.home_team_id;
+      const awayWon = matchupRow.winner_id === m.away_team_id;
+
+      await sendNotification(
+        matchupRow.home_user, 'matchup_result',
+        homeWon ? 'You won!' : awayWon ? 'You lost' : 'Matchup ended in a tie',
+        `${matchupRow.home_team} ${homeScore} – ${awayScore} ${matchupRow.away_team}`,
+        { leagueId },
+      ).catch(() => {});
+
+      await sendNotification(
+        matchupRow.away_user, 'matchup_result',
+        awayWon ? 'You won!' : homeWon ? 'You lost' : 'Matchup ended in a tie',
+        `${matchupRow.away_team} ${awayScore} – ${homeScore} ${matchupRow.home_team}`,
+        { leagueId },
+      ).catch(() => {});
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
