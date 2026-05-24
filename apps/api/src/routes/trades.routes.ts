@@ -7,6 +7,48 @@ import { z } from 'zod';
 
 export const tradesRouter = Router({ mergeParams: true });
 
+type TradeWindow = { open: boolean; deadline: string | null; reason: string | null };
+
+async function getTradeWindow(leagueId: string): Promise<TradeWindow> {
+  const { rows: [league] } = await db.query(
+    `SELECT status, trade_deadline_days FROM leagues WHERE id = $1`, [leagueId],
+  );
+  if (!league) return { open: false, deadline: null, reason: 'League not found' };
+  if (league.status === 'playoffs') return { open: false, deadline: null, reason: 'Playoffs have started' };
+  if (league.status === 'completed') return { open: false, deadline: null, reason: 'Season is over' };
+  if (league.status !== 'active') return { open: false, deadline: null, reason: 'Trades not available yet' };
+
+  const { rows: [nextEvent] } = await db.query(`
+    SELECT e.scheduled_at
+    FROM league_events le
+    JOIN ufc_events e ON e.id = le.event_id
+    WHERE le.league_id = $1 AND e.scheduled_at > NOW()
+    ORDER BY e.scheduled_at ASC
+    LIMIT 1
+  `, [leagueId]);
+
+  if (!nextEvent) return { open: true, deadline: null, reason: null };
+
+  const deadline = new Date(nextEvent.scheduled_at);
+  deadline.setDate(deadline.getDate() - league.trade_deadline_days);
+
+  if (new Date() >= deadline) {
+    return { open: false, deadline: deadline.toISOString(), reason: 'Trade deadline has passed' };
+  }
+  return { open: true, deadline: deadline.toISOString(), reason: null };
+}
+
+tradesRouter.get('/deadline', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+    res.json(await getTradeWindow(req.params.leagueId));
+  } catch (err) { next(err); }
+});
+
 tradesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [member] } = await db.query(
@@ -62,6 +104,9 @@ tradesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
     if (!myMember) throw new AppError(403, 'Not a member of this league');
     if (myMember.id === body.receivingTeamId) throw new AppError(400, 'Cannot trade with yourself');
 
+    const window = await getTradeWindow(req.params.leagueId);
+    if (!window.open) throw new AppError(400, window.reason ?? 'Trade deadline has passed');
+
     const client = await db.connect();
     try {
       await client.query('BEGIN');
@@ -116,6 +161,9 @@ tradesRouter.post('/:tradeId/accept', requireAuth, async (req: AuthRequest, res,
       );
       if (!trade) throw new AppError(404, 'Trade not found or not pending');
       if (trade.receiving_user_id !== req.user!.id) throw new AppError(403, 'Not the receiving team');
+
+      const window = await getTradeWindow(req.params.leagueId);
+      if (!window.open) throw new AppError(400, window.reason ?? 'Trade deadline has passed');
 
       const { rows: items } = await client.query(
         `SELECT * FROM trade_items WHERE trade_id = $1`, [trade.id],

@@ -18,6 +18,7 @@ type TradeRow = Omit<Trade, 'items'> & {
 
 type Member = { id: string; userId: string; teamName: string };
 type RosterFighter = { id: string; fighterId: string; firstName: string; lastName: string; weightClassName: string };
+type TradeWindow = { open: boolean; deadline: string | null; reason: string | null };
 
 export function TradesPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -35,6 +36,11 @@ export function TradesPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
   });
   const myMemberId = members.find((m) => m.userId === session?.user.id)?.id;
+
+  const { data: tradeWindow } = useQuery<TradeWindow>({
+    queryKey: ['trade-deadline', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/trades/deadline`),
+  });
 
   const { data: trades, isLoading: tradesLoading, isError: tradesError } = useQuery<TradeRow[]>({
     queryKey: ['trades', leagueId],
@@ -106,10 +112,26 @@ export function TradesPage() {
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Trades</span>
-        {!proposing && (
+        {!proposing && tradeWindow?.open && (
           <button style={styles.proposeBtn} onClick={() => setProposing(true)}>+ Propose Trade</button>
         )}
       </nav>
+
+      {/* Trade window status */}
+      {tradeWindow && !tradeWindow.open && (
+        <div style={styles.deadlineBanner}>
+          <span style={styles.deadlineIcon}>🔒</span>
+          <span style={styles.deadlineText}>
+            {tradeWindow.reason}
+            {tradeWindow.deadline && ` — deadline was ${new Date(tradeWindow.deadline).toLocaleDateString()}`}
+          </span>
+        </div>
+      )}
+      {tradeWindow?.open && tradeWindow.deadline && (
+        <div style={styles.deadlineOpen}>
+          Trade deadline: <strong>{new Date(tradeWindow.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</strong>
+        </div>
+      )}
 
       {/* Propose trade form */}
       {proposing && (
@@ -293,4 +315,8 @@ const styles: Record<string, React.CSSProperties> = {
   acceptBtn: { background: '#1a3a1a', color: '#4caf50', border: '1px solid #4caf50', borderRadius: 6, padding: '7px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13 },
   rejectBtn: { background: '#3a1a1a', color: '#ff5252', border: '1px solid #ff5252', borderRadius: 6, padding: '7px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 13 },
   cancelBtn: { background: 'transparent', color: '#666', border: '1px solid #444', borderRadius: 6, padding: '7px 16px', cursor: 'pointer', fontSize: 13 },
+  deadlineBanner: { background: '#1a1010', borderBottom: '1px solid #c8102e33', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 10 },
+  deadlineIcon: { fontSize: 16 },
+  deadlineText: { color: '#888', fontSize: 13 },
+  deadlineOpen: { padding: '10px 24px', color: '#555', fontSize: 12 },
 };
