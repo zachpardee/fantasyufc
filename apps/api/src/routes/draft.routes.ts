@@ -58,7 +58,7 @@ draftRouter.post('/pick', requireAuth, async (req: AuthRequest, res, next) => {
 draftRouter.get('/available', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [session] } = await db.query(
-      `SELECT id FROM draft_sessions WHERE league_id = $1 AND status IN ('pending', 'active')`,
+      `SELECT id FROM draft_sessions WHERE league_id = $1 AND status IN ('pending', 'active', 'paused')`,
       [req.params.leagueId],
     );
     if (!session) throw new AppError(404, 'No active draft');

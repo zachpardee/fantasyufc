@@ -90,6 +90,12 @@ export function startDraftTimerJob() {
               [session.id, nextPosition],
             );
 
+            if (!nextTeam) {
+              console.error(`[DraftTimer] No draft_order row for session ${session.id} position ${nextPosition}`);
+              await client.query('ROLLBACK');
+              continue;
+            }
+
             const deadline = new Date(Date.now() + session.pick_time_seconds * 1000).toISOString();
             await client.query(
               `UPDATE draft_sessions SET current_pick = $1, current_round = $2, current_team_id = $3, current_pick_deadline = $4 WHERE id = $5`,

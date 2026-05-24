@@ -171,5 +171,6 @@ async function getNextTeamId(client: import('pg').PoolClient, sessionId: string,
     `SELECT league_member_id FROM draft_order WHERE draft_session_id = $1 AND position = $2`,
     [sessionId, position],
   );
+  if (!row) throw new Error(`No draft_order row for session ${sessionId} position ${snakePickTeamPosition(nextPick, memberCount)}`);
   return row.league_member_id;
 }
