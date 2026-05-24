@@ -36,7 +36,7 @@ async function getBracket(leagueId: string) {
     SELECT lm.id, lm.team_name, lm.wins, lm.losses, lm.total_points
     FROM league_members lm
     WHERE lm.league_id = $1 AND lm.is_active = true
-    ORDER BY lm.wins DESC, lm.total_points DESC
+    ORDER BY lm.total_points DESC, lm.wins DESC
     LIMIT 4
   `, [leagueId]);
 
@@ -83,12 +83,12 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     );
     if (existing.length > 0) throw new AppError(400, 'Playoffs already started');
 
-    // Seed top 4 by wins DESC, total_points DESC
+    // Seed top 4 by total_points DESC (season score), tiebreak by wins
     const { rows: topTeams } = await db.query(`
       SELECT id, team_name, wins, losses, total_points
       FROM league_members
       WHERE league_id = $1 AND is_active = true
-      ORDER BY wins DESC, total_points DESC
+      ORDER BY total_points DESC, wins DESC
       LIMIT 4
     `, [req.params.leagueId]);
 

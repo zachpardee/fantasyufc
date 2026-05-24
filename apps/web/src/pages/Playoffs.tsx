@@ -116,7 +116,7 @@ export function PlayoffsPage() {
       {isCommissioner && phase === 'none' && (
         <div style={styles.commCard}>
           <p style={styles.commTitle}>Start the Playoffs</p>
-          <p style={styles.commSub}>Select the event for the Semifinals. Top 4 teams will be seeded by W-L record.</p>
+          <p style={styles.commSub}>Select the event for the Semifinals. Top 4 teams will be seeded by total season score.</p>
           <div style={styles.commRow}>
             <select style={styles.eventSelect} value={selectedSemisEvent} onChange={(e) => setSelectedSemisEvent(e.target.value)}>
               <option value="">Select semifinal event...</option>
