@@ -272,6 +272,8 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             redFighterId={fight.redFighterId}
             redName={`${fight.redFirstName} ${fight.redLastName}`}
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
+            redImageUrl={fight.redImageUrl}
+            blueImageUrl={fight.blueImageUrl}
             method={homePick.pickedMethod}
             isCorrect={homePick.isCorrect}
             pointsEarned={homePick.pointsEarned}
@@ -300,6 +302,8 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             redFighterId={fight.redFighterId}
             redName={`${fight.redFirstName} ${fight.redLastName}`}
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
+            redImageUrl={fight.redImageUrl}
+            blueImageUrl={fight.blueImageUrl}
             method={awayPick.pickedMethod}
             isCorrect={awayPick.isCorrect}
             pointsEarned={awayPick.pointsEarned}
@@ -311,25 +315,37 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
   );
 }
 
-function PickDisplay({ fighterId, redFighterId, redName, blueName, method, isCorrect, pointsEarned, align }: {
+function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, method, isCorrect, pointsEarned, align }: {
   fighterId: string; redFighterId: string;
-  redName: string; blueName: string; method?: string;
+  redName: string; blueName: string;
+  redImageUrl?: string; blueImageUrl?: string;
+  method?: string;
   isCorrect: boolean | null; pointsEarned: number | null;
   align: 'left' | 'right';
 }) {
-  const pickedName = fighterId === redFighterId ? redName : blueName;
+  const isRed = fighterId === redFighterId;
+  const pickedName = isRed ? redName : blueName;
+  const imageUrl = isRed ? redImageUrl : blueImageUrl;
   const scored = isCorrect !== null;
   const color = scored ? (isCorrect ? '#4caf50' : '#555') : '#ddd';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
-      <div style={{ color, fontSize: 13, fontWeight: 600 }}>{pickedName}</div>
-      {method && <div style={{ color: '#555', fontSize: 11 }}>{METHOD_LABELS[method] ?? method}</div>}
-      {scored && (
-        <div style={{ color: isCorrect ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>
-          {isCorrect ? `+${(+pointsEarned!).toFixed(0)} pts` : '✗'}
+    <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+      {imageUrl && (
+        <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !isCorrect ? 0.4 : 1 }}>
+          <img src={imageUrl} alt={pickedName}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
         </div>
       )}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
+        <div style={{ color, fontSize: 13, fontWeight: 600 }}>{pickedName}</div>
+        {method && <div style={{ color: '#555', fontSize: 11 }}>{METHOD_LABELS[method] ?? method}</div>}
+        {scored && (
+          <div style={{ color: isCorrect ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>
+            {isCorrect ? `+${(+pointsEarned!).toFixed(0)} pts` : '✗'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -346,6 +362,12 @@ function RosterColumn({ label, fighters, align }: { label: string; fighters: any
 function FighterRow({ fighter, align }: { fighter: any; align: 'left' | 'right' }) {
   return (
     <div style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
+      {fighter.imageUrl && (
+        <div style={{ width: 32, height: 36, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222' }}>
+          <img src={fighter.imageUrl} alt={`${fighter.firstName} ${fighter.lastName}`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
           <span style={styles.fighterName}>{fighter.firstName} {fighter.lastName}</span>
