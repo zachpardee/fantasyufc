@@ -2,7 +2,7 @@
 // Creates test matchup + picks for Barboza (past, scored) and Song vs Figueiredo (upcoming, unscored)
 const { Client } = require('pg');
 
-const DATABASE_URL = 'postgresql://postgres.njrwgieloladyrajglpf:R3dF1shBlu3F1sh@aws-1-us-west-2.pooler.supabase.com:5432/postgres';
+const DATABASE_URL = process.env.DATABASE_URL;
 
 const LEAGUE_ID   = '7469743f-3366-4a1c-bfe0-68ce80465612';
 const MEMBER_1    = '18baa248-ad78-4aa5-b918-09f6ae8099e4'; // Zach (home)
