@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start --workspace=apps/api"
+restartPolicyType = "on_failure"
