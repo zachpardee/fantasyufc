@@ -73,10 +73,11 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
 
     if (!winner && !isDraw) continue;
 
-    // Infer outcome from round/clock (method unknown at this stage)
-    const isDecision = espnFight.period >= espnFight.scheduledRounds &&
-      espnFight.clockSeconds >= espnFight.scheduledRounds * 300 - 5;
-    const inferredOutcome = isDecision ? 'decision_unanimous' : 'ko_tko'; // Optimistic — updated by SportsDB
+    // Infer method: if fight lasted all scheduled rounds it went to decision.
+    // ESPN clockSeconds is remaining time (0 when round expires). A fight stopped
+    // early has clockSeconds > 0; one that went the full final round has clockSeconds == 0.
+    const isDecision = espnFight.period >= espnFight.scheduledRounds && espnFight.clockSeconds === 0;
+    const inferredOutcome = isDecision ? 'decision_unanimous' : 'ko_tko';
 
     // Resolve winner fighter ID (null for draws)
     let winnerId: string | null = null;
