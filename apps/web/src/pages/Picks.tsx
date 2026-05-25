@@ -100,9 +100,6 @@ export function PicksPage() {
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Event Picks</span>
         {locked && <span style={styles.lockedBadge}>LOCKED</span>}
-        {!locked && showSummary && (
-          <button style={styles.editPicksBtn} onClick={() => setShowSummary(false)}>Edit Picks</button>
-        )}
       </nav>
 
       <div style={styles.header}>
