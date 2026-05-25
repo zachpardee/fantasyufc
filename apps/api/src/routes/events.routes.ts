@@ -20,7 +20,7 @@ eventsRouter.get('/', async (_req, res, next) => {
       FROM ufc_events e
       LEFT JOIN fights f ON f.event_id = e.id
       GROUP BY e.id
-      ORDER BY e.scheduled_at DESC
+      ORDER BY e.scheduled_at ASC
       LIMIT 50
     `);
     res.json(rows);
