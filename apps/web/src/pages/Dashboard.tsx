@@ -176,11 +176,13 @@ export function DashboardPage() {
       {zoomedFighter && (
         <div style={styles.modalBackdrop} onClick={() => setZoomedFighter(null)}>
           <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-            <img
-              src={zoomedFighter.imageUrl}
-              alt={zoomedFighter.name}
-              style={styles.modalImg}
-            />
+            <div style={styles.modalImgWrap}>
+              <img
+                src={zoomedFighter.imageUrl}
+                alt={zoomedFighter.name}
+                style={styles.modalImg}
+              />
+            </div>
             <p style={styles.modalName}>{zoomedFighter.name}</p>
             <button style={styles.modalClose} onClick={() => setZoomedFighter(null)}>✕</button>
           </div>
@@ -245,7 +247,8 @@ const styles: Record<string, React.CSSProperties> = {
   avgPts: { color: '#c8102e', fontWeight: 700, fontSize: 14 },
   modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modalBox: { position: 'relative', background: '#111', borderRadius: 12, overflow: 'hidden', maxWidth: 320, width: '90%' },
-  modalImg: { width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top center', maxHeight: 480 },
+  modalImgWrap: { width: '100%', height: 380, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  modalImg: { width: '100%', height: '100%', display: 'block', objectFit: 'contain', objectPosition: 'center' },
   modalName: { color: '#fff', fontWeight: 700, fontSize: 16, textAlign: 'center', padding: '12px 16px', margin: 0, background: '#111' },
   modalClose: { position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: '#fff', width: 28, height: 28, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' },
 };
