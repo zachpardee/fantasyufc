@@ -538,7 +538,7 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
           )}
 
           {/* Total */}
-          <div style={{ ...styles.breakdownDividerRow, marginTop: 6 }} />
+          <div style={{ ...styles.breakdownDividerRow, marginTop: 'auto', paddingTop: 6 }} />
           <div style={{ ...styles.bdPickRow, paddingTop: 6 }}>
             <span style={{ ...styles.bdFighter, color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>
               Total
