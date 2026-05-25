@@ -243,6 +243,7 @@ export function MatchupPage() {
           <SeasonTable
             allMatchups={allMatchups}
             homeTeamId={matchup.homeTeamId}
+            awayTeamId={matchup.awayTeamId}
             homeTeamName={matchup.homeTeamName}
             awayTeamName={matchup.awayTeamName}
             currentEventId={matchup.eventId}
@@ -388,25 +389,33 @@ type SeasonRow = {
   isCurrent: boolean;
 };
 
-function SeasonTable({ allMatchups, homeTeamId, homeTeamName, awayTeamName, currentEventId }: {
-  allMatchups: any[]; homeTeamId: string;
+function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, currentEventId }: {
+  allMatchups: any[]; homeTeamId: string; awayTeamId: string;
   homeTeamName: string; awayTeamName: string; currentEventId: string;
 }) {
-  const rows: SeasonRow[] = allMatchups
-    .map((m): SeasonRow | null => {
-      const homeIsHome = m.homeTeamId === homeTeamId;
-      const homeScore = +(homeIsHome ? m.homeScore : m.awayScore);
-      const awayScore = +(homeIsHome ? m.awayScore : m.homeScore);
-      if (homeScore === 0 && awayScore === 0) return null;
-      return {
-        eventId: m.eventId,
-        eventName: m.eventName as string,
-        scheduledAt: m.scheduledAt as string,
-        homeScore, awayScore,
-        isCurrent: m.eventId === currentEventId,
-      };
-    })
-    .filter((r): r is SeasonRow => r !== null)
+  // One row per event: find each team's score from their own matchup that event
+  const eventMap = new Map<string, SeasonRow>();
+  for (const m of allMatchups) {
+    const homeInvolved = m.homeTeamId === homeTeamId || m.awayTeamId === homeTeamId;
+    const awayInvolved = m.homeTeamId === awayTeamId || m.awayTeamId === awayTeamId;
+    if (!homeInvolved && !awayInvolved) continue;
+
+    const entry = eventMap.get(m.eventId) ?? {
+      eventId: m.eventId as string,
+      eventName: m.eventName as string,
+      scheduledAt: m.scheduledAt as string,
+      homeScore: 0, awayScore: 0,
+      isCurrent: m.eventId === currentEventId,
+    };
+    if (homeInvolved)
+      entry.homeScore = +(m.homeTeamId === homeTeamId ? m.homeScore : m.awayScore);
+    if (awayInvolved)
+      entry.awayScore = +(m.homeTeamId === awayTeamId ? m.homeScore : m.awayScore);
+    eventMap.set(m.eventId, entry);
+  }
+
+  const rows = [...eventMap.values()]
+    .filter((r) => r.homeScore > 0 || r.awayScore > 0)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   if (rows.length === 0) return null;
