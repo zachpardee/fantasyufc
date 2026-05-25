@@ -243,7 +243,6 @@ export function MatchupPage() {
           <SeasonTable
             allMatchups={allMatchups}
             homeTeamId={matchup.homeTeamId}
-            awayTeamId={matchup.awayTeamId}
             homeTeamName={matchup.homeTeamName}
             awayTeamName={matchup.awayTeamName}
             currentEventId={matchup.eventId}
@@ -385,33 +384,25 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, 
 
 type SeasonRow = {
   eventId: string; eventName: string; scheduledAt: string;
-  homeScore: number; awayScore: number; homeBonus: number; awayBonus: number;
+  homeScore: number; awayScore: number;
   isCurrent: boolean;
 };
 
-function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, currentEventId }: {
-  allMatchups: any[]; homeTeamId: string; awayTeamId: string;
+function SeasonTable({ allMatchups, homeTeamId, homeTeamName, awayTeamName, currentEventId }: {
+  allMatchups: any[]; homeTeamId: string;
   homeTeamName: string; awayTeamName: string; currentEventId: string;
 }) {
-  const WIN_BONUS = 25;
-  const TIE_BONUS = 10;
-
   const rows: SeasonRow[] = allMatchups
     .map((m): SeasonRow | null => {
       const homeIsHome = m.homeTeamId === homeTeamId;
       const homeScore = +(homeIsHome ? m.homeScore : m.awayScore);
       const awayScore = +(homeIsHome ? m.awayScore : m.homeScore);
       if (homeScore === 0 && awayScore === 0) return null;
-      const homeWon = m.winnerId === homeTeamId;
-      const awayWon = m.winnerId === awayTeamId;
-      const tied = homeScore > 0 && !m.winnerId;
       return {
         eventId: m.eventId,
         eventName: m.eventName as string,
         scheduledAt: m.scheduledAt as string,
         homeScore, awayScore,
-        homeBonus: homeWon ? WIN_BONUS : tied ? TIE_BONUS : 0,
-        awayBonus: awayWon ? WIN_BONUS : tied ? TIE_BONUS : 0,
         isCurrent: m.eventId === currentEventId,
       };
     })
@@ -420,8 +411,8 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
 
   if (rows.length === 0) return null;
 
-  const totalHome = rows.reduce((s, r) => s + r.homeScore + r.homeBonus, 0);
-  const totalAway = rows.reduce((s, r) => s + r.awayScore + r.awayBonus, 0);
+  const totalHome = rows.reduce((s, r) => s + r.homeScore, 0);
+  const totalAway = rows.reduce((s, r) => s + r.awayScore, 0);
 
   return (
     <div style={styles.seasonSection}>
@@ -443,11 +434,9 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
               <div style={styles.seasonEventCell}>{short}</div>
               <div style={styles.seasonScoreCell}>
                 <span style={styles.seasonPts}>{r.homeScore.toFixed(0)}</span>
-                {r.homeBonus > 0 && <span style={styles.seasonBonus}>+{r.homeBonus}</span>}
               </div>
               <div style={styles.seasonScoreCell}>
                 <span style={styles.seasonPts}>{r.awayScore.toFixed(0)}</span>
-                {r.awayBonus > 0 && <span style={styles.seasonBonus}>+{r.awayBonus}</span>}
               </div>
             </div>
           );
