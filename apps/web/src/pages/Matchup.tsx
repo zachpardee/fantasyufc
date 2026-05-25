@@ -431,20 +431,20 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
       <div style={styles.seasonTable}>
         {/* Header */}
         <div style={styles.seasonHeaderRow}>
-          <div style={{ ...styles.seasonEventCell, color: '#444' }}>EVENT</div>
-          <div style={{ ...styles.seasonScoreCell, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{homeTeamName}</div>
-          <div style={{ ...styles.seasonScoreCell, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{awayTeamName}</div>
+          <div style={styles.seasonTeamCell}>{homeTeamName}</div>
+          <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>EVENT</div>
+          <div style={{ ...styles.seasonTeamCell, justifyContent: 'flex-start' }}>{awayTeamName}</div>
         </div>
         {/* Rows */}
         {rows.map((r) => {
           const short = r.eventName.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ').replace(/^UFC\s+/i, 'UFC ');
           return (
             <div key={r.eventId} style={{ ...styles.seasonRow, ...(r.isCurrent ? styles.seasonRowCurrent : {}) }}>
-              <div style={styles.seasonEventCell}>{short}</div>
               <div style={styles.seasonScoreCell}>
                 <span style={styles.seasonPts}>{r.homeScore.toFixed(0)}</span>
               </div>
-              <div style={styles.seasonScoreCell}>
+              <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>{short}</div>
+              <div style={{ ...styles.seasonScoreCell, justifyContent: 'flex-start' }}>
                 <span style={styles.seasonPts}>{r.awayScore.toFixed(0)}</span>
               </div>
             </div>
@@ -452,11 +452,11 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
         })}
         {/* Totals */}
         <div style={styles.seasonTotalRow}>
-          <div style={styles.seasonEventCell}>SEASON TOTAL</div>
           <div style={styles.seasonScoreCell}>
             <span style={styles.seasonTotalPts}>{totalHome.toFixed(0)}</span>
           </div>
-          <div style={styles.seasonScoreCell}>
+          <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>SEASON TOTAL</div>
+          <div style={{ ...styles.seasonScoreCell, justifyContent: 'flex-start' }}>
             <span style={styles.seasonTotalPts}>{totalAway.toFixed(0)}</span>
           </div>
         </div>
@@ -619,7 +619,8 @@ const styles: Record<string, React.CSSProperties> = {
   seasonRowCurrent: { background: '#111' },
   seasonTotalRow: { display: 'flex', padding: '10px 12px', background: '#0d0d0d', borderTop: '1px solid #222' },
   seasonEventCell: { flex: 1, color: '#666', fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-  seasonScoreCell: { width: 100, display: 'flex', alignItems: 'center', gap: 6 },
+  seasonScoreCell: { width: 80, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' },
+  seasonTeamCell: { width: 80, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
   seasonPts: { color: '#ccc', fontSize: 13, fontWeight: 700 },
   seasonBonus: { color: '#4caf50', fontSize: 11, fontWeight: 700 },
   seasonTotalPts: { color: '#ff8c42', fontSize: 15, fontWeight: 800 },
