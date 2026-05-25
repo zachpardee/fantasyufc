@@ -160,6 +160,11 @@ export function MatchupPage() {
                 {[matchup.venue, matchup.location].filter(Boolean).join(' · ')}
               </div>
             )}
+            {matchup.scheduledAt && (
+              <div style={styles.eventDate}>
+                {new Date(matchup.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
           </div>
 
           {/* Scoreboard */}
@@ -589,6 +594,7 @@ const styles: Record<string, React.CSSProperties> = {
   eventHeader: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '16px 24px', textAlign: 'center' },
   eventName: { color: '#fff', fontSize: 20, fontWeight: 800, marginBottom: 4 },
   eventLocation: { color: '#555', fontSize: 13 },
+  eventDate: { color: '#444', fontSize: 12, marginTop: 2 },
 
   scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
   scoreboardMobile: { padding: '16px', flexDirection: 'column', gap: 12 },
