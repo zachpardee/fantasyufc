@@ -836,6 +836,9 @@ export function LeagueHomePage() {
       {selectedMember && (() => {
         const color = (selectedMember as any).avatarColor ?? '#5555ff';
         const streak = selectedMember.streak ?? 0;
+        const standingRank = members.findIndex((m) => m.id === selectedMember.id) + 1;
+        const isLeagueChamp = hasBelt(selectedMember);
+        const isBmfChamp = hasBmfBelt(selectedMember);
         return (
           <div style={styles.modalOverlay} onClick={() => setSelectedMember(null)}>
             <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
@@ -853,6 +856,9 @@ export function LeagueHomePage() {
                 </div>
                 <div style={styles.memberSheetName}>{selectedMember.teamName}</div>
                 <div style={styles.memberSheetUser}>@{selectedMember.username}</div>
+                {standingRank > 0 && (
+                  <div style={styles.memberSheetRank}>#{standingRank} in standings</div>
+                )}
                 <div style={styles.memberSheetStats}>
                   <div style={styles.memberSheetStat}>
                     <span style={styles.memberSheetStatVal}>{(+(selectedMember.totalPoints ?? 0)).toFixed(0)}</span>
@@ -879,6 +885,17 @@ export function LeagueHomePage() {
                 {streak !== 0 && (
                   <div style={{ ...styles.memberSheetStreak, color: streak > 0 ? '#4caf50' : '#ff5252' }}>
                     {streak > 0 ? `W${streak} streak` : `L${Math.abs(streak)} streak`}
+                  </div>
+                )}
+                {(isLeagueChamp || isBmfChamp) && (
+                  <div style={styles.memberSheetBragRow}>
+                    {isLeagueChamp && isBmfChamp ? (
+                      <div style={styles.memberSheetBragBoth}>🏆 League Champion &amp; BMF Champion</div>
+                    ) : isLeagueChamp ? (
+                      <div style={styles.memberSheetBragUfc}>🏆 League Champion</div>
+                    ) : (
+                      <div style={styles.memberSheetBragBmf}>BMF Champion</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1022,6 +1039,11 @@ const styles: Record<string, React.CSSProperties> = {
   memberSheetStatLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
   memberSheetStatDivider: { width: 1, height: 40, background: '#222', flexShrink: 0 },
   memberSheetStreak: { fontSize: 13, fontWeight: 700, marginTop: 4 },
+  memberSheetRank: { color: '#555', fontSize: 12, marginTop: 2 },
+  memberSheetBragRow: { marginTop: 16, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 },
+  memberSheetBragUfc: { background: '#2a2000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 13, fontWeight: 700, padding: '8px 18px' },
+  memberSheetBragBmf: { background: '#0f0f0f', border: '1px solid #c8a00066', borderRadius: 8, color: '#c8a000', fontSize: 13, fontWeight: 700, padding: '8px 18px', letterSpacing: 0.5 },
+  memberSheetBragBoth: { background: '#1a1000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 13, fontWeight: 700, padding: '8px 18px', textAlign: 'center' as const },
   msgBoard: { margin: '0 24px 24px', background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' },
   msgBoardTitle: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, padding: '14px 16px 10px', borderBottom: '1px solid #1a1a1a', margin: 0 },
   msgList: { maxHeight: 320, overflowY: 'auto' as const, padding: '8px 0', display: 'flex', flexDirection: 'column' as const, gap: 2 },
