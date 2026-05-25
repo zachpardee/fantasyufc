@@ -9,7 +9,6 @@ export function PicksPage() {
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
-  const [triedSave, setTriedSave] = useState(false);
 
   const { data: currentEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
@@ -45,11 +44,13 @@ export function PicksPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const picks = Object.entries(localPicks).map(([fightId, pickedFighterId]) => ({
-        fightId,
-        pickedFighterId,
-        pickedMethod: localMethods[fightId],
-      }));
+      const picks = Object.entries(localPicks)
+        .filter(([fightId]) => localMethods[fightId])
+        .map(([fightId, pickedFighterId]) => ({
+          fightId,
+          pickedFighterId,
+          pickedMethod: localMethods[fightId],
+        }));
       return apiClient.post(`/leagues/${leagueId}/picks/${currentEvent!.id}`, { picks });
     },
     onSuccess: () => {
@@ -145,19 +146,13 @@ export function PicksPage() {
 
       {!locked && (
         <div style={styles.footer}>
-          {triedSave && !allComplete && (
-            <span style={styles.footerError}>Pick a winner and method for every fight before saving</span>
-          )}
           {saved && <span style={styles.savedMsg}>Picks saved!</span>}
           <button
-            style={{ ...styles.saveBtn, ...(!allComplete || saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
-            onClick={() => {
-              if (!allComplete) { setTriedSave(true); return; }
-              saveMutation.mutate();
-            }}
+            style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
+            onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
           >
-            {saveMutation.isPending ? 'Saving...' : allComplete ? `Save All ${totalFights} Picks` : `${totalComplete}/${totalFights} picks complete`}
+            {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
           </button>
         </div>
       )}
