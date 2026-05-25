@@ -21,6 +21,7 @@ export interface League {
   memberCount?: number;
   scoringSettings?: ScoringSettings;
   completedAt?: string;
+  bmfBeltHolderId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,25 +55,6 @@ export interface ScoringSettings {
   ptsKoTko: number;
   ptsSubmission: number;
   ptsDecision: number;
-  ptsDraw: number;
-  ptsNoContest: number;
-  ptsFinishRd1: number;
-  ptsFinishRd2: number;
-  ptsFinishRd3: number;
-  ptsFinishRd4: number;
-  ptsFinishRd5: number;
-  ptsKnockdown: number;
-  ptsSigStrikeLanded: number;
-  ptsSigStrikeAttempted: number;
-  ptsTotalStrikeLanded: number;
-  ptsTakedownLanded: number;
-  ptsTakedownAttempted: number;
-  ptsSubmissionAttempt: number;
-  ptsPerformanceOfNight: number;
-  ptsFightOfNight: number;
-  ptsLoss: number;
-  ptsKoLossPenalty: number;
-  titleFightMultiplier: number;
   scorePrelims: boolean;
   scoreEarlyPrelims: boolean;
 }

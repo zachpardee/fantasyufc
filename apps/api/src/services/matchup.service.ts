@@ -125,8 +125,8 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
 
       await client.query(`UPDATE matchups SET winner_id = $1 WHERE id = $2`, [winnerId, m.id]);
 
-      const MATCHUP_WIN_BONUS = 250;
-      const MATCHUP_TIE_BONUS = 100;
+      const MATCHUP_WIN_BONUS = 25;
+      const MATCHUP_TIE_BONUS = 10;
 
       if (isTie) {
         await client.query(
@@ -157,6 +157,12 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
               total_points = total_points + $2
           WHERE id = $1
         `, [loserId, loserScore]);
+
+        // Transfer BMF belt to the winner if the loser currently holds it
+        await client.query(`
+          UPDATE leagues SET bmf_belt_holder_id = $1
+          WHERE id = $2 AND bmf_belt_holder_id = $3
+        `, [winnerId, leagueId, loserId]);
       }
     }
 
