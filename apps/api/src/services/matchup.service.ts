@@ -171,6 +171,7 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
     if (finalsM) {
       const hs = parseFloat(finalsM.home_score), as_ = parseFloat(finalsM.away_score);
       const championId = hs >= as_ ? finalsM.home_team_id : finalsM.away_team_id;
+      await client.query(`UPDATE league_members SET is_champion = false WHERE league_id = $1`, [leagueId]);
       await client.query(`UPDATE league_members SET is_champion = true WHERE id = $1`, [championId]);
       await client.query(
         `UPDATE leagues SET status = 'completed'::league_status, completed_at = NOW() WHERE id = $1`,

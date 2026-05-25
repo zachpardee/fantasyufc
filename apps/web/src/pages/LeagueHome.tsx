@@ -197,6 +197,16 @@ export function LeagueHomePage() {
     },
   });
 
+  const [confirmNewSeason, setConfirmNewSeason] = useState(false);
+  const newSeasonMutation = useMutation({
+    mutationFn: () => apiClient.post(`/leagues/${leagueId}/new-season`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league', leagueId] });
+      qc.invalidateQueries({ queryKey: ['league-members', leagueId] });
+      setConfirmNewSeason(false);
+    },
+  });
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteLeagueMutation = useMutation({
     mutationFn: () => apiClient.delete(`/leagues/${leagueId}`),
@@ -529,6 +539,40 @@ export function LeagueHomePage() {
             <span style={styles.championLabel}>League Champion</span>
             <span style={styles.championName}>{champion!.teamName}</span>
           </div>
+        </div>
+      )}
+
+      {/* New Season (commissioner, completed league) */}
+      {isCommissioner && league.status === 'completed' && (
+        <div style={styles.newSeasonCard}>
+          {!confirmNewSeason ? (
+            <>
+              <div style={styles.newSeasonText}>
+                <span style={styles.newSeasonTitle}>Start a new season?</span>
+                <span style={styles.newSeasonSub}>Resets all stats, rosters, and matchups. Same teams, new draft.</span>
+              </div>
+              <button style={styles.newSeasonBtn} onClick={() => setConfirmNewSeason(true)}>
+                New Season →
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={styles.newSeasonText}>
+                <span style={styles.newSeasonTitle}>Start Season {(league.seasonYear ?? 0) + 1}?</span>
+                <span style={styles.newSeasonSub}>All stats, picks, and rosters will be permanently cleared.</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={styles.newSeasonCancelBtn} onClick={() => setConfirmNewSeason(false)}>Cancel</button>
+                <button
+                  style={{ ...styles.newSeasonConfirmBtn, opacity: newSeasonMutation.isPending ? 0.6 : 1 }}
+                  onClick={() => newSeasonMutation.mutate()}
+                  disabled={newSeasonMutation.isPending}
+                >
+                  {newSeasonMutation.isPending ? 'Resetting...' : 'Yes, New Season'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1048,6 +1092,13 @@ const styles: Record<string, React.CSSProperties> = {
   notifItemTitle: { color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 2 },
   notifItemBody: { color: '#888', fontSize: 12, marginBottom: 4 },
   notifItemTime: { color: '#444', fontSize: 11 },
+  newSeasonCard: { margin: '0 24px 16px', background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  newSeasonText: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
+  newSeasonTitle: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  newSeasonSub: { color: '#555', fontSize: 12 },
+  newSeasonBtn: { background: '#1a1a1a', border: '1px solid #333', borderRadius: 8, color: '#c8102e', fontSize: 13, fontWeight: 700, padding: '9px 18px', cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 },
+  newSeasonCancelBtn: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 13, padding: '8px 14px', cursor: 'pointer' },
+  newSeasonConfirmBtn: { background: '#c8102e', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 700, padding: '8px 14px', cursor: 'pointer' },
   championBanner: {
     background: 'linear-gradient(135deg, #1a0a0a 0%, #2a1010 50%, #1a0a0a 100%)',
     border: '1px solid #c8102e66', borderLeft: '4px solid #c8102e',

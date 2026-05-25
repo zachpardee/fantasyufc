@@ -6,6 +6,7 @@ import { DEFAULT_SCORING_SETTINGS } from '@fantasy-ufc/shared';
 import { generateMatchupsForLeague } from '../services/matchup.service';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
+import { redis } from '../config/redis';
 
 export const leaguesRouter = Router();
 
@@ -366,6 +367,65 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
         bmf_belt_holder_id = (SELECT id FROM league_members WHERE league_id = $4 ORDER BY joined_at DESC LIMIT 1)
       WHERE id = $4
     `, [seasonEndsAt.toISOString(), semisEventId, finalsEventId, req.params.leagueId]);
+
+    const { rows: [updated] } = await db.query(`SELECT * FROM leagues WHERE id = $1`, [req.params.leagueId]);
+    res.json(updated);
+  } catch (err) { next(err); }
+});
+
+leaguesRouter.post('/:leagueId/new-season', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [league] } = await db.query(
+      `SELECT id, commissioner_id, status FROM leagues WHERE id = $1`,
+      [req.params.leagueId],
+    );
+    if (!league) throw new AppError(404, 'League not found');
+    if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
+    if (league.status !== 'completed') throw new AppError(400, 'League must be completed to start a new season');
+
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(`
+        UPDATE league_members SET
+          wins = 0, losses = 0, ties = 0, total_points = 0,
+          streak = 0, is_champion = false, draft_position = NULL
+        WHERE league_id = $1
+      `, [req.params.leagueId]);
+
+      await client.query(`DELETE FROM matchups WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM league_events WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM event_picks WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM perfect_card_bonuses WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM roster_win_bonuses WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`
+        DELETE FROM rosters
+        WHERE league_member_id IN (SELECT id FROM league_members WHERE league_id = $1)
+      `, [req.params.leagueId]);
+      await client.query(`DELETE FROM draft_sessions WHERE league_id = $1`, [req.params.leagueId]);
+
+      await client.query(`
+        UPDATE leagues SET
+          status = 'setup',
+          season_year = season_year + 1,
+          bmf_belt_holder_id = NULL,
+          completed_at = NULL,
+          season_ends_at = NULL,
+          playoff_semis_event_id = NULL,
+          playoff_finals_event_id = NULL
+        WHERE id = $1
+      `, [req.params.leagueId]);
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    await redis.del(`standings:${req.params.leagueId}`);
 
     const { rows: [updated] } = await db.query(`SELECT * FROM leagues WHERE id = $1`, [req.params.leagueId]);
     res.json(updated);
