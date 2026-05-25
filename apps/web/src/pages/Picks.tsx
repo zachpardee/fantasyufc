@@ -19,6 +19,7 @@ export function PicksPage() {
     queryKey: ['picks', leagueId, currentEvent?.id],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}`),
     enabled: !!currentEvent?.id,
+    refetchInterval: (query) => query.state.data?.eventStatus === 'live' ? 30_000 : false,
   });
 
   // Seed local picks from server data (only when fresh data loads, not on every keystroke)
