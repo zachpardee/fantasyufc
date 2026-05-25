@@ -8,7 +8,7 @@ import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
-function BeltHalo({ size, variant = 'ufc', position = 'top' }: { size: number; variant?: 'ufc' | 'bmf'; position?: 'top' | 'bottom' }) {
+function BeltHalo({ size, variant = 'ufc', position = 'top', offset = 0 }: { size: number; variant?: 'ufc' | 'bmf'; position?: 'top' | 'bottom'; offset?: number }) {
   const w = size * 1.9;
   const h = size * 0.3;
   const isBmf = variant === 'bmf';
@@ -27,7 +27,7 @@ function BeltHalo({ size, variant = 'ufc', position = 'top' }: { size: number; v
   const textColor = isBmf ? '#c8a000' : '#1a0800';
   const label = isBmf ? 'BMF' : 'UFC';
   return (
-    <div style={{ position: 'absolute', ...(position === 'bottom' ? { bottom: -(size * 0.34) } : { top: -(size * 0.34) }), left: '50%', transform: 'translateX(-50%)', width: w, height: h, pointerEvents: 'none', zIndex: 2, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' }}>
+    <div style={{ position: 'absolute', ...(position === 'bottom' ? { top: size * 1.04 + offset } : { top: -(size * 0.34) + offset }), left: '50%', transform: 'translateX(-50%)', width: w, height: h, pointerEvents: 'none', zIndex: 2, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' }}>
       <svg viewBox="0 0 200 32" width={w} height={h} xmlns="http://www.w3.org/2000/svg">
         <rect x="0" y="11" width="200" height="10" fill="#111"/>
         <rect x="0" y="11" width="200" height="1.2" fill={strapEdge}/>
@@ -848,7 +848,7 @@ export function LeagueHomePage() {
                   <div style={{ ...styles.memberSheetAvatar, background: color + '33', borderColor: color }}>
                     {selectedMember.teamName.charAt(0).toUpperCase()}
                   </div>
-                  {hasBelt(selectedMember) && <BeltHalo size={72} />}
+                  {hasBelt(selectedMember) && <BeltHalo size={72} offset={8} />}
                   {hasBmfBelt(selectedMember) && <BeltHalo size={72} variant="bmf" position={hasBelt(selectedMember) ? 'bottom' : 'top'} />}
                 </div>
                 <div style={styles.memberSheetName}>{selectedMember.teamName}</div>
