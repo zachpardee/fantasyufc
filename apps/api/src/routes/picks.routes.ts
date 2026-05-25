@@ -255,6 +255,19 @@ picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next
 
     const fightsWithPicks = fights.map((f) => ({ ...f, picks: pickMap[f.id] ?? {} }));
 
-    res.json({ event, members, fights: fightsWithPicks });
+    const { rows: championPicks } = await db.query(`
+      SELECT ecp.member_id, ecp.fighter_id, ecp.points_earned,
+             f.first_name, f.last_name,
+             fr.winner_id AS result_winner_id
+      FROM event_champion_picks ecp
+      JOIN fighters f ON f.id = ecp.fighter_id
+      LEFT JOIN fight_results fr ON fr.fight_id = ecp.fight_id
+      WHERE ecp.league_id = $1 AND ecp.event_id = $2
+    `, [req.params.leagueId, req.params.eventId]);
+
+    const championMap: Record<string, any> = {};
+    for (const cp of championPicks) championMap[cp.member_id] = cp;
+
+    res.json({ event, members, fights: fightsWithPicks, championPicks: championMap });
   } catch (err) { next(err); }
 });

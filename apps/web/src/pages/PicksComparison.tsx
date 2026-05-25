@@ -45,7 +45,7 @@ export function PicksComparisonPage() {
 
   if (isLoading || !data) return <LoadingScreen />;
 
-  const { event, members, fights } = data;
+  const { event, members, fights, championPicks } = data;
   const isLive = event.status === 'live';
   const isCompleted = event.status === 'completed';
   const isCommissioner = session?.user.id === league?.commissionerId;
@@ -141,6 +141,35 @@ export function PicksComparisonPage() {
                 </tr>
               );
             })}
+            {/* Champion pick row */}
+            <tr style={styles.champRow}>
+              <td style={{ ...styles.td, ...styles.fightCol }}>
+                <div style={styles.champRowLabel}>★ Champion</div>
+                <div style={styles.champRowSub}>+30 pts if they win</div>
+              </td>
+              {members.map((m: any) => {
+                const cp = championPicks?.[m.id];
+                if (!cp) return <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>—</td>;
+                const won = cp.pointsEarned > 0;
+                const pending = cp.resultWinnerId === null;
+                const resolved = isCompleted || (isLive && cp.resultWinnerId !== null);
+                return (
+                  <td key={m.id} style={{
+                    ...styles.td,
+                    ...(resolved && won ? styles.champCorrect : {}),
+                    ...(resolved && !won ? styles.champWrong : {}),
+                  }}>
+                    <div style={styles.champName}>{cp.firstName} {cp.lastName}</div>
+                    {resolved
+                      ? won
+                        ? <div style={styles.champPts}>+30</div>
+                        : <div style={styles.champMiss}>✗</div>
+                      : pending && <div style={styles.champPending}>—</div>
+                    }
+                  </td>
+                );
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -149,10 +178,12 @@ export function PicksComparisonPage() {
         <div style={styles.totalsRow}>
           <div style={styles.totalsLabel}>Event Points</div>
           {members.map((m: any) => {
-            const total = fights.reduce((sum: number, f: any) => {
+            const pickPts = fights.reduce((sum: number, f: any) => {
               const p = f.picks[m.id];
               return sum + (p?.pointsEarned ? +p.pointsEarned : 0);
             }, 0);
+            const champPts = championPicks?.[m.id]?.pointsEarned ? +championPicks[m.id].pointsEarned : 0;
+            const total = pickPts + champPts;
             const correct = fights.filter((f: any) => f.picks[m.id]?.isCorrect === true).length;
             return (
               <div key={m.id} style={styles.totalsCell}>
@@ -200,6 +231,15 @@ const styles: Record<string, React.CSSProperties> = {
   pickedName: { color: '#ddd', fontSize: 13, fontWeight: 700 },
   pickedMethod: { color: '#666', fontSize: 11, marginTop: 2 },
   pts: { color: '#4caf50', fontSize: 12, fontWeight: 700, marginTop: 3 },
+  champRow: { borderTop: '2px solid #222', background: '#0d0d00' },
+  champRowLabel: { color: '#ffd700', fontSize: 12, fontWeight: 800, letterSpacing: 0.3 },
+  champRowSub: { color: '#555', fontSize: 10, marginTop: 2 },
+  champName: { color: '#ddd', fontSize: 13, fontWeight: 700 },
+  champPts: { color: '#4caf50', fontSize: 13, fontWeight: 700, marginTop: 3 },
+  champMiss: { color: '#ff5252', fontSize: 13, fontWeight: 700, marginTop: 3 },
+  champPending: { color: '#555', fontSize: 11, marginTop: 3 },
+  champCorrect: { background: '#0a1a0a' },
+  champWrong: { background: '#1a0808', opacity: 0.6 },
   totalsRow: { display: 'flex', alignItems: 'stretch', borderTop: '2px solid #222', background: '#111', padding: '16px 24px', gap: 0 },
   totalsLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, flex: '0 0 160px', display: 'flex', alignItems: 'center' },
   totalsCell: { flex: 1, textAlign: 'center' },
