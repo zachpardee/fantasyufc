@@ -149,6 +149,7 @@ export function PicksPage() {
                 const pickedName = pickedId
                   ? (pickedRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`)
                   : null;
+                const pickedImageUrl = pickedId ? (pickedRed ? fight.redImageUrl : fight.blueImageUrl) : null;
                 const isCorrect = fight.isCorrect;
                 const isWrong = isCorrect === false;
                 const methodLabel: Record<string, string> = { ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ' };
@@ -161,8 +162,18 @@ export function PicksPage() {
                       <span style={{ color: '#4488cc' }}>{fight.blueLastName}</span>
                       <div style={styles.summaryFightMeta}>{fight.weightClassName}</div>
                     </td>
-                    <td style={{ ...styles.summaryTd, color: pickedName ? (pickedRed ? '#e05555' : '#5599dd') : '#333', fontWeight: 600 }}>
-                      {pickedName ?? '—'}
+                    <td style={styles.summaryTd}>
+                      {pickedName ? (
+                        <div style={styles.summaryPickCell}>
+                          {pickedImageUrl && (
+                            <div style={styles.summaryImg}>
+                              <img src={pickedImageUrl} alt={pickedName}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                            </div>
+                          )}
+                          <span style={{ color: pickedRed ? '#e05555' : '#5599dd', fontWeight: 600 }}>{pickedName}</span>
+                        </div>
+                      ) : <span style={{ color: '#333' }}>—</span>}
                     </td>
                     <td style={styles.summaryTd}>
                       {method ? <span style={styles.methodBadge}>{methodLabel[method] ?? method}</span> : <span style={{ color: '#333' }}>—</span>}
@@ -462,6 +473,8 @@ const styles: Record<string, React.CSSProperties> = {
   summaryTd: { padding: '14px', fontSize: 13, color: '#ccc', verticalAlign: 'middle' },
   summaryRowEven: { background: '#0f0f0f' },
   summaryRowOdd: { background: '#0a0a0a' },
+  summaryPickCell: { display: 'flex', alignItems: 'center', gap: 10 },
+  summaryImg: { width: 36, height: 42, borderRadius: 4, overflow: 'hidden', background: '#222', flexShrink: 0 },
   summaryBelt: { color: '#ffd700', fontSize: 10, fontWeight: 800 },
   summaryVs: { color: '#333' },
   summaryFightMeta: { color: '#444', fontSize: 11, marginTop: 2 },
