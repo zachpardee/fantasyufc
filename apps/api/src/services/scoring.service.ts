@@ -121,7 +121,11 @@ export async function processFightResult(fightResultId: string) {
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.home_team_id
-              AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $3)
+              AND ep.fight_id IN (
+                SELECT id FROM fights WHERE event_id = $3
+                ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
+                LIMIT 6
+              )
           ),
           away_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0) +
@@ -135,7 +139,11 @@ export async function processFightResult(fightResultId: string) {
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.away_team_id
-              AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $3)
+              AND ep.fight_id IN (
+                SELECT id FROM fights WHERE event_id = $3
+                ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
+                LIMIT 6
+              )
           )
         WHERE id = $1
       `, [matchup.id, matchup.league_id, fightResult.event_id]);

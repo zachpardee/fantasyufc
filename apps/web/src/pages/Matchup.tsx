@@ -467,6 +467,10 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   );
 }
 
+const PICK_METHOD_LABEL: Record<string, string> = {
+  ko_tko: 'KO/TKO', submission: 'Sub', decision: 'Dec',
+};
+
 function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
   label: string; picks: any[]; matchupPts: number; championPts: number;
 }) {
@@ -474,53 +478,78 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
   const correct = picks.filter((p) => p.isCorrect === true);
   const hasScores = scored.length > 0;
 
-  let methodBonus = 0;
-  let underdogBonus = 0;
-  for (const p of correct) {
-    const earned = +(p.pointsEarned ?? 0);
-    const isDecision = ['decision_unanimous', 'decision_split', 'decision_majority'].includes(p.resultOutcome);
-    const methodMatch =
-      (p.pickedMethod === 'ko_tko'      && p.resultOutcome === 'ko_tko') ||
-      (p.pickedMethod === 'submission'   && p.resultOutcome === 'submission') ||
-      (p.pickedMethod === 'decision'     && isDecision);
-    const mBonus = methodMatch ? (isDecision ? 5 : 10) : 0;
-    methodBonus += mBonus;
-    underdogBonus += Math.max(0, earned - 20 - mBonus);
-  }
-  // Base pts = total earned minus method and underdog bonuses
-  const basePts = correct.reduce((s, p) => s + Math.max(0, +(p.pointsEarned ?? 0)), 0) - methodBonus - underdogBonus;
-  // Sweep bonus derived directly from correct count — matches scoring service exactly, no residual math
   const sweepBonus = correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
 
-  const rows = [
-    { label: `${correct.length} correct pick${correct.length !== 1 ? 's' : ''}`, pts: basePts },
-    ...(methodBonus > 0  ? [{ label: 'Method bonuses',   pts: methodBonus }]  : []),
-    ...(underdogBonus > 0 ? [{ label: 'Underdog bonuses', pts: underdogBonus }] : []),
-    ...(sweepBonus > 0   ? [{ label: 'Sweep bonus',       pts: sweepBonus }]   : []),
-    ...(championPts > 0  ? [{ label: '★ Event Champion',  pts: championPts }]  : []),
-  ];
-
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={styles.totalsTeam}>{label}</div>
-      {hasScores && (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ ...styles.totalsTeam, marginBottom: 10 }}>{label}</div>
+      {hasScores ? (
         <>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {rows.map((r) => (
-              <div key={r.label} style={styles.breakdownRow}>
-                <span style={styles.breakdownLabel}>{r.label}</span>
-                <span style={styles.breakdownVal}>+{r.pts}</span>
+          {/* Per-pick grid */}
+          {picks.map((p) => {
+            const isRed = p.pickedFighterId === p.redFighterId;
+            const lastName: string = isRed ? p.redLastName : p.blueLastName;
+            const earned = +(p.pointsEarned ?? 0);
+            const isDecision = ['decision_unanimous', 'decision_split', 'decision_majority'].includes(p.resultOutcome);
+            const methodMatch =
+              (p.pickedMethod === 'ko_tko'    && p.resultOutcome === 'ko_tko') ||
+              (p.pickedMethod === 'submission' && p.resultOutcome === 'submission') ||
+              (p.pickedMethod === 'decision'   && isDecision);
+
+            let resultLabel = '';
+            if (p.isCorrect === true) {
+              resultLabel = methodMatch
+                ? `Win + ${PICK_METHOD_LABEL[p.pickedMethod] ?? p.pickedMethod}`
+                : 'Win';
+            }
+
+            return (
+              <div key={p.id ?? lastName} style={styles.bdPickRow}>
+                <span style={{ ...styles.bdFighter, color: p.isCorrect ? '#ccc' : p.isCorrect === false ? '#333' : '#666' }}>
+                  {lastName}
+                </span>
+                <span style={{ ...styles.bdResult, color: p.isCorrect ? '#666' : '#2a2a2a' }}>
+                  {p.isCorrect === true ? resultLabel : p.isCorrect === false ? '✗' : '—'}
+                </span>
+                <span style={{ ...styles.bdPts, color: p.isCorrect ? '#4caf50' : '#2a2a2a' }}>
+                  {p.isCorrect === true ? `+${earned}` : ''}
+                </span>
               </div>
-            ))}
-          </div>
-          <div style={styles.breakdownDividerRow} />
-          <div style={styles.breakdownRow}>
-            <span style={styles.breakdownLabel}>Matchup total</span>
+            );
+          })}
+
+          {/* Bonus rows */}
+          {(sweepBonus > 0 || championPts > 0) && (
+            <div style={styles.breakdownDividerRow} />
+          )}
+          {sweepBonus > 0 && (
+            <div style={styles.bdPickRow}>
+              <span style={{ ...styles.bdFighter, color: '#888' }}>Sweep bonus</span>
+              <span style={{ ...styles.bdResult, color: '#555' }}>{correct.length}/6</span>
+              <span style={{ ...styles.bdPts, color: '#4caf50' }}>+{sweepBonus}</span>
+            </div>
+          )}
+          {championPts > 0 && (
+            <div style={styles.bdPickRow}>
+              <span style={{ ...styles.bdFighter, color: '#ffd700' }}>★ Champion</span>
+              <span style={{ ...styles.bdResult, color: '#666' }}>Win</span>
+              <span style={{ ...styles.bdPts, color: '#4caf50' }}>+{championPts}</span>
+            </div>
+          )}
+
+          {/* Total */}
+          <div style={{ ...styles.breakdownDividerRow, marginTop: 6 }} />
+          <div style={{ ...styles.bdPickRow, paddingTop: 6 }}>
+            <span style={{ ...styles.bdFighter, color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>
+              Total
+            </span>
+            <span style={styles.bdResult} />
             <span style={styles.totalsMatchup}>{matchupPts.toFixed(0)}</span>
           </div>
         </>
+      ) : (
+        <div style={styles.breakdownPending}>Scores update as fights complete</div>
       )}
-      {!hasScores && <div style={styles.breakdownPending}>Scores update as fights complete</div>}
     </div>
   );
 }
@@ -602,11 +631,11 @@ const styles: Record<string, React.CSSProperties> = {
   totalsLabel: { color: '#444', fontSize: 12 },
   totalsMatchup: { color: '#c8102e', fontSize: 20, fontWeight: 800 },
   totalsSeason: { color: '#ff8c42', fontSize: 20, fontWeight: 800 },
-  breakdownGrid: { display: 'flex', flexDirection: 'column', gap: 4 },
   breakdownRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24 },
-  breakdownTotalRow: { paddingTop: 6 },
-  breakdownLabel: { color: '#555', fontSize: 12 },
-  breakdownVal: { color: '#888', fontSize: 13, fontWeight: 600 },
   breakdownDividerRow: { borderTop: '1px solid #1e1e1e', margin: '4px 0' },
   breakdownPending: { color: '#333', fontSize: 12, fontStyle: 'italic' },
+  bdPickRow: { display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'baseline', gap: '0 10px', padding: '3px 0' },
+  bdFighter: { fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+  bdResult: { fontSize: 11, color: '#555', whiteSpace: 'nowrap' as const },
+  bdPts: { fontSize: 12, fontWeight: 700, minWidth: 28, textAlign: 'right' as const },
 };
