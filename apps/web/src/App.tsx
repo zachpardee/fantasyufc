@@ -15,6 +15,7 @@ import { TradesPage } from './pages/Trades';
 import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
 import { PicksPage } from './pages/Picks';
+import { PicksComparisonPage } from './pages/PicksComparison';
 import { TeamPage } from './pages/TeamPage';
 import { LeagueRulesPage } from './pages/LeagueRules';
 import { PlayoffsPage } from './pages/Playoffs';
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/league/:leagueId/trades" element={<TradesPage />} />
           <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
           <Route path="/league/:leagueId/picks" element={<PicksPage />} />
+          <Route path="/league/:leagueId/picks/comparison" element={<PicksComparisonPage />} />
           <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
           <Route path="/league/:leagueId/rules" element={<LeagueRulesPage />} />
           <Route path="/league/:leagueId/playoffs" element={<PlayoffsPage />} />

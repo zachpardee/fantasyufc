@@ -132,3 +132,61 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     res.json({ ok: true, count: picks.length });
   } catch (err) { next(err); }
 });
+
+// All members' picks for an event — for the comparison view
+picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
+    const { rows: [event] } = await db.query(
+      `SELECT id, name, status, scheduled_at FROM ufc_events WHERE id = $1`,
+      [req.params.eventId],
+    );
+    if (!event) throw new AppError(404, 'Event not found');
+
+    const { rows: members } = await db.query(
+      `SELECT id, team_name FROM league_members WHERE league_id = $1 AND is_active = true ORDER BY total_points DESC`,
+      [req.params.leagueId],
+    );
+
+    const { rows: fights } = await db.query(`
+      SELECT
+        f.id, f.is_title_fight, f.card_segment, f.scheduled_rounds, f.bout_order,
+        f.red_fighter_id, rf.first_name AS red_first_name, rf.last_name AS red_last_name,
+        rf.image_url AS red_image_url, rf.ranking AS red_ranking, rf.is_champion AS red_is_champion,
+        f.blue_fighter_id, bf.first_name AS blue_first_name, bf.last_name AS blue_last_name,
+        bf.image_url AS blue_image_url, bf.ranking AS blue_ranking, bf.is_champion AS blue_is_champion,
+        wc.name AS weight_class_name,
+        fr.winner_id AS result_winner_id, fr.outcome AS result_outcome
+      FROM fights f
+      JOIN fighters rf ON rf.id = f.red_fighter_id
+      JOIN fighters bf ON bf.id = f.blue_fighter_id
+      JOIN weight_classes wc ON wc.id = f.weight_class_id
+      LEFT JOIN fight_results fr ON fr.fight_id = f.id
+      WHERE f.event_id = $1
+      ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
+      LIMIT 6
+    `, [req.params.eventId]);
+
+    const { rows: allPicks } = await db.query(`
+      SELECT ep.fight_id, ep.member_id, ep.picked_fighter_id, ep.picked_method, ep.is_correct, ep.points_earned
+      FROM event_picks ep
+      WHERE ep.league_id = $1 AND ep.fight_id = ANY($2::uuid[])
+    `, [req.params.leagueId, fights.map((f) => f.id)]);
+
+    // Index picks by fight_id → member_id
+    const pickMap: Record<string, Record<string, any>> = {};
+    for (const p of allPicks) {
+      if (!pickMap[p.fight_id]) pickMap[p.fight_id] = {};
+      pickMap[p.fight_id][p.member_id] = p;
+    }
+
+    const fightsWithPicks = fights.map((f) => ({ ...f, picks: pickMap[f.id] ?? {} }));
+
+    res.json({ event, members, fights: fightsWithPicks });
+  } catch (err) { next(err); }
+});

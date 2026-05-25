@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/error.middleware';
 
 export const app = express();
 
+app.set('trust proxy', 1);
 app.use(helmet());
 const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:19006').split(',');
 app.use(cors({

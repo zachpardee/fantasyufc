@@ -92,6 +92,7 @@ export function PicksPage() {
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Event Picks</span>
         {locked && <span style={styles.lockedBadge}>LOCKED</span>}
+        <Link to={`/league/${leagueId}/picks/comparison`} style={styles.compareLink}>Compare All →</Link>
       </nav>
 
       <div style={styles.header}>
@@ -382,6 +383,7 @@ const styles: Record<string, React.CSSProperties> = {
   footerHint: { color: '#666', fontSize: 13, flex: 1 },
   footerError: { color: '#ff6b6b', fontSize: 13, flex: 1, fontWeight: 600 },
   savedMsg: { color: '#4caf50', fontSize: 13, fontWeight: 600 },
+  compareLink: { color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginLeft: 'auto' },
   saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   saveBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   empty: { color: '#555', textAlign: 'center', padding: 60, fontSize: 14 },

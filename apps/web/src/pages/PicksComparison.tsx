@@ -1,0 +1,189 @@
+import { useQuery } from '@tanstack/react-query';
+import { useParams, Link } from 'react-router-dom';
+import { apiClient } from '../api/client';
+import { LoadingScreen } from '../components/LoadingScreen';
+
+const METHOD_SHORT: Record<string, string> = {
+  ko_tko: 'KO', submission: 'SUB', decision: 'DEC',
+  decision_unanimous: 'DEC', decision_split: 'DEC', decision_majority: 'DEC',
+  disqualification: 'DQ',
+};
+
+export function PicksComparisonPage() {
+  const { leagueId } = useParams<{ leagueId: string }>();
+
+  const { data: currentEvent } = useQuery<any>({
+    queryKey: ['picks-current-event', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
+  });
+
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['picks-all', leagueId, currentEvent?.id],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}/all`),
+    enabled: !!currentEvent?.id,
+    refetchInterval: (query) => query.state.data?.event?.status === 'live' ? 30_000 : false,
+  });
+
+  if (!currentEvent) {
+    return (
+      <div style={styles.page}>
+        <nav style={styles.nav}>
+          <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+          <span style={styles.title}>Pick Comparison</span>
+        </nav>
+        <div style={styles.empty}>No upcoming event scheduled.</div>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) return <LoadingScreen />;
+
+  const { event, members, fights } = data;
+  const isLive = event.status === 'live';
+  const isCompleted = event.status === 'completed';
+
+  return (
+    <div style={styles.page}>
+      <nav style={styles.nav}>
+        <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+        <span style={styles.title}>Pick Comparison</span>
+        {isLive && <span style={styles.liveBadge}>LIVE</span>}
+      </nav>
+
+      <div style={styles.header}>
+        <div style={styles.eventName}>{event.name}</div>
+        <div style={styles.eventDate}>
+          {new Date(event.scheduled_at).toLocaleDateString('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric',
+          })}
+        </div>
+      </div>
+
+      <div style={styles.tableWrap}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={{ ...styles.th, ...styles.fightCol }}>Fight</th>
+              {members.map((m: any) => (
+                <th key={m.id} style={styles.th}>
+                  <div style={styles.memberName}>{m.team_name}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fights.map((fight: any, i: number) => {
+              const winnerId = fight.result_winner_id;
+              return (
+                <tr key={fight.id} style={i % 2 === 0 ? styles.rowEven : styles.rowOdd}>
+                  <td style={{ ...styles.td, ...styles.fightCol }}>
+                    {fight.is_title_fight && <div style={styles.beltTag}>TITLE</div>}
+                    <div style={styles.fightName}>
+                      <span style={styles.red}>{fight.red_last_name}</span>
+                      <span style={styles.vs}>v</span>
+                      <span style={styles.blue}>{fight.blue_last_name}</span>
+                    </div>
+                    <div style={styles.fightMeta}>{fight.weight_class_name}</div>
+                  </td>
+                  {members.map((m: any) => {
+                    const pick = fight.picks[m.id];
+                    if (!pick) {
+                      return <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>—</td>;
+                    }
+                    const pickedRed = pick.picked_fighter_id === fight.red_fighter_id;
+                    const method = METHOD_SHORT[pick.picked_method] ?? pick.picked_method;
+                    const isCorrect = pick.is_correct === true;
+                    const isWrong = pick.is_correct === false;
+                    const isResolved = isCompleted || isLive && winnerId;
+
+                    return (
+                      <td
+                        key={m.id}
+                        style={{
+                          ...styles.td,
+                          ...styles.pickCell,
+                          ...(isCorrect ? styles.correct : {}),
+                          ...(isWrong ? styles.wrong : {}),
+                          ...(!isResolved && pickedRed ? styles.pickedRed : {}),
+                          ...(!isResolved && !pickedRed ? styles.pickedBlue : {}),
+                        }}
+                      >
+                        <div style={styles.pickedName}>
+                          {pickedRed ? fight.red_last_name : fight.blue_last_name}
+                        </div>
+                        <div style={styles.pickedMethod}>{method}</div>
+                        {isCorrect && pick.points_earned != null && (
+                          <div style={styles.pts}>+{(+pick.points_earned).toFixed(0)}</div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Totals row */}
+      {(isLive || isCompleted) && (
+        <div style={styles.totalsRow}>
+          <div style={styles.totalsLabel}>Event Points</div>
+          {members.map((m: any) => {
+            const total = fights.reduce((sum: number, f: any) => {
+              const p = f.picks[m.id];
+              return sum + (p?.points_earned ? +p.points_earned : 0);
+            }, 0);
+            const correct = fights.filter((f: any) => f.picks[m.id]?.is_correct === true).length;
+            return (
+              <div key={m.id} style={styles.totalsCell}>
+                <div style={styles.totalsPts}>{total.toFixed(0)}</div>
+                <div style={styles.totalsCorrect}>{correct}/{fights.length} correct</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  page: { minHeight: '100vh', background: '#0a0a0a' },
+  nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
+  back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
+  title: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
+  liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 4 },
+  header: { background: '#111', borderBottom: '1px solid #1a1a1a', padding: '20px 24px' },
+  eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
+  eventDate: { color: '#666', fontSize: 13, marginTop: 4 },
+  empty: { color: '#555', textAlign: 'center', padding: 60, fontSize: 14 },
+  tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 500 },
+  th: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #222', whiteSpace: 'nowrap' },
+  fightCol: { textAlign: 'left', minWidth: 160 },
+  memberName: { color: '#aaa', fontSize: 12, fontWeight: 700 },
+  td: { padding: '12px 16px', textAlign: 'center', verticalAlign: 'middle' },
+  rowEven: { background: '#0f0f0f' },
+  rowOdd: { background: '#0a0a0a' },
+  fightName: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 },
+  fightMeta: { color: '#444', fontSize: 11, marginTop: 3 },
+  beltTag: { color: '#ffd700', fontSize: 9, fontWeight: 800, letterSpacing: 0.5, marginBottom: 3 },
+  red: { color: '#c8102e' },
+  blue: { color: '#4488cc' },
+  vs: { color: '#333', fontSize: 11 },
+  noPick: { color: '#333', fontSize: 18 },
+  pickCell: { borderRadius: 4 },
+  pickedRed: { background: '#1a0808' },
+  pickedBlue: { background: '#080d1a' },
+  correct: { background: '#0a1a0a' },
+  wrong: { background: '#1a0808', opacity: 0.6 },
+  pickedName: { color: '#ddd', fontSize: 13, fontWeight: 700 },
+  pickedMethod: { color: '#666', fontSize: 11, marginTop: 2 },
+  pts: { color: '#4caf50', fontSize: 12, fontWeight: 700, marginTop: 3 },
+  totalsRow: { display: 'flex', alignItems: 'stretch', borderTop: '2px solid #222', background: '#111', padding: '16px 24px', gap: 0 },
+  totalsLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, flex: '0 0 160px', display: 'flex', alignItems: 'center' },
+  totalsCell: { flex: 1, textAlign: 'center' },
+  totalsPts: { color: '#c8102e', fontSize: 22, fontWeight: 800 },
+  totalsCorrect: { color: '#555', fontSize: 11, marginTop: 2 },
+};
