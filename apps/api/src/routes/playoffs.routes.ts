@@ -117,6 +117,26 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
   } catch (err) { next(err); }
 });
 
+// Commissioner: cancel playoffs and revert league to active
+playoffsRouter.delete('/cancel', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [league] } = await db.query(
+      `SELECT id, commissioner_id, status FROM leagues WHERE id = $1`,
+      [req.params.leagueId],
+    );
+    if (!league) throw new AppError(404, 'League not found');
+    if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
+    if (league.status !== 'playoffs') throw new AppError(400, 'League is not in playoffs');
+
+    await db.query(
+      `DELETE FROM matchups WHERE league_id = $1 AND is_playoffs = true`,
+      [req.params.leagueId],
+    );
+    await db.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [req.params.leagueId]);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [league] } = await db.query(

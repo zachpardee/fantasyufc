@@ -101,6 +101,16 @@ export function PlayoffsPage() {
     },
   });
 
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const cancelMutation = useMutation({
+    mutationFn: () => apiClient.delete(`/leagues/${leagueId}/playoffs/cancel`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
+      qc.invalidateQueries({ queryKey: ['league', leagueId] });
+      setConfirmCancel(false);
+    },
+  });
+
   if (isLoading || !bracket) return <LoadingScreen />;
 
   const { phase, seeds, semisMatchups, finalsMatchup } = bracket;
@@ -177,6 +187,30 @@ export function PlayoffsPage() {
         </div>
       )}
 
+      {/* Cancel playoffs — commissioner only, while in playoffs */}
+      {isCommissioner && phase !== 'none' && (
+        <div style={styles.cancelSection}>
+          {!confirmCancel ? (
+            <button style={styles.cancelBtn} onClick={() => setConfirmCancel(true)}>Cancel Playoffs</button>
+          ) : (
+            <div style={styles.cancelConfirm}>
+              <p style={styles.cancelText}>This will remove all playoff matchups and revert the league to Active. Are you sure?</p>
+              <div style={styles.cancelRow}>
+                <button style={styles.cancelDismiss} onClick={() => setConfirmCancel(false)}>Never mind</button>
+                <button
+                  style={styles.cancelConfirmBtn}
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel Playoffs'}
+                </button>
+              </div>
+              {cancelMutation.isError && <p style={styles.errMsg}>{(cancelMutation.error as any)?.error ?? 'Failed'}</p>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bracket */}
       {phase === 'none' && !isCommissioner && (
         <div style={styles.empty}>Playoffs haven't started yet.</div>
@@ -237,6 +271,13 @@ const styles: Record<string, React.CSSProperties> = {
   commBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const },
   commBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   errMsg: { color: '#ff5252', fontSize: 13, marginTop: 8 },
+  cancelSection: { padding: '0 24px 8px' },
+  cancelBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 6, color: '#ff5252', fontSize: 13, padding: '8px 16px', cursor: 'pointer' },
+  cancelConfirm: { background: '#1a1010', border: '1px solid #3a1a1a', borderRadius: 8, padding: '14px 16px' },
+  cancelText: { color: '#ccc', fontSize: 13, margin: '0 0 12px' },
+  cancelRow: { display: 'flex', gap: 10 },
+  cancelDismiss: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 13, padding: '8px 16px', cursor: 'pointer' },
+  cancelConfirmBtn: { background: '#3a1a1a', border: '1px solid #ff525444', borderRadius: 6, color: '#ff5252', fontSize: 13, fontWeight: 700, padding: '8px 16px', cursor: 'pointer' },
   seedsSection: { padding: '0 24px 16px' },
   sectionLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, margin: '20px 0 10px' },
   seedsList: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
