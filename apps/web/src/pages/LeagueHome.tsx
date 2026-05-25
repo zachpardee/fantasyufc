@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -140,11 +140,15 @@ export function LeagueHomePage() {
     onSuccess: () => refetchMessages(),
   });
 
-  const scrollToBottom = useCallback(() => {
-    msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  useEffect(() => { scrollToBottom(); }, [messages.length, scrollToBottom]);
+  const prevMsgCount = useRef(0);
+  useEffect(() => {
+    const prev = prevMsgCount.current;
+    prevMsgCount.current = messages.length;
+    // Only scroll when a new message arrives, not on initial load
+    if (prev > 0 && messages.length > prev) {
+      msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length]);
 
   function openNotifs() {
     setShowNotifs((v) => {
