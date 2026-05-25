@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
 
 const METHOD_SHORT: Record<string, string> = {
@@ -11,6 +12,12 @@ const METHOD_SHORT: Record<string, string> = {
 
 export function PicksComparisonPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
+
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
 
   const { data: currentEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
@@ -41,6 +48,19 @@ export function PicksComparisonPage() {
   const { event, members, fights } = data;
   const isLive = event.status === 'live';
   const isCompleted = event.status === 'completed';
+  const isCommissioner = session?.user.id === league?.commissionerId;
+
+  if (!isCommissioner && !isLive && !isCompleted) {
+    return (
+      <div style={styles.page}>
+        <nav style={styles.nav}>
+          <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+          <span style={styles.title}>Pick Comparison</span>
+        </nav>
+        <div style={styles.empty}>Pick comparison is only available once the event starts.</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
@@ -53,7 +73,7 @@ export function PicksComparisonPage() {
       <div style={styles.header}>
         <div style={styles.eventName}>{event.name}</div>
         <div style={styles.eventDate}>
-          {new Date(event.scheduled_at).toLocaleDateString('en-US', {
+          {new Date(event.scheduledAt).toLocaleDateString('en-US', {
             weekday: 'long', month: 'long', day: 'numeric',
           })}
         </div>
@@ -66,35 +86,35 @@ export function PicksComparisonPage() {
               <th style={{ ...styles.th, ...styles.fightCol }}>Fight</th>
               {members.map((m: any) => (
                 <th key={m.id} style={styles.th}>
-                  <div style={styles.memberName}>{m.team_name}</div>
+                  <div style={styles.memberName}>{m.teamName}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {fights.map((fight: any, i: number) => {
-              const winnerId = fight.result_winner_id;
+              const winnerId = fight.resultWinnerId;
               return (
                 <tr key={fight.id} style={i % 2 === 0 ? styles.rowEven : styles.rowOdd}>
                   <td style={{ ...styles.td, ...styles.fightCol }}>
-                    {fight.is_title_fight && <div style={styles.beltTag}>TITLE</div>}
+                    {fight.isTitleFight && <div style={styles.beltTag}>TITLE</div>}
                     <div style={styles.fightName}>
-                      <span style={styles.red}>{fight.red_last_name}</span>
+                      <span style={styles.red}>{fight.redLastName}</span>
                       <span style={styles.vs}>v</span>
-                      <span style={styles.blue}>{fight.blue_last_name}</span>
+                      <span style={styles.blue}>{fight.blueLastName}</span>
                     </div>
-                    <div style={styles.fightMeta}>{fight.weight_class_name}</div>
+                    <div style={styles.fightMeta}>{fight.weightClassName}</div>
                   </td>
                   {members.map((m: any) => {
                     const pick = fight.picks[m.id];
                     if (!pick) {
                       return <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>—</td>;
                     }
-                    const pickedRed = pick.picked_fighter_id === fight.red_fighter_id;
-                    const method = METHOD_SHORT[pick.picked_method] ?? pick.picked_method;
-                    const isCorrect = pick.is_correct === true;
-                    const isWrong = pick.is_correct === false;
-                    const isResolved = isCompleted || isLive && winnerId;
+                    const pickedRed = pick.pickedFighterId === fight.redFighterId;
+                    const method = METHOD_SHORT[pick.pickedMethod] ?? pick.pickedMethod;
+                    const isCorrect = pick.isCorrect === true;
+                    const isWrong = pick.isCorrect === false;
+                    const isResolved = isCompleted || (isLive && winnerId);
 
                     return (
                       <td
@@ -109,11 +129,11 @@ export function PicksComparisonPage() {
                         }}
                       >
                         <div style={styles.pickedName}>
-                          {pickedRed ? fight.red_last_name : fight.blue_last_name}
+                          {pickedRed ? fight.redLastName : fight.blueLastName}
                         </div>
                         <div style={styles.pickedMethod}>{method}</div>
-                        {isCorrect && pick.points_earned != null && (
-                          <div style={styles.pts}>+{(+pick.points_earned).toFixed(0)}</div>
+                        {isCorrect && pick.pointsEarned != null && (
+                          <div style={styles.pts}>+{(+pick.pointsEarned).toFixed(0)}</div>
                         )}
                       </td>
                     );
@@ -125,16 +145,15 @@ export function PicksComparisonPage() {
         </table>
       </div>
 
-      {/* Totals row */}
       {(isLive || isCompleted) && (
         <div style={styles.totalsRow}>
           <div style={styles.totalsLabel}>Event Points</div>
           {members.map((m: any) => {
             const total = fights.reduce((sum: number, f: any) => {
               const p = f.picks[m.id];
-              return sum + (p?.points_earned ? +p.points_earned : 0);
+              return sum + (p?.pointsEarned ? +p.pointsEarned : 0);
             }, 0);
-            const correct = fights.filter((f: any) => f.picks[m.id]?.is_correct === true).length;
+            const correct = fights.filter((f: any) => f.picks[m.id]?.isCorrect === true).length;
             return (
               <div key={m.id} style={styles.totalsCell}>
                 <div style={styles.totalsPts}>{total.toFixed(0)}</div>

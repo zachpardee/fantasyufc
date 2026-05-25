@@ -2,18 +2,27 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/auth.store';
 
 export function PicksPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
   const qc = useQueryClient();
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
+
   const { data: currentEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
   });
+
+  const isCommissioner = session?.user.id === league?.commissionerId;
 
   const { data: picksData } = useQuery<any>({
     queryKey: ['picks', leagueId, currentEvent?.id],
@@ -92,7 +101,9 @@ export function PicksPage() {
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Event Picks</span>
         {locked && <span style={styles.lockedBadge}>LOCKED</span>}
-        <Link to={`/league/${leagueId}/picks/comparison`} style={styles.compareLink}>Compare All →</Link>
+        {(isCommissioner || locked) && (
+          <Link to={`/league/${leagueId}/picks/comparison`} style={styles.compareLink}>Compare All →</Link>
+        )}
       </nav>
 
       <div style={styles.header}>
