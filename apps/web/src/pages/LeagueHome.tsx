@@ -98,6 +98,15 @@ export function LeagueHomePage() {
     },
   });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteLeagueMutation = useMutation({
+    mutationFn: () => apiClient.delete(`/leagues/${leagueId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leagues'] });
+      navigate('/');
+    },
+  });
+
   const membersRef = useRef(members);
   useEffect(() => { membersRef.current = members; }, [members]);
 
@@ -390,6 +399,27 @@ export function LeagueHomePage() {
               {startDraftMutation.isError && (
                 <p style={styles.error}>{(startDraftMutation.error as any)?.error ?? 'Failed to start draft'}</p>
               )}
+              <div style={styles.deleteDivider} />
+              {!confirmDelete ? (
+                <button style={styles.deleteLeagueBtn} onClick={() => setConfirmDelete(true)}>Delete League</button>
+              ) : (
+                <div style={styles.deleteConfirm}>
+                  <p style={styles.deleteConfirmText}>Permanently delete this league?</p>
+                  <div style={styles.deleteConfirmRow}>
+                    <button style={styles.deleteCancelBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+                    <button
+                      style={styles.deleteConfirmBtn}
+                      onClick={() => deleteLeagueMutation.mutate()}
+                      disabled={deleteLeagueMutation.isPending}
+                    >
+                      {deleteLeagueMutation.isPending ? 'Deleting...' : 'Yes, Delete'}
+                    </button>
+                  </div>
+                  {deleteLeagueMutation.isError && (
+                    <p style={styles.error}>{(deleteLeagueMutation.error as any)?.error ?? 'Failed to delete'}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {!isCommissioner && (
@@ -541,6 +571,13 @@ const styles: Record<string, React.CSSProperties> = {
   draftHint: { color: '#888', fontSize: 13, margin: 0 },
   startDraftBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
   startDraftDisabled: { opacity: 0.5, cursor: 'not-allowed' },
+  deleteDivider: { width: '100%', height: 1, background: '#2a2a2a', margin: '4px 0' },
+  deleteLeagueBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 6, color: '#ff5252', fontSize: 13, padding: '8px 16px', cursor: 'pointer' },
+  deleteConfirm: { background: '#1a1010', border: '1px solid #3a1a1a', borderRadius: 8, padding: '12px 16px', width: '100%', boxSizing: 'border-box' as const },
+  deleteConfirmText: { color: '#ccc', fontSize: 13, margin: '0 0 10px' },
+  deleteConfirmRow: { display: 'flex', gap: 8 },
+  deleteCancelBtn: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 13, padding: '7px 14px', cursor: 'pointer' },
+  deleteConfirmBtn: { background: '#3a1a1a', border: '1px solid #ff525444', borderRadius: 6, color: '#ff5252', fontSize: 13, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' },
   waitingMsg: { color: '#666', fontSize: 14, margin: 0, fontStyle: 'italic' },
   error: { color: '#ff6b6b', fontSize: 13, margin: 0 },
   draftingBanner: {
