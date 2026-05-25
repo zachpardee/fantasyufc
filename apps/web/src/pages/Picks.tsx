@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -11,6 +11,7 @@ export function PicksPage() {
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [showSummary, setShowSummary] = useState(false);
+  const initialViewSet = useRef(false);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -50,6 +51,12 @@ export function PicksPage() {
       }
       return existing;
     });
+    // Default to summary view if server already has picks saved
+    if (!initialViewSet.current) {
+      initialViewSet.current = true;
+      const hasSavedPicks = picksData.fights.some((f: any) => f.pickedFighterId);
+      if (hasSavedPicks) setShowSummary(true);
+    }
   }, [picksData]);
 
   const saveMutation = useMutation({
