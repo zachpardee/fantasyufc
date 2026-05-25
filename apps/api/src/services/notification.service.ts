@@ -52,9 +52,6 @@ export async function sendNotification(
 
 function notifTypeToPrefKey(type: NotificationType): string | null {
   const map: Partial<Record<NotificationType, string>> = {
-    trade_offer: 'tradeOffers',
-    trade_accepted: 'tradeOffers',
-    trade_rejected: 'tradeOffers',
     draft_pick: 'draftPicks',
     fight_result: 'fightResults',
     event_starting: 'eventStarting',

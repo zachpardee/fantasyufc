@@ -60,7 +60,7 @@ export async function processFightResult(fightResultId: string) {
           fightResult.outcome === 'ko_tko' ? lc.pts_ko_tko
           : fightResult.outcome === 'submission' ? lc.pts_submission
           : lc.pts_decision;
-        const underdogBonus = isUnderdog ? 100 : 0;
+        const underdogBonus = isUnderdog ? 10 : 0;
 
         // Score picks for this league with its settings
         await client.query(`
@@ -72,7 +72,7 @@ export async function processFightResult(fightResultId: string) {
                   (picked_method = 'submission'       AND $2 = 'submission') OR
                   (picked_method = 'decision'         AND $2 IN ('decision_unanimous','decision_split','decision_majority')) OR
                   (picked_method = 'disqualification' AND $2 = 'disqualification')
-                ) THEN $5::numeric + $6::numeric
+                ) THEN $4::numeric + $5::numeric + $6::numeric
                 WHEN picked_fighter_id = $1 THEN $4::numeric + $6::numeric
                 ELSE 0
               END
@@ -84,23 +84,6 @@ export async function processFightResult(fightResultId: string) {
           lc.league_id,
         ]);
 
-        // Roster win bonus: +50 pts per drafted fighter who wins
-        const { rows: rosterOwners } = await client.query(`
-          SELECT lm.id AS member_id
-          FROM roster_fighters rf
-          JOIN rosters r ON r.id = rf.roster_id
-          JOIN league_members lm ON lm.id = r.league_member_id
-          WHERE rf.fighter_id = $1 AND lm.league_id = $2
-        `, [fightResult.winner_id, lc.league_id]);
-
-        for (const owner of rosterOwners) {
-          await client.query(`
-            INSERT INTO roster_win_bonuses
-              (league_id, member_id, fighter_id, fight_result_id, points_awarded)
-            VALUES ($1, $2, $3, $4, 50)
-            ON CONFLICT (league_id, member_id, fight_result_id) DO NOTHING
-          `, [lc.league_id, owner.member_id, fightResult.winner_id, fightResultId]);
-        }
       } else {
         // Draw / NC — zero points, mark picks as incorrect
         await client.query(`
@@ -110,39 +93,29 @@ export async function processFightResult(fightResultId: string) {
       }
     }
 
-    // Recalculate matchup scores (picks + roster win bonuses) for all affected matchups
+    // Recalculate matchup scores from picks (includes sweep bonus for 4/5/6 correct)
     for (const matchup of eventMatchups) {
       await client.query(`
         UPDATE matchups SET
           home_score = (
-            SELECT COALESCE(SUM(ep.points_earned), 0)
+            SELECT COALESCE(SUM(ep.points_earned), 0) +
+              CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
+                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
+              END
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.home_team_id
               AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $3)
-          ) + (
-            SELECT COALESCE(SUM(rwb.points_awarded), 0)
-            FROM roster_win_bonuses rwb
-            JOIN fight_results fr ON fr.id = rwb.fight_result_id
-            JOIN fights fi ON fi.id = fr.fight_id
-            WHERE rwb.league_id = $2
-              AND rwb.member_id = matchups.home_team_id
-              AND fi.event_id = $3
           ),
           away_score = (
-            SELECT COALESCE(SUM(ep.points_earned), 0)
+            SELECT COALESCE(SUM(ep.points_earned), 0) +
+              CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
+                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
+              END
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.away_team_id
               AND ep.fight_id IN (SELECT id FROM fights WHERE event_id = $3)
-          ) + (
-            SELECT COALESCE(SUM(rwb.points_awarded), 0)
-            FROM roster_win_bonuses rwb
-            JOIN fight_results fr ON fr.id = rwb.fight_result_id
-            JOIN fights fi ON fi.id = fr.fight_id
-            WHERE rwb.league_id = $2
-              AND rwb.member_id = matchups.away_team_id
-              AND fi.event_id = $3
           )
         WHERE id = $1
       `, [matchup.id, matchup.league_id, fightResult.event_id]);

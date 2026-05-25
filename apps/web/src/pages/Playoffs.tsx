@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League } from '@fantasy-ufc/shared';
@@ -20,16 +18,14 @@ type Bracket = {
   semisMatchups: PlayoffMatchup[];
   finalsMatchup: PlayoffMatchup | null;
 };
-type AvailableEvent = { id: string; name: string; scheduledAt: string; status: string };
 
-function MatchupCard({ matchup, label }: { matchup: PlayoffMatchup; label?: string }) {
+function MatchupCard({ matchup }: { matchup: PlayoffMatchup }) {
   const homeWon = !!matchup.winnerId ? matchup.winnerId === matchup.homeTeamId : +matchup.homeScore > +matchup.awayScore;
   const awayWon = !!matchup.winnerId ? matchup.winnerId === matchup.awayTeamId : +matchup.awayScore > +matchup.homeScore;
   const scored = +matchup.homeScore > 0 || +matchup.awayScore > 0;
 
   return (
     <div style={styles.matchupCard}>
-      {label && <div style={styles.matchupLabel}>{label}</div>}
       <div style={styles.matchupEvent}>{matchup.eventName}</div>
       <div style={styles.matchupRow}>
         <div style={{ ...styles.teamSide, ...(homeWon && scored ? styles.winnerSide : {}) }}>
@@ -52,10 +48,9 @@ function MatchupCard({ matchup, label }: { matchup: PlayoffMatchup; label?: stri
   );
 }
 
-function TBDCard({ label, subtitle }: { label: string; subtitle?: string }) {
+function TBDCard({ subtitle }: { subtitle?: string }) {
   return (
     <div style={{ ...styles.matchupCard, ...styles.tbdCard }}>
-      <div style={styles.matchupLabel}>{label}</div>
       <div style={styles.tbdText}>{subtitle ?? 'TBD'}</div>
     </div>
   );
@@ -63,13 +58,10 @@ function TBDCard({ label, subtitle }: { label: string; subtitle?: string }) {
 
 export function PlayoffsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
-  const { session } = useAuthStore();
   const isMobile = useIsMobile();
   const qc = useQueryClient();
-  const [selectedSemisEvent, setSelectedSemisEvent] = useState('');
-  const [selectedFinalsEvent, setSelectedFinalsEvent] = useState('');
 
-  const { data: league } = useQuery<League>({
+  const { data: league } = useQuery<League & { seasonEndsAt?: string; playoffSemisEventId?: string; playoffFinalsEventId?: string }>({
     queryKey: ['league', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
@@ -79,109 +71,91 @@ export function PlayoffsPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/playoffs/bracket`),
   });
 
-  const { data: availableEvents = [] } = useQuery<AvailableEvent[]>({
-    queryKey: ['schedule-available', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule/available`),
+  const { data: semisEvent } = useQuery<any>({
+    queryKey: ['event', league?.playoffSemisEventId],
+    queryFn: () => apiClient.get(`/events/${league!.playoffSemisEventId}`),
+    enabled: !!league?.playoffSemisEventId,
   });
 
-  const isCommissioner = session?.user.id === league?.commissionerId;
-
-  const startMutation = useMutation({
-    mutationFn: () => apiClient.post(`/leagues/${leagueId}/playoffs/start`, { semisEventId: selectedSemisEvent }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
-      qc.invalidateQueries({ queryKey: ['league', leagueId] });
-      setSelectedSemisEvent('');
-    },
+  const { data: finalsEvent } = useQuery<any>({
+    queryKey: ['event', league?.playoffFinalsEventId],
+    queryFn: () => apiClient.get(`/events/${league!.playoffFinalsEventId}`),
+    enabled: !!league?.playoffFinalsEventId,
   });
 
   const advanceMutation = useMutation({
-    mutationFn: () => apiClient.post(`/leagues/${leagueId}/playoffs/advance`, { finalsEventId: selectedFinalsEvent }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
-      setSelectedFinalsEvent('');
-    },
-  });
-
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const cancelMutation = useMutation({
-    mutationFn: () => apiClient.delete(`/leagues/${leagueId}/playoffs/cancel`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
-      qc.invalidateQueries({ queryKey: ['league', leagueId] });
-      setConfirmCancel(false);
-    },
+    mutationFn: () => apiClient.post(`/leagues/${leagueId}/playoffs/advance`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] }),
   });
 
   if (isLoading || !bracket) return <LoadingScreen />;
 
   const { phase, seeds, semisMatchups, finalsMatchup } = bracket;
 
+  function fmtDate(iso: string | undefined) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Playoffs</span>
-        {phase !== 'none' && <span style={styles.phaseBadge}>{phase === 'complete' ? 'COMPLETE' : phase === 'finals' ? 'FINALS' : 'SEMIFINALS'}</span>}
+        {phase !== 'none' && (
+          <span style={styles.phaseBadge}>
+            {phase === 'complete' ? 'COMPLETE' : phase === 'finals' ? 'FINALS' : 'SEMIFINALS'}
+          </span>
+        )}
       </nav>
 
-      {/* Commissioner controls */}
-      {isCommissioner && phase === 'none' && (
-        <div style={styles.commCard}>
-          <p style={styles.commTitle}>Start the Playoffs</p>
-          <p style={styles.commSub}>Select the event for the Semifinals. Top 4 teams will be seeded by total season score.</p>
-          <div style={styles.commRow}>
-            <select style={styles.eventSelect} value={selectedSemisEvent} onChange={(e) => setSelectedSemisEvent(e.target.value)}>
-              <option value="">Select semifinal event...</option>
-              {availableEvents.map((e) => (
-                <option key={e.id} value={e.id}>{e.name} — {new Date(e.scheduledAt).toLocaleDateString()}</option>
-              ))}
-            </select>
-            <button
-              style={{ ...styles.commBtn, ...(!selectedSemisEvent || startMutation.isPending ? styles.commBtnDisabled : {}) }}
-              disabled={!selectedSemisEvent || startMutation.isPending}
-              onClick={() => startMutation.mutate()}
-            >
-              {startMutation.isPending ? 'Starting...' : 'Start Playoffs'}
-            </button>
+      {/* Schedule info */}
+      {league?.seasonEndsAt && (
+        <div style={styles.scheduleCard}>
+          <div style={styles.scheduleRow}>
+            <span style={styles.scheduleLabel}>Regular season ends</span>
+            <span style={styles.scheduleVal}>{fmtDate(league.seasonEndsAt)}</span>
           </div>
-          {startMutation.isError && <p style={styles.errMsg}>{(startMutation.error as any)?.error ?? 'Failed to start'}</p>}
+          <div style={styles.scheduleRow}>
+            <span style={styles.scheduleLabel}>Semifinals</span>
+            <span style={styles.scheduleVal}>
+              {semisEvent ? `${semisEvent.name} · ${fmtDate(semisEvent.scheduledAt)}` : '—'}
+            </span>
+          </div>
+          <div style={{ ...styles.scheduleRow, borderBottom: 'none' }}>
+            <span style={styles.scheduleLabel}>Finals</span>
+            <span style={styles.scheduleVal}>
+              {finalsEvent ? `${finalsEvent.name} · ${fmtDate(finalsEvent.scheduledAt)}` : '—'}
+            </span>
+          </div>
         </div>
       )}
 
-      {isCommissioner && phase === 'semis' && semisMatchups.length >= 2 && (
-        <div style={styles.commCard}>
-          <p style={styles.commTitle}>Set Finals Event</p>
-          <p style={styles.commSub}>Semis winners will advance to the Finals on the event you pick.</p>
-          <div style={styles.commRow}>
-            <select style={styles.eventSelect} value={selectedFinalsEvent} onChange={(e) => setSelectedFinalsEvent(e.target.value)}>
-              <option value="">Select finals event...</option>
-              {availableEvents.map((e) => (
-                <option key={e.id} value={e.id}>{e.name} — {new Date(e.scheduledAt).toLocaleDateString()}</option>
-              ))}
-            </select>
-            <button
-              style={{ ...styles.commBtn, ...(!selectedFinalsEvent || advanceMutation.isPending ? styles.commBtnDisabled : {}) }}
-              disabled={!selectedFinalsEvent || advanceMutation.isPending}
-              onClick={() => advanceMutation.mutate()}
-            >
-              {advanceMutation.isPending ? 'Setting...' : 'Set Finals'}
-            </button>
-          </div>
-          {advanceMutation.isError && <p style={styles.errMsg}>{(advanceMutation.error as any)?.error ?? 'Failed to advance'}</p>}
+      {/* Advance to finals */}
+      {phase === 'semis' && semisMatchups.length >= 2 && (
+        <div style={styles.advanceCard}>
+          <p style={styles.advanceText}>Semis are set — advance winners to the Finals.</p>
+          {advanceMutation.isError && <p style={styles.errMsg}>{(advanceMutation.error as any)?.error ?? 'Failed'}</p>}
+          <button
+            style={{ ...styles.advanceBtn, ...(advanceMutation.isPending ? styles.btnDisabled : {}) }}
+            disabled={advanceMutation.isPending}
+            onClick={() => advanceMutation.mutate()}
+          >
+            {advanceMutation.isPending ? 'Advancing...' : 'Advance to Finals'}
+          </button>
         </div>
       )}
 
-      {/* Seedings */}
+      {/* Playoff seeds */}
       {seeds.length > 0 && (
-        <div style={styles.seedsSection}>
+        <div style={styles.section}>
           <p style={styles.sectionLabel}>Playoff Seeds</p>
           <div style={styles.seedsList}>
             {seeds.map((s, i) => (
               <div key={s.id} style={styles.seedRow}>
                 <span style={styles.seedNum}>#{i + 1}</span>
                 <span style={styles.seedTeam}>{s.teamName}</span>
-                <span style={styles.seedRecord}>{s.wins}-{s.losses}</span>
+                <span style={styles.seedRecord}>{s.wins}–{s.losses}</span>
                 <span style={styles.seedPts}>{(+s.totalPoints).toFixed(0)} pts</span>
               </div>
             ))}
@@ -189,71 +163,34 @@ export function PlayoffsPage() {
         </div>
       )}
 
-      {/* Cancel playoffs — commissioner only, while in playoffs */}
-      {isCommissioner && phase !== 'none' && (
-        <div style={styles.cancelSection}>
-          {!confirmCancel ? (
-            <button style={styles.cancelBtn} onClick={() => setConfirmCancel(true)}>Cancel Playoffs</button>
-          ) : (
-            <div style={styles.cancelConfirm}>
-              <p style={styles.cancelText}>This will remove all playoff matchups and revert the league to Active. Are you sure?</p>
-              <div style={styles.cancelRow}>
-                <button style={styles.cancelDismiss} onClick={() => setConfirmCancel(false)}>Never mind</button>
-                <button
-                  style={styles.cancelConfirmBtn}
-                  onClick={() => cancelMutation.mutate()}
-                  disabled={cancelMutation.isPending}
-                >
-                  {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel Playoffs'}
-                </button>
-              </div>
-              {cancelMutation.isError && <p style={styles.errMsg}>{(cancelMutation.error as any)?.error ?? 'Failed'}</p>}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Bracket */}
-      {phase === 'none' && !isCommissioner && (
-        <div style={styles.empty}>Playoffs haven't started yet.</div>
+      {phase === 'none' && (
+        <div style={styles.empty}>Playoffs start automatically after the regular season ends.</div>
       )}
 
       {phase !== 'none' && (
-        <div style={styles.bracketWrap}>
+        <div style={styles.section}>
           <p style={styles.sectionLabel}>Bracket</p>
           {semisMatchups.length > 0 ? (
             <div style={{ ...styles.bracket, ...(isMobile ? styles.bracketMobile : {}) }}>
-              {/* Semis column */}
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Semifinals</p>
                 {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} />)}
               </div>
-
-              {/* Connector */}
               <div style={isMobile ? styles.connectorMobile : styles.connector}>
                 {isMobile
                   ? <span style={styles.connectorArrow}>↓</span>
-                  : <>
-                      <div style={styles.connectorLine} />
-                      <span style={styles.connectorArrow}>→</span>
-                      <div style={styles.connectorLine} />
-                    </>}
+                  : <><div style={styles.connectorLine} /><span style={styles.connectorArrow}>→</span><div style={styles.connectorLine} /></>}
               </div>
-
-              {/* Finals column */}
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Finals</p>
-                {finalsMatchup
-                  ? <MatchupCard matchup={finalsMatchup} />
-                  : <TBDCard label="Finals" subtitle="Awaiting semifinal results" />}
+                {finalsMatchup ? <MatchupCard matchup={finalsMatchup} /> : <TBDCard subtitle="Awaiting semifinal results" />}
               </div>
             </div>
           ) : (
             <div style={styles.bracketSingle}>
               <p style={styles.roundLabel}>Finals</p>
-              {finalsMatchup
-                ? <MatchupCard matchup={finalsMatchup} />
-                : <TBDCard label="Finals" subtitle="TBD" />}
+              {finalsMatchup ? <MatchupCard matchup={finalsMatchup} /> : <TBDCard />}
             </div>
           )}
         </div>
@@ -264,27 +201,20 @@ export function PlayoffsPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  loading: { color: '#888', padding: 40, textAlign: 'center' },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
   phaseBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 4, letterSpacing: 0.5 },
-  commCard: { margin: 24, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: 20 },
-  commTitle: { color: '#fff', fontWeight: 700, fontSize: 15, margin: '0 0 4px' },
-  commSub: { color: '#666', fontSize: 13, margin: '0 0 14px' },
-  commRow: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' as const },
-  eventSelect: { background: '#111', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 13, padding: '8px 12px', flex: 1, minWidth: 220, outline: 'none' },
-  commBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const },
-  commBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
-  errMsg: { color: '#ff5252', fontSize: 13, marginTop: 8 },
-  cancelSection: { padding: '0 24px 8px' },
-  cancelBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 6, color: '#ff5252', fontSize: 13, padding: '8px 16px', cursor: 'pointer' },
-  cancelConfirm: { background: '#1a1010', border: '1px solid #3a1a1a', borderRadius: 8, padding: '14px 16px' },
-  cancelText: { color: '#ccc', fontSize: 13, margin: '0 0 12px' },
-  cancelRow: { display: 'flex', gap: 10 },
-  cancelDismiss: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 13, padding: '8px 16px', cursor: 'pointer' },
-  cancelConfirmBtn: { background: '#3a1a1a', border: '1px solid #ff525444', borderRadius: 6, color: '#ff5252', fontSize: 13, fontWeight: 700, padding: '8px 16px', cursor: 'pointer' },
-  seedsSection: { padding: '0 24px 16px' },
+  scheduleCard: { margin: 24, background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, overflow: 'hidden' },
+  scheduleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #1a1a1a' },
+  scheduleLabel: { color: '#666', fontSize: 13 },
+  scheduleVal: { color: '#ccc', fontSize: 13, fontWeight: 600, textAlign: 'right' as const, maxWidth: '60%' },
+  advanceCard: { margin: '0 24px 8px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const },
+  advanceText: { color: '#888', fontSize: 13, margin: 0, flex: 1 },
+  advanceBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const },
+  btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
+  errMsg: { color: '#ff5252', fontSize: 13, width: '100%' },
+  section: { padding: '0 24px 32px' },
   sectionLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, margin: '20px 0 10px' },
   seedsList: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
   seedRow: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12 },
@@ -292,19 +222,17 @@ const styles: Record<string, React.CSSProperties> = {
   seedTeam: { color: '#fff', fontWeight: 600, fontSize: 14, flex: 1 },
   seedRecord: { color: '#666', fontSize: 13 },
   seedPts: { color: '#888', fontSize: 13 },
-  bracketWrap: { padding: '0 24px 32px' },
   bracket: { display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 0, alignItems: 'center' },
   bracketMobile: { display: 'flex', flexDirection: 'column' as const, gap: 0 },
   bracketSingle: { maxWidth: 600, margin: '0 auto' },
   bracketCol: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
   roundLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, margin: '0 0 8px' },
-  connector: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 4, color: '#333' },
+  connector: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 4 },
   connectorMobile: { display: 'flex', justifyContent: 'center', padding: '8px 0' },
   connectorLine: { flex: 1, width: 1, background: '#333', minHeight: 20 },
   connectorArrow: { color: '#444', fontSize: 18 },
   matchupCard: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 18px' },
-  matchupLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 6 },
-  matchupEvent: { color: '#666', fontSize: 12, marginBottom: 12 },
+  matchupEvent: { color: '#555', fontSize: 11, marginBottom: 12 },
   matchupRow: { display: 'flex', alignItems: 'center', gap: 8 },
   teamSide: { flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 3 },
   winnerSide: {},
@@ -314,6 +242,6 @@ const styles: Record<string, React.CSSProperties> = {
   winnerScore: { color: '#fff' },
   vs: { color: '#333', fontSize: 11, flexShrink: 0 },
   tbdCard: { opacity: 0.5 },
-  tbdText: { color: '#555', fontSize: 14, fontStyle: 'italic', paddingTop: 8 },
-  empty: { color: '#555', textAlign: 'center', padding: '60px 24px', fontSize: 14, fontStyle: 'italic' },
+  tbdText: { color: '#555', fontSize: 14, fontStyle: 'italic' },
+  empty: { color: '#555', textAlign: 'center' as const, padding: '60px 24px', fontSize: 14, fontStyle: 'italic' },
 };

@@ -117,7 +117,6 @@ export default function SettingsScreen() {
       <SectionHeader title="NOTIFICATIONS" />
 
       <SettingsRow label="Fight Results" value="On" />
-      <SettingsRow label="Trade Offers" value="On" />
       <SettingsRow label="Waiver Awards" value="On" />
       <SettingsRow label="Draft Picks" value="On" />
 

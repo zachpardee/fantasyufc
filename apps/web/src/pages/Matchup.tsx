@@ -62,18 +62,6 @@ export function MatchupPage() {
     enabled: !!matchup?.eventId && !!matchup?.awayTeamId,
   });
 
-  const { data: homeRoster = [] } = useQuery<any[]>({
-    queryKey: ['roster-member', leagueId, matchup?.homeTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/roster/${matchup!.homeTeamId}`),
-    enabled: !!matchup?.homeTeamId,
-  });
-
-  const { data: awayRoster = [] } = useQuery<any[]>({
-    queryKey: ['roster-member', leagueId, matchup?.awayTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/roster/${matchup!.awayTeamId}`),
-    enabled: !!matchup?.awayTeamId,
-  });
-
   // Live updates only for the current matchup
   useEffect(() => {
     if (!matchup?.id || selectedMatchupId) return;
@@ -219,16 +207,19 @@ export function MatchupPage() {
             </div>
           )}
 
-          {/* Rosters */}
-          <div style={styles.section}>
-            <div style={styles.sectionHeader}>
-              <span style={styles.sectionTitle}>ROSTERS</span>
-            </div>
-            <div style={{ ...styles.rosterGrid, ...(isMobile ? styles.rosterGridMobile : {}) }}>
-              <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
-              {!isMobile && <div style={styles.rosterDivider} />}
-              <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align={isMobile ? 'left' : 'right'} />
-            </div>
+          {/* Score breakdown */}
+          <div style={styles.totalsBar}>
+            <ScoreBreakdown
+              label={matchup.homeTeamName}
+              picks={homePicks?.fights ?? []}
+              matchupPts={+matchup.homeScore}
+            />
+            <div style={styles.totalsDivider} />
+            <ScoreBreakdown
+              label={matchup.awayTeamName}
+              picks={awayPicks?.fights ?? []}
+              matchupPts={+matchup.awayScore}
+            />
           </div>
 
           {/* Season breakdown table */}
@@ -240,25 +231,6 @@ export function MatchupPage() {
             awayTeamName={matchup.awayTeamName}
             currentEventId={matchup.eventId}
           />
-
-          {/* Score breakdown */}
-          <div style={styles.totalsBar}>
-            <ScoreBreakdown
-              label={matchup.homeTeamName}
-              picks={homePicks?.fights ?? []}
-              matchupPts={+matchup.homeScore}
-              isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
-              align="left"
-            />
-            <div style={styles.totalsDivider} />
-            <ScoreBreakdown
-              label={matchup.awayTeamName}
-              picks={awayPicks?.fights ?? []}
-              matchupPts={+matchup.awayScore}
-              isFinalized={!!matchup.winnerId || matchup.eventStatus === 'completed'}
-              align="right"
-            />
-          </div>
         </>
       )}
     </div>
@@ -356,38 +328,6 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, 
   );
 }
 
-function RosterColumn({ label, fighters, align }: { label: string; fighters: any[]; align: 'left' | 'right' }) {
-  return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ ...styles.rosterTeamLabel, textAlign: align }}>{label}</div>
-      {fighters.map((f) => <FighterRow key={f.id} fighter={f} align={align} />)}
-    </div>
-  );
-}
-
-function FighterRow({ fighter, align }: { fighter: any; align: 'left' | 'right' }) {
-  return (
-    <div style={{ ...styles.rosterRow, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
-      {fighter.imageUrl && (
-        <div style={{ width: 32, height: 36, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222' }}>
-          <img src={fighter.imageUrl} alt={`${fighter.firstName} ${fighter.lastName}`}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: align === 'right' ? 'row-reverse' : 'row' }}>
-          <span style={styles.fighterName}>{fighter.firstName} {fighter.lastName}</span>
-          {fighter.isChampion
-            ? <span style={styles.champBadge}>C</span>
-            : fighter.ranking ? <span style={styles.rankBadge}>#{fighter.ranking}</span>
-            : null}
-        </div>
-        <span style={styles.fighterMeta}>{fighter.weightClassName}</span>
-      </div>
-    </div>
-  );
-}
-
 type SeasonRow = {
   eventId: string; eventName: string; scheduledAt: string;
   homeScore: number; awayScore: number; homeBonus: number; awayBonus: number;
@@ -398,8 +338,8 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   allMatchups: any[]; homeTeamId: string; awayTeamId: string;
   homeTeamName: string; awayTeamName: string; currentEventId: string;
 }) {
-  const WIN_BONUS = 250;
-  const TIE_BONUS = 100;
+  const WIN_BONUS = 25;
+  const TIE_BONUS = 10;
 
   const rows: SeasonRow[] = allMatchups
     .map((m): SeasonRow | null => {
@@ -474,39 +414,54 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
 
 function ScoreBreakdown({ label, picks, matchupPts }: {
   label: string; picks: any[]; matchupPts: number;
-  isFinalized?: boolean; align?: 'left' | 'right';
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
-  const totalPickPts = correct.reduce((sum, p) => sum + (+p.pointsEarned), 0);
-  const basePts = correct.length * 200;
-  const bonusPts = totalPickPts - basePts;
-  const rosterBonus = Math.max(0, Math.round(matchupPts - totalPickPts));
   const hasScores = scored.length > 0;
 
+  const basePts = correct.length * 20;
+
+  let methodBonus = 0;
+  let underdogBonus = 0;
+  for (const p of correct) {
+    const earned = +(p.pointsEarned ?? 0);
+    const isDecision = ['decision_unanimous', 'decision_split', 'decision_majority'].includes(p.resultOutcome);
+    const methodMatch =
+      (p.pickedMethod === 'ko_tko'      && p.resultOutcome === 'ko_tko') ||
+      (p.pickedMethod === 'submission'   && p.resultOutcome === 'submission') ||
+      (p.pickedMethod === 'decision'     && isDecision);
+    const mBonus = methodMatch ? (isDecision ? 5 : 10) : 0;
+    methodBonus += mBonus;
+    underdogBonus += Math.max(0, earned - 20 - mBonus);
+  }
+  const sweepBonus = Math.max(0, matchupPts - basePts - methodBonus - underdogBonus);
+
   const rows = [
-    { label: 'Correct picks', pts: basePts },
-    ...(bonusPts > 0 ? [{ label: 'Pick bonuses', pts: bonusPts }] : []),
-    ...(rosterBonus > 0 ? [{ label: 'Drafted fighter wins', pts: rosterBonus }] : []),
+    { label: `${correct.length} correct pick${correct.length !== 1 ? 's' : ''}`, pts: basePts },
+    ...(methodBonus > 0  ? [{ label: 'Method bonuses',   pts: methodBonus }]  : []),
+    ...(underdogBonus > 0 ? [{ label: 'Underdog bonuses', pts: underdogBonus }] : []),
+    ...(sweepBonus > 0   ? [{ label: 'Sweep bonus',       pts: sweepBonus }]   : []),
   ];
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={styles.totalsTeam}>{label}</div>
       {hasScores && (
-        <div style={styles.breakdownGrid}>
-          {rows.map((r) => (
-            <div key={r.label} style={styles.breakdownRow}>
-              <span style={styles.breakdownLabel}>{r.label}</span>
-              <span style={styles.breakdownVal}>+{r.pts}</span>
-            </div>
-          ))}
+        <>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {rows.map((r) => (
+              <div key={r.label} style={styles.breakdownRow}>
+                <span style={styles.breakdownLabel}>{r.label}</span>
+                <span style={styles.breakdownVal}>+{r.pts}</span>
+              </div>
+            ))}
+          </div>
           <div style={styles.breakdownDividerRow} />
-          <div style={{ ...styles.breakdownRow, ...styles.breakdownTotalRow }}>
+          <div style={styles.breakdownRow}>
             <span style={styles.breakdownLabel}>Matchup total</span>
             <span style={styles.totalsMatchup}>{matchupPts.toFixed(0)}</span>
           </div>
-        </div>
+        </>
       )}
       {!hasScores && <div style={styles.breakdownPending}>Scores update as fights complete</div>}
     </div>
@@ -572,16 +527,6 @@ const styles: Record<string, React.CSSProperties> = {
   fightName: { color: '#555', fontSize: 11, textAlign: 'center' },
   fightWeight: { color: '#333', fontSize: 10, textAlign: 'center' },
   fightResult: { color: '#888', fontSize: 10, textAlign: 'center', marginTop: 2 },
-
-  rosterGrid: { display: 'flex', gap: 0 },
-  rosterGridMobile: { flexDirection: 'column', gap: 24 },
-  rosterDivider: { width: 1, background: '#1a1a1a', margin: '0 16px' },
-  rosterTeamLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, width: '100%' },
-  rosterRow: { display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #0f0f0f' },
-  fighterName: { color: '#ccc', fontSize: 13, fontWeight: 600 },
-  rankBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700 },
-  champBadge: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 4px', borderRadius: 3 },
-  fighterMeta: { color: '#444', fontSize: 11 },
 
   seasonSection: { padding: '0 24px 16px' },
   seasonTable: { border: '1px solid #1e1e1e', borderRadius: 8, overflow: 'hidden' },

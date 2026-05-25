@@ -53,7 +53,7 @@ export function StandingsPage() {
                     <div style={styles.username}>@{member.username}</div>
                   </td>
                   <td style={{ ...styles.td, ...styles.ptsCol }}>
-                    {(+(member.totalPoints ?? 0)).toFixed(1)}
+                    {(+(member.totalPoints ?? 0)).toFixed(0)}
                   </td>
                   <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
                   <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>

@@ -6,12 +6,9 @@ import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { DashboardPage } from './pages/Dashboard';
 import { LeagueHomePage } from './pages/LeagueHome';
-import { DraftRoomPage } from './pages/DraftRoom';
-import { RosterPage } from './pages/Roster';
 import { MatchupPage } from './pages/Matchup';
 import { StandingsPage } from './pages/Standings';
 import { FighterBrowserPage } from './pages/FighterBrowser';
-import { TradesPage } from './pages/Trades';
 import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
 import { PicksPage } from './pages/Picks';
@@ -93,11 +90,8 @@ export default function App() {
         <Route path="/league/create" element={<RequireAuth><CreateLeaguePage /></RequireAuth>} />
         <Route path="/league/:leagueId" element={<RequireAuth><LeagueHomePage /></RequireAuth>} />
         <Route element={<RequireAuth><LeagueSubLayout /></RequireAuth>}>
-          <Route path="/league/:leagueId/draft" element={<DraftRoomPage />} />
-          <Route path="/league/:leagueId/roster" element={<RosterPage />} />
           <Route path="/league/:leagueId/matchup" element={<MatchupPage />} />
           <Route path="/league/:leagueId/standings" element={<StandingsPage />} />
-          <Route path="/league/:leagueId/trades" element={<TradesPage />} />
           <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
           <Route path="/league/:leagueId/picks" element={<PicksPage />} />
           <Route path="/league/:leagueId/picks/comparison" element={<PicksComparisonPage />} />

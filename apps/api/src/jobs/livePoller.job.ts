@@ -133,11 +133,77 @@ async function finalizeAllLeagueMatchups(eventId: string) {
 
   await Promise.allSettled(
     leagues.map((l) =>
-      finalizeMatchupResults(l.league_id, eventId).catch((err) =>
-        console.error('[LivePoller] finalizeMatchupResults error for league', l.league_id, err),
-      ),
+      finalizeMatchupResults(l.league_id, eventId)
+        .then(() => maybeAutoStartPlayoffs(l.league_id, eventId))
+        .catch((err) =>
+          console.error('[LivePoller] finalizeMatchupResults error for league', l.league_id, err),
+        ),
     ),
   );
+}
+
+async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
+  const { rows: [league] } = await db.query(`
+    SELECT status, season_ends_at, playoff_semis_event_id, playoff_finals_event_id
+    FROM leagues WHERE id = $1
+  `, [leagueId]);
+
+  if (league.status !== 'active' || !league.playoff_semis_event_id || !league.season_ends_at) return;
+
+  // Only trigger if this event is within the regular season window
+  const { rows: [event] } = await db.query(
+    `SELECT scheduled_at FROM ufc_events WHERE id = $1`, [eventId],
+  );
+  if (!event || new Date(event.scheduled_at) > new Date(league.season_ends_at)) return;
+
+  // Check if any regular season matchups are still pending (winner_id null and event completed)
+  const { rows: pending } = await db.query(`
+    SELECT m.id FROM matchups m
+    JOIN ufc_events e ON e.id = m.event_id
+    WHERE m.league_id = $1
+      AND m.is_playoffs = false
+      AND m.winner_id IS NULL
+      AND e.scheduled_at <= $2
+      AND e.status = 'completed'
+  `, [leagueId, league.season_ends_at]);
+
+  if (pending.length > 0) return;
+
+  console.log(`[LivePoller] Auto-starting playoffs for league ${leagueId}`);
+
+  // Seed top 4 by total_points
+  const { rows: topTeams } = await db.query(`
+    SELECT id FROM league_members
+    WHERE league_id = $1 AND is_active = true
+    ORDER BY total_points DESC, wins DESC
+    LIMIT 4
+  `, [leagueId]);
+
+  if (topTeams.length < 2) return;
+
+  const [s1, s2, s3, s4] = topTeams;
+  const fullBracket = topTeams.length >= 4;
+  const round = fullBracket ? 'semis' : 'finals';
+  const pairs: [any, any, number, number][] = fullBracket
+    ? [[s1, s4, 1, 4], [s2, s3, 2, 3]]
+    : [[s1, s2, 1, 2]];
+
+  // Ensure semis event is in league schedule
+  await db.query(
+    `INSERT INTO league_events (league_id, event_id, is_scoring) VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+    [leagueId, league.playoff_semis_event_id],
+  );
+
+  for (const [home, away, hs, as_] of pairs) {
+    await db.query(`
+      INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
+      VALUES ($1, $2, $3, $4, true, $5, $6, $7)
+      ON CONFLICT DO NOTHING
+    `, [leagueId, league.playoff_semis_event_id, home.id, away.id, round, hs, as_]);
+  }
+
+  await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [leagueId]);
+  console.log(`[LivePoller] Playoffs started for league ${leagueId}`);
 }
 
 async function enrichResultsFromSportsDB(eventId: string, eventName: string) {

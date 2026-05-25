@@ -6,12 +6,12 @@ import { eventsRouter } from './events.routes';
 import { draftRouter } from './draft.routes';
 import { rosterRouter } from './roster.routes';
 import { matchupsRouter } from './matchups.routes';
-import { tradesRouter } from './trades.routes';
 import { notificationsRouter } from './notifications.routes';
 import { adminRouter } from './admin.routes';
 import { scheduleRouter } from './schedule.routes';
 import { picksRouter } from './picks.routes';
 import { playoffsRouter } from './playoffs.routes';
+import { messagesRouter } from './messages.routes';
 
 export const apiRouter = Router();
 
@@ -21,10 +21,10 @@ apiRouter.use('/leagues/:leagueId/draft', draftRouter);
 apiRouter.use('/leagues/:leagueId/roster', rosterRouter);
 apiRouter.use('/leagues/:leagueId/matchups', matchupsRouter);
 apiRouter.use('/leagues/:leagueId/standings', matchupsRouter);
-apiRouter.use('/leagues/:leagueId/trades', tradesRouter);
 apiRouter.use('/leagues/:leagueId/schedule', scheduleRouter);
 apiRouter.use('/leagues/:leagueId/picks', picksRouter);
 apiRouter.use('/leagues/:leagueId/playoffs', playoffsRouter);
+apiRouter.use('/leagues/:leagueId/messages', messagesRouter);
 apiRouter.use('/fighters', fightersRouter);
 apiRouter.use('/events', eventsRouter);
 apiRouter.use('/notifications', notificationsRouter);

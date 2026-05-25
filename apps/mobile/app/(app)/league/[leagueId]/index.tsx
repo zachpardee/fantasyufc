@@ -24,7 +24,6 @@ export default function LeagueHomeScreen() {
     { label: 'My Roster', icon: '👊', route: `/(app)/league/${leagueId}/roster` },
     { label: 'Standings', icon: '📊', route: `/(app)/league/${leagueId}/standings` },
     { label: 'Matchup', icon: '⚔️', route: `/(app)/league/${leagueId}/matchup` },
-    { label: 'Trades', icon: '🤝', route: `/(app)/league/${leagueId}/trade` },
     { label: 'Draft', icon: '📋', route: `/(app)/league/${leagueId}/draft` },
   ];
 

@@ -69,7 +69,7 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
     if (league.status !== 'active') throw new AppError(400, 'League must be active to start playoffs');
 
-    const { semisEventId } = req.body;
+    const { semisEventId, memberIds } = req.body;
     if (!semisEventId) throw new AppError(400, 'semisEventId required');
 
     // Check event exists
@@ -83,14 +83,26 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     );
     if (existing.length > 0) throw new AppError(400, 'Playoffs already started');
 
-    // Seed top 4 by total_points DESC (season score), tiebreak by wins
-    const { rows: topTeams } = await db.query(`
-      SELECT id, team_name, wins, losses, total_points
-      FROM league_members
-      WHERE league_id = $1 AND is_active = true
-      ORDER BY total_points DESC, wins DESC
-      LIMIT 4
-    `, [req.params.leagueId]);
+    // Seed top 4 by total_points DESC (season score), tiebreak by wins — or use custom order from commissioner
+    let topTeams: any[];
+    if (Array.isArray(memberIds) && memberIds.length >= 2) {
+      const { rows: allMembers } = await db.query(
+        `SELECT id, team_name, wins, losses, total_points FROM league_members WHERE league_id = $1 AND is_active = true`,
+        [req.params.leagueId],
+      );
+      const memberMap = new Map(allMembers.map((m: any) => [m.id, m]));
+      topTeams = memberIds.slice(0, 4).map((id: string) => memberMap.get(id)).filter(Boolean);
+      if (topTeams.length < 2) throw new AppError(400, 'Invalid memberIds — need at least 2 valid members');
+    } else {
+      const { rows } = await db.query(`
+        SELECT id, team_name, wins, losses, total_points
+        FROM league_members
+        WHERE league_id = $1 AND is_active = true
+        ORDER BY total_points DESC, wins DESC
+        LIMIT 4
+      `, [req.params.leagueId]);
+      topTeams = rows;
+    }
 
     if (topTeams.length < 2) throw new AppError(400, 'Need at least 2 teams for playoffs');
 
@@ -140,14 +152,24 @@ playoffsRouter.delete('/cancel', requireAuth, async (req: AuthRequest, res, next
 playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [league] } = await db.query(
-      `SELECT id, commissioner_id, status FROM leagues WHERE id = $1`,
+      `SELECT id, status FROM leagues WHERE id = $1`,
       [req.params.leagueId],
     );
     if (!league) throw new AppError(404, 'League not found');
-    if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
+    const { rows: [membership] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!membership) throw new AppError(403, 'Not a member of this league');
     if (league.status !== 'playoffs') throw new AppError(400, 'Playoffs must be started first');
 
-    const { finalsEventId } = req.body;
+    let { finalsEventId } = req.body;
+    if (!finalsEventId) {
+      const { rows: [leagueRow] } = await db.query(
+        `SELECT playoff_finals_event_id FROM leagues WHERE id = $1`, [req.params.leagueId],
+      );
+      finalsEventId = leagueRow?.playoff_finals_event_id;
+    }
     if (!finalsEventId) throw new AppError(400, 'finalsEventId required');
 
     // Check finals doesn't already exist

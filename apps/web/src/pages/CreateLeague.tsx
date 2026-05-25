@@ -10,9 +10,7 @@ export function CreateLeaguePage() {
     name: '',
     teamName: '',
     maxTeams: '10',
-    rosterSize: '10',
-    starterSlots: '5',
-    draftPickTimeSeconds: '90',
+    seasonLengthMonths: '4',
   });
 
   function set(field: string, value: string) {
@@ -28,9 +26,7 @@ export function CreateLeaguePage() {
         name: form.name,
         teamName: form.teamName || 'My Team',
         maxTeams: parseInt(form.maxTeams),
-        rosterSize: parseInt(form.rosterSize),
-        starterSlots: parseInt(form.starterSlots),
-        draftPickTimeSeconds: parseInt(form.draftPickTimeSeconds),
+        seasonLengthMonths: parseInt(form.seasonLengthMonths) as 4 | 6,
       });
       navigate(`/league/${league.id}`);
     } catch (err: any) {
@@ -64,28 +60,16 @@ export function CreateLeaguePage() {
                 {[4,6,8,10,12,14,16].map((n) => <option key={n} value={n}>{n} teams</option>)}
               </select>
             </Field>
-            <Field label="Roster Size">
-              <select style={styles.input} value={form.rosterSize} onChange={(e) => set('rosterSize', e.target.value)}>
-                {[6,8,10,12,15].map((n) => <option key={n} value={n}>{n} fighters</option>)}
+            <Field label="Season Length">
+              <select style={styles.input} value={form.seasonLengthMonths} onChange={(e) => set('seasonLengthMonths', e.target.value)}>
+                <option value="4">4 months</option>
+                <option value="6">6 months</option>
               </select>
             </Field>
           </div>
 
-          <div style={styles.row}>
-            <Field label="Starter Slots">
-              <select style={styles.input} value={form.starterSlots} onChange={(e) => set('starterSlots', e.target.value)}>
-                {[3,4,5,6,7].map((n) => <option key={n} value={n}>{n} starters</option>)}
-              </select>
-            </Field>
-            <Field label="Pick Timer">
-              <select style={styles.input} value={form.draftPickTimeSeconds} onChange={(e) => set('draftPickTimeSeconds', e.target.value)}>
-                <option value="30">30 sec</option>
-                <option value="60">60 sec</option>
-                <option value="90">90 sec</option>
-                <option value="120">2 min</option>
-                <option value="300">5 min</option>
-              </select>
-            </Field>
+          <div style={styles.hint}>
+            Season runs from start date for the selected duration. The next 2 UFC events after the season ends become the playoffs (semis + finals).
           </div>
 
           {error && <p style={styles.error}>{error}</p>}
@@ -117,6 +101,7 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: 'flex', flexDirection: 'column', gap: 20 },
   row: { display: 'flex', gap: 16 },
   input: { background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box' },
+  hint: { color: '#555', fontSize: 12, lineHeight: 1.5 },
   btn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
   btnDisabled: { opacity: 0.6, cursor: 'not-allowed' },
   error: { color: '#ff6b6b', fontSize: 13, margin: 0 },

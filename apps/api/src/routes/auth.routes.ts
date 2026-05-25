@@ -46,7 +46,6 @@ authRouter.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
       avatarUrl: z.string().url().optional(),
       timezone: z.string().optional(),
       notificationPrefs: z.object({
-        tradeOffers: z.boolean(),
         fightResults: z.boolean(),
         draftPicks: z.boolean(),
         eventStarting: z.boolean(),
