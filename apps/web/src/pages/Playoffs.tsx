@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
+import { LoadingScreen } from '../components/LoadingScreen';
 import type { League } from '@fantasy-ufc/shared';
 
 type Seed = { id: string; teamName: string; wins: number; losses: number; totalPoints: number };
@@ -100,7 +101,7 @@ export function PlayoffsPage() {
     },
   });
 
-  if (isLoading || !bracket) return <div style={styles.loading}>Loading bracket...</div>;
+  if (isLoading || !bracket) return <LoadingScreen />;
 
   const { phase, seeds, semisMatchups, finalsMatchup } = bracket;
 

@@ -9,6 +9,7 @@ export function PicksPage() {
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [triedSave, setTriedSave] = useState(false);
 
   const { data: currentEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
@@ -144,14 +145,17 @@ export function PicksPage() {
 
       {!locked && (
         <div style={styles.footer}>
-          {!allComplete && totalFights > 0 && (
-            <span style={styles.footerHint}>Select a winner + method for all {totalFights} fights</span>
+          {triedSave && !allComplete && (
+            <span style={styles.footerError}>Pick a winner and method for every fight before saving</span>
           )}
           {saved && <span style={styles.savedMsg}>Picks saved!</span>}
           <button
             style={{ ...styles.saveBtn, ...(!allComplete || saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
-            onClick={() => saveMutation.mutate()}
-            disabled={!allComplete || saveMutation.isPending}
+            onClick={() => {
+              if (!allComplete) { setTriedSave(true); return; }
+              saveMutation.mutate();
+            }}
+            disabled={saveMutation.isPending}
           >
             {saveMutation.isPending ? 'Saving...' : allComplete ? `Save All ${totalFights} Picks` : `${totalComplete}/${totalFights} picks complete`}
           </button>
@@ -377,6 +381,7 @@ const styles: Record<string, React.CSSProperties> = {
   resultOutcome: { color: '#555', fontSize: 11, textAlign: 'center', marginTop: 10 },
   footer: { position: 'sticky', bottom: 0, background: '#0a0a0a', borderTop: '1px solid #1a1a1a', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
   footerHint: { color: '#666', fontSize: 13, flex: 1 },
+  footerError: { color: '#ff6b6b', fontSize: 13, flex: 1, fontWeight: 600 },
   savedMsg: { color: '#4caf50', fontSize: 13, fontWeight: 600 },
   saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   saveBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },

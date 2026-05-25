@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -16,6 +17,7 @@ const METHOD_LABELS: Record<string, string> = {
 export function MatchupPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
+  const isMobile = useIsMobile();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
 
   // All matchups in the league (for history list)
@@ -144,7 +146,11 @@ export function MatchupPage() {
       )}
 
       {!matchup ? (
-        <div style={styles.empty}>No matchup found.</div>
+        <div style={styles.empty}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⚔️</div>
+          <div style={{ color: '#ccc', fontWeight: 700, marginBottom: 6 }}>No matchup yet</div>
+          <div style={{ color: '#555', fontSize: 13 }}>Matchups are generated when the season schedule is set. Check back after the commissioner starts the season.</div>
+        </div>
       ) : (
         <>
           <div style={styles.eventHeader}>
@@ -157,7 +163,7 @@ export function MatchupPage() {
           </div>
 
           {/* Scoreboard */}
-          <div style={styles.scoreboard}>
+          <div style={{ ...styles.scoreboard, ...(isMobile ? styles.scoreboardMobile : {}) }}>
             <div style={styles.teamBlock}>
               <div style={styles.teamLabelRow}>
                 <div style={styles.teamAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
@@ -218,10 +224,10 @@ export function MatchupPage() {
             <div style={styles.sectionHeader}>
               <span style={styles.sectionTitle}>ROSTERS</span>
             </div>
-            <div style={styles.rosterGrid}>
+            <div style={{ ...styles.rosterGrid, ...(isMobile ? styles.rosterGridMobile : {}) }}>
               <RosterColumn label={matchup.homeTeamName} fighters={homeRoster} align="left" />
-              <div style={styles.rosterDivider} />
-              <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align="right" />
+              {!isMobile && <div style={styles.rosterDivider} />}
+              <RosterColumn label={matchup.awayTeamName} fighters={awayRoster} align={isMobile ? 'left' : 'right'} />
             </div>
           </div>
 
@@ -539,6 +545,7 @@ const styles: Record<string, React.CSSProperties> = {
   eventLocation: { color: '#555', fontSize: 13 },
 
   scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
+  scoreboardMobile: { padding: '16px', flexDirection: 'column', gap: 12 },
   teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
   teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
   teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
@@ -567,6 +574,7 @@ const styles: Record<string, React.CSSProperties> = {
   fightResult: { color: '#888', fontSize: 10, textAlign: 'center', marginTop: 2 },
 
   rosterGrid: { display: 'flex', gap: 0 },
+  rosterGridMobile: { flexDirection: 'column', gap: 24 },
   rosterDivider: { width: 1, background: '#1a1a1a', margin: '0 16px' },
   rosterTeamLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, width: '100%' },
   rosterRow: { display: 'flex', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #0f0f0f' },

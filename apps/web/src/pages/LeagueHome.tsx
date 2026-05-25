@@ -4,6 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
+import { LoadingScreen } from '../components/LoadingScreen';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
 export function LeagueHomePage() {
@@ -138,7 +139,7 @@ export function LeagueHomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [leagueId, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!league) return <div style={styles.loading}>Loading...</div>;
+  if (!league) return <LoadingScreen />;
 
   const isCommissioner = session?.user.id === league.commissionerId;
   const canStartDraft = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;

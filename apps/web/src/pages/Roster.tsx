@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { LoadingInline } from '../components/LoadingScreen';
 
 export function RosterPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -21,7 +22,7 @@ export function RosterPage() {
       </nav>
 
       <div style={styles.body}>
-        {isLoading && <div style={styles.loading}>Loading roster...</div>}
+        {isLoading && <LoadingInline label="Loading roster..." />}
 
         {isEmpty && (
           <div style={styles.empty}>

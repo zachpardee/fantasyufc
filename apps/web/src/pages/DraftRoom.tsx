@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { DraftSession, DraftPick, DraftOrder } from '@fantasy-ufc/shared';
 
 type ApiDraftState = {
@@ -28,6 +29,7 @@ export function DraftRoomPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
   const [timeLeft, setTimeLeft] = useState(0);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [pendingFighterId, setPendingFighterId] = useState<string | null>(null);
@@ -195,7 +197,7 @@ export function DraftRoomPage() {
         </div>
       )}
 
-      <div style={styles.layout}>
+      <div style={{ ...styles.layout, ...(isMobile ? styles.layoutMobile : {}) }}>
         {/* Draft board */}
         <div style={styles.board}>
           <p style={styles.panelTitle}>Draft Board</p>
@@ -239,7 +241,7 @@ export function DraftRoomPage() {
 
         {/* Available fighters sidebar */}
         {!isCompleted && (
-          <div style={styles.sidebar}>
+          <div style={{ ...styles.sidebar, ...(isMobile ? styles.sidebarMobile : {}) }}>
             <p style={styles.panelTitle}>
               Available Fighters
               <span style={styles.availCount}>{availableFighters.length}</span>
@@ -335,6 +337,7 @@ const styles: Record<string, React.CSSProperties> = {
   completeMeta: { color: '#888', fontSize: 14, margin: '0 0 16px' },
   completeLink: { color: '#c8102e', textDecoration: 'none', fontWeight: 700, fontSize: 14 },
   layout: { display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 },
+  layoutMobile: { flexDirection: 'column', overflow: 'auto' },
   board: { flex: 1, overflow: 'auto', padding: 16 },
   panelTitle: { color: '#888', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 },
   availCount: { background: '#333', color: '#aaa', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 },
@@ -352,6 +355,7 @@ const styles: Record<string, React.CSSProperties> = {
   pickEmpty: { color: '#333', fontSize: 12, textAlign: 'center' },
   autoTag: { position: 'absolute', top: 3, right: 3, background: '#444', color: '#888', fontSize: 8, padding: '1px 3px', borderRadius: 2 },
   sidebar: { width: 320, background: '#111', borderLeft: '1px solid #222', overflow: 'auto', padding: 16, flexShrink: 0 },
+  sidebarMobile: { width: '100%', borderLeft: 'none', borderTop: '1px solid #222', overflow: 'visible' },
   pickError: { color: '#ff6b6b', fontSize: 12, margin: '0 0 8px' },
   fighterList: { display: 'flex', flexDirection: 'column', gap: 3 },
   fighterRow: {

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { LoadingInline } from '../components/LoadingScreen';
 
 export function TeamPage() {
   const { leagueId, memberId } = useParams<{ leagueId: string; memberId: string }>();
@@ -48,7 +49,7 @@ export function TeamPage() {
           Roster <span style={styles.count}>{fighters?.length ?? 0}</span>
         </h2>
 
-        {isLoading && <div style={styles.loading}>Loading...</div>}
+        {isLoading && <LoadingInline />}
 
         {!isLoading && fighters?.length === 0 && (
           <div style={styles.empty}>No fighters on this roster yet.</div>

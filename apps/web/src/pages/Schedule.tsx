@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { LoadingInline } from '../components/LoadingScreen';
 
 type ScheduleEvent = {
   id: string;
@@ -119,7 +120,7 @@ export function SchedulePage() {
       </nav>
 
       <div style={styles.content}>
-        {isLoading && <div style={styles.empty}>Loading...</div>}
+        {isLoading && <LoadingInline />}
 
         {!isLoading && upcoming.length === 0 && (
           <div style={styles.empty}>No upcoming events found.</div>

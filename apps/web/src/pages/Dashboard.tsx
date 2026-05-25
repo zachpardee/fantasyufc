@@ -4,10 +4,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, UFCEvent, Fighter } from '@fantasy-ufc/shared';
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { session } = useAuthStore();
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
@@ -63,7 +65,7 @@ export function DashboardPage() {
         </div>
       </nav>
 
-      <div style={styles.content}>
+      <div style={{ ...styles.content, ...(isMobile ? styles.contentMobile : {}) }}>
         {nextEvent && (
           <div style={styles.eventCard}>
             <span style={styles.eventLabel}>NEXT EVENT</span>
@@ -95,7 +97,7 @@ export function DashboardPage() {
             </div>
           )}
 
-          <div style={styles.leagueGrid}>
+          <div style={{ ...styles.leagueGrid, ...(isMobile ? styles.leagueGridMobile : {}) }}>
             {leagues?.map((league) => (
               <Link key={league.id} to={`/league/${league.id}`} style={styles.leagueCard}>
                 <h3 style={styles.leagueName}>{league.name}</h3>
@@ -201,6 +203,7 @@ const styles: Record<string, React.CSSProperties> = {
   navEmail: { color: '#555', fontSize: 13 },
   logoutBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', padding: '6px 14px', cursor: 'pointer', fontSize: 13 },
   content: { maxWidth: 1200, margin: '0 auto', padding: 24 },
+  contentMobile: { padding: 12 },
   eventCard: {
     background: '#1a1a1a', border: '1px solid #333', borderRadius: 12,
     padding: 24, marginBottom: 32, position: 'relative',
@@ -221,6 +224,7 @@ const styles: Record<string, React.CSSProperties> = {
   joinForm: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   input: { background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, padding: '8px 14px', color: '#fff', fontSize: 14, outline: 'none', flex: 1, minWidth: 140 },
   leagueGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 },
+  leagueGridMobile: { gridTemplateColumns: '1fr' },
   leagueCard: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: 20, textDecoration: 'none', display: 'block' },
   leagueName: { color: '#fff', fontSize: 16, fontWeight: 700, marginBottom: 6 },
   leagueMeta: { color: '#888', fontSize: 13, marginBottom: 10 },
