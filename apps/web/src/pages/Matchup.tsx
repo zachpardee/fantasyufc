@@ -474,8 +474,6 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
   const correct = picks.filter((p) => p.isCorrect === true);
   const hasScores = scored.length > 0;
 
-  const basePts = correct.length * 20;
-
   let methodBonus = 0;
   let underdogBonus = 0;
   for (const p of correct) {
@@ -489,7 +487,10 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
     methodBonus += mBonus;
     underdogBonus += Math.max(0, earned - 20 - mBonus);
   }
-  const sweepBonus = Math.max(0, matchupPts - championPts - basePts - methodBonus - underdogBonus);
+  // Base pts = total earned minus method and underdog bonuses
+  const basePts = correct.reduce((s, p) => s + Math.max(0, +(p.pointsEarned ?? 0)), 0) - methodBonus - underdogBonus;
+  // Sweep bonus derived directly from correct count — matches scoring service exactly, no residual math
+  const sweepBonus = correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
 
   const rows = [
     { label: `${correct.length} correct pick${correct.length !== 1 ? 's' : ''}`, pts: basePts },
