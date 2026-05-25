@@ -133,7 +133,8 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
   } catch (err) { next(err); }
 });
 
-// Get this member's event champion pick (with fighter info + result)
+// Get a member's event champion pick (with fighter info + result)
+// Pass ?memberId=<league_member_id> to view another member's pick
 picksRouter.get('/:eventId/champion', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [member] } = await db.query(
@@ -141,6 +142,16 @@ picksRouter.get('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
       [req.params.leagueId, req.user!.id],
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
+
+    let targetMemberId = member.id;
+    if (req.query.memberId && req.query.memberId !== member.id) {
+      const { rows: [targetMember] } = await db.query(
+        `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
+        [req.params.leagueId, req.query.memberId],
+      );
+      if (!targetMember) throw new AppError(404, 'Member not found in this league');
+      targetMemberId = targetMember.id;
+    }
 
     const { rows: [pick] } = await db.query(`
       SELECT ecp.fighter_id, ecp.fight_id, ecp.points_earned,
@@ -150,7 +161,7 @@ picksRouter.get('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
       JOIN fighters f ON f.id = ecp.fighter_id
       LEFT JOIN fight_results fr ON fr.fight_id = ecp.fight_id
       WHERE ecp.league_id = $1 AND ecp.member_id = $2 AND ecp.event_id = $3
-    `, [req.params.leagueId, member.id, req.params.eventId]);
+    `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     res.json(pick ?? null);
   } catch (err) { next(err); }

@@ -62,6 +62,18 @@ export function MatchupPage() {
     enabled: !!matchup?.eventId && !!matchup?.awayTeamId,
   });
 
+  const { data: homeChampion } = useQuery<any>({
+    queryKey: ['matchup-champion-home', leagueId, matchup?.eventId, matchup?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}/champion?memberId=${matchup!.homeTeamId}`),
+    enabled: !!matchup?.eventId && !!matchup?.homeTeamId,
+  });
+
+  const { data: awayChampion } = useQuery<any>({
+    queryKey: ['matchup-champion-away', leagueId, matchup?.eventId, matchup?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}/champion?memberId=${matchup!.awayTeamId}`),
+    enabled: !!matchup?.eventId && !!matchup?.awayTeamId,
+  });
+
   // Live updates only for the current matchup
   useEffect(() => {
     if (!matchup?.id || selectedMatchupId) return;
@@ -204,6 +216,9 @@ export function MatchupPage() {
               {fights.map((fight) => (
                 <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} />
               ))}
+              {(homeChampion || awayChampion) && (
+                <ChampionPickRow homeChampion={homeChampion} awayChampion={awayChampion} locked={homePicks?.locked} />
+              )}
             </div>
           )}
 
@@ -213,12 +228,14 @@ export function MatchupPage() {
               label={matchup.homeTeamName}
               picks={homePicks?.fights ?? []}
               matchupPts={+matchup.homeScore}
+              championPts={homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0}
             />
             <div style={styles.totalsDivider} />
             <ScoreBreakdown
               label={matchup.awayTeamName}
               picks={awayPicks?.fights ?? []}
               matchupPts={+matchup.awayScore}
+              championPts={awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0}
             />
           </div>
 
@@ -233,6 +250,44 @@ export function MatchupPage() {
           />
         </>
       )}
+    </div>
+  );
+}
+
+function ChampionPickRow({ homeChampion, awayChampion, locked }: {
+  homeChampion: any; awayChampion: any; locked?: boolean;
+}) {
+  const renderSide = (champ: any, align: 'left' | 'right') => {
+    if (!champ) return <span style={styles.noPick}>—</span>;
+    const scored = locked && champ.resultWinnerId !== null;
+    const won = scored && champ.pointsEarned > 0;
+    return (
+      <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+        {champ.imageUrl && (
+          <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !won ? 0.4 : 1 }}>
+            <img src={champ.imageUrl} alt={`${champ.firstName} ${champ.lastName}`}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          </div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
+          <div style={{ color: '#ddd', fontSize: 13, fontWeight: 600 }}>{champ.firstName} {champ.lastName}</div>
+          {scored
+            ? <div style={{ color: won ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>{won ? '+30 pts' : '✗'}</div>
+            : <div style={{ color: '#888', fontSize: 11 }}>Pending</div>
+          }
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ ...styles.pickRow, background: '#0d0d00', borderTop: '2px solid #1e1e00' }}>
+      <div style={styles.pickCell}>{renderSide(homeChampion, 'left')}</div>
+      <div style={styles.fightInfo}>
+        <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>★ EVENT CHAMPION</div>
+        <div style={styles.fightWeight}>+30 pts if correct</div>
+      </div>
+      <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>{renderSide(awayChampion, 'right')}</div>
     </div>
   );
 }
@@ -412,8 +467,8 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   );
 }
 
-function ScoreBreakdown({ label, picks, matchupPts }: {
-  label: string; picks: any[]; matchupPts: number;
+function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
+  label: string; picks: any[]; matchupPts: number; championPts: number;
 }) {
   const scored = picks.filter((p) => p.isCorrect !== null);
   const correct = picks.filter((p) => p.isCorrect === true);
@@ -434,13 +489,14 @@ function ScoreBreakdown({ label, picks, matchupPts }: {
     methodBonus += mBonus;
     underdogBonus += Math.max(0, earned - 20 - mBonus);
   }
-  const sweepBonus = Math.max(0, matchupPts - basePts - methodBonus - underdogBonus);
+  const sweepBonus = Math.max(0, matchupPts - championPts - basePts - methodBonus - underdogBonus);
 
   const rows = [
     { label: `${correct.length} correct pick${correct.length !== 1 ? 's' : ''}`, pts: basePts },
     ...(methodBonus > 0  ? [{ label: 'Method bonuses',   pts: methodBonus }]  : []),
     ...(underdogBonus > 0 ? [{ label: 'Underdog bonuses', pts: underdogBonus }] : []),
     ...(sweepBonus > 0   ? [{ label: 'Sweep bonus',       pts: sweepBonus }]   : []),
+    ...(championPts > 0  ? [{ label: '★ Event Champion',  pts: championPts }]  : []),
   ];
 
   return (

@@ -17,6 +17,20 @@ export default function MatchupScreen() {
     },
   });
 
+  const eventId = (matchup as any)?.eventId;
+
+  const { data: homeChampion } = useQuery<any>({
+    queryKey: ['matchup-champion-home', leagueId, eventId, (matchup as any)?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${(matchup as any).homeTeamId}`),
+    enabled: !!eventId && !!(matchup as any)?.homeTeamId,
+  });
+
+  const { data: awayChampion } = useQuery<any>({
+    queryKey: ['matchup-champion-away', leagueId, eventId, (matchup as any)?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${(matchup as any).awayTeamId}`),
+    enabled: !!eventId && !!(matchup as any)?.awayTeamId,
+  });
+
   useRealtimeScoring(matchup?.id);
 
   if (!matchup) {
@@ -69,6 +83,39 @@ export default function MatchupScreen() {
           ))}
         </View>
       </View>
+
+      {(homeChampion || awayChampion) && (
+        <View style={styles.champCard}>
+          <Text style={styles.champCardLabel}>★ Event Champion</Text>
+          <View style={styles.champCardRow}>
+            <View style={styles.champSide}>
+              {homeChampion ? (
+                <>
+                  <Text style={styles.champName}>{homeChampion.firstName} {homeChampion.lastName}</Text>
+                  {homeChampion.pointsEarned > 0
+                    ? <Text style={styles.champWon}>+30 pts</Text>
+                    : homeChampion.resultWinnerId === null
+                      ? <Text style={styles.champPending}>Pending</Text>
+                      : <Text style={styles.champLost}>✗</Text>}
+                </>
+              ) : <Text style={styles.champNoPick}>—</Text>}
+            </View>
+            <Text style={styles.champVs}>vs</Text>
+            <View style={[styles.champSide, styles.champSideRight]}>
+              {awayChampion ? (
+                <>
+                  <Text style={styles.champName}>{awayChampion.firstName} {awayChampion.lastName}</Text>
+                  {awayChampion.pointsEarned > 0
+                    ? <Text style={styles.champWon}>+30 pts</Text>
+                    : awayChampion.resultWinnerId === null
+                      ? <Text style={styles.champPending}>Pending</Text>
+                      : <Text style={styles.champLost}>✗</Text>}
+                </>
+              ) : <Text style={styles.champNoPick}>—</Text>}
+            </View>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -101,4 +148,18 @@ const styles = StyleSheet.create({
   awayRow: { flexDirection: 'row-reverse' },
   fighterName: { color: '#ddd', fontSize: 13, flex: 1 },
   pts: { color: '#c8102e', fontWeight: '700', fontSize: 15, minWidth: 40, textAlign: 'right' },
+  champCard: {
+    margin: 12, backgroundColor: '#0d0d00', borderRadius: 10,
+    padding: 14, borderWidth: 1, borderColor: '#2a2200',
+  },
+  champCardLabel: { color: '#ffd700', fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 },
+  champCardRow: { flexDirection: 'row', alignItems: 'center' },
+  champSide: { flex: 1 },
+  champSideRight: { alignItems: 'flex-end' },
+  champVs: { color: '#333', fontSize: 11, fontWeight: '700', paddingHorizontal: 10 },
+  champName: { color: '#ddd', fontSize: 13, fontWeight: '700' },
+  champWon: { color: '#4caf50', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  champLost: { color: '#ff5252', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  champPending: { color: '#888', fontSize: 11, marginTop: 2 },
+  champNoPick: { color: '#444', fontSize: 13 },
 });
