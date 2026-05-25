@@ -67,6 +67,12 @@ export function PicksPage() {
     }
   }, [picksData]);
 
+  // Reset champion state when event changes so each event starts with a clean pick
+  useEffect(() => {
+    setLocalChampion(null);
+    championInitialized.current = false;
+  }, [currentEvent?.id]);
+
   useEffect(() => {
     if (championInitialized.current || championData === undefined) return;
     championInitialized.current = true;
