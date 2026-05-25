@@ -432,8 +432,8 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
         {/* Header */}
         <div style={styles.seasonHeaderRow}>
           <div style={{ ...styles.seasonEventCell, color: '#444' }}>EVENT</div>
-          <div style={styles.seasonScoreCell}>{homeTeamName}</div>
-          <div style={styles.seasonScoreCell}>{awayTeamName}</div>
+          <div style={{ ...styles.seasonScoreCell, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{homeTeamName}</div>
+          <div style={{ ...styles.seasonScoreCell, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{awayTeamName}</div>
         </div>
         {/* Rows */}
         {rows.map((r) => {
