@@ -10,8 +10,10 @@ export function PicksPage() {
   const qc = useQueryClient();
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
+  const [localChampion, setLocalChampion] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const initialViewSet = useRef(false);
+  const championInitialized = useRef(false);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -30,6 +32,12 @@ export function PicksPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}`),
     enabled: !!currentEvent?.id,
     refetchInterval: (query) => query.state.data?.eventStatus === 'live' ? 30_000 : false,
+  });
+
+  const { data: championData } = useQuery<any>({
+    queryKey: ['picks-champion', leagueId, currentEvent?.id],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}/champion`),
+    enabled: !!currentEvent?.id,
   });
 
   // Seed local picks from server data (only when fresh data loads, not on every keystroke)
@@ -59,6 +67,12 @@ export function PicksPage() {
     }
   }, [picksData]);
 
+  useEffect(() => {
+    if (championInitialized.current || championData === undefined) return;
+    championInitialized.current = true;
+    if (championData?.fighterId) setLocalChampion(championData.fighterId);
+  }, [championData]);
+
   const saveMutation = useMutation({
     mutationFn: () => {
       const picks = Object.entries(localPicks)
@@ -74,6 +88,12 @@ export function PicksPage() {
       setShowSummary(true);
       qc.invalidateQueries({ queryKey: ['picks', leagueId, currentEvent?.id] });
     },
+  });
+
+  const championMutation = useMutation({
+    mutationFn: (fighterId: string) =>
+      apiClient.put(`/leagues/${leagueId}/picks/${currentEvent!.id}/champion`, { fighterId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] }),
   });
 
   const fights: any[] = picksData?.fights ?? [];
@@ -192,6 +212,39 @@ export function PicksPage() {
             </tbody>
           </table>
 
+          {/* Champion pick summary */}
+          {(championData || localChampion) && (() => {
+            const champ = championData;
+            const isWon = champ?.pointsEarned > 0;
+            const isPending = champ && champ.resultWinnerId === null;
+            const name = champ ? `${champ.firstName} ${champ.lastName}` : null;
+            return (
+              <div style={styles.champSummaryCard}>
+                <div style={styles.champSummaryLabel}>★ Event Champion Pick</div>
+                {name ? (
+                  <div style={styles.champSummaryRow}>
+                    {champ.imageUrl && (
+                      <div style={styles.champSummaryImg}>
+                        <img src={champ.imageUrl} alt={name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                      </div>
+                    )}
+                    <span style={styles.champSummaryName}>{name}</span>
+                    {locked && (
+                      isWon
+                        ? <span style={styles.champCorrectBadge}>✓ +30 pts</span>
+                        : isPending
+                          ? <span style={styles.champPendingBadge}>Pending</span>
+                          : <span style={styles.champWrongBadge}>✗ 0 pts</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ color: '#555', fontSize: 13 }}>No pick yet</div>
+                )}
+              </div>
+            );
+          })()}
+
           <div style={styles.summaryFooter}>
             {!locked && (
               <button style={styles.editPicksFooterBtn} onClick={() => setShowSummary(false)}>Edit Picks</button>
@@ -229,6 +282,51 @@ export function PicksPage() {
               ))}
             </div>
           ))}
+
+          {/* Event champion picker */}
+          {fights.length > 0 && (
+            <div style={styles.champSection}>
+              <div style={styles.champSectionHeader}>
+                <span style={styles.champSectionTitle}>★ Event Champion</span>
+                <span style={styles.champSectionSub}>Pick one fighter from the card — +30 pts if they win</span>
+              </div>
+              <div style={styles.champGrid}>
+                {fights.flatMap((fight) => [
+                  { id: fight.redFighterId, firstName: fight.redFirstName, lastName: fight.redLastName, imageUrl: fight.redImageUrl, corner: 'red' as const },
+                  { id: fight.blueFighterId, firstName: fight.blueFirstName, lastName: fight.blueLastName, imageUrl: fight.blueImageUrl, corner: 'blue' as const },
+                ]).map((fighter) => {
+                  const isSelected = localChampion === fighter.id;
+                  return (
+                    <button
+                      key={fighter.id}
+                      style={{
+                        ...styles.champFighterBtn,
+                        ...(isSelected ? styles.champFighterBtnSelected : {}),
+                      }}
+                      onClick={() => {
+                        if (locked) return;
+                        const newId = isSelected ? null : fighter.id;
+                        setLocalChampion(newId);
+                        if (newId) championMutation.mutate(newId);
+                      }}
+                      disabled={locked}
+                    >
+                      {fighter.imageUrl && (
+                        <div style={styles.champFighterImg}>
+                          <img src={fighter.imageUrl} alt={`${fighter.firstName} ${fighter.lastName}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                        </div>
+                      )}
+                      <span style={{ ...styles.champFighterName, color: fighter.corner === 'red' ? '#e05555' : '#5599dd' }}>
+                        {fighter.firstName} {fighter.lastName}
+                      </span>
+                      {isSelected && <span style={styles.champSelectedTag}>★ CHAMPION</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div style={styles.footer}>
             {saveMutation.isError && (
@@ -487,4 +585,26 @@ const styles: Record<string, React.CSSProperties> = {
   saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   saveBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   empty: { color: '#555', textAlign: 'center', padding: 60, fontSize: 14 },
+  champSection: { padding: '0 24px 16px' },
+  champSectionHeader: { display: 'flex', flexDirection: 'column' as const, gap: 4, padding: '20px 0 12px' },
+  champSectionTitle: { color: '#ffd700', fontSize: 13, fontWeight: 800, letterSpacing: 0.5 },
+  champSectionSub: { color: '#555', fontSize: 11 },
+  champGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 },
+  champFighterBtn: {
+    background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, padding: '10px 8px',
+    display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4,
+    cursor: 'pointer', transition: 'border-color 0.1s',
+  },
+  champFighterBtnSelected: { border: '1px solid #ffd700', background: '#1a1600' },
+  champFighterImg: { width: 48, height: 54, borderRadius: 5, overflow: 'hidden', background: '#222' },
+  champFighterName: { fontSize: 11, fontWeight: 700, textAlign: 'center' as const, lineHeight: 1.2 },
+  champSelectedTag: { color: '#ffd700', fontSize: 9, fontWeight: 800, letterSpacing: 0.5 },
+  champSummaryCard: { background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, padding: '14px 16px', marginBottom: 16 },
+  champSummaryLabel: { color: '#ffd700', fontSize: 11, fontWeight: 800, letterSpacing: 0.5, marginBottom: 8 },
+  champSummaryRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  champSummaryImg: { width: 36, height: 42, borderRadius: 4, overflow: 'hidden', background: '#222', flexShrink: 0 },
+  champSummaryName: { color: '#ddd', fontSize: 14, fontWeight: 700, flex: 1 },
+  champCorrectBadge: { color: '#4caf50', fontWeight: 700, fontSize: 13 },
+  champWrongBadge: { color: '#ff5252', fontWeight: 700, fontSize: 13 },
+  champPendingBadge: { color: '#888', fontSize: 12 },
 };

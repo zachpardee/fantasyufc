@@ -397,6 +397,7 @@ leaguesRouter.post('/:leagueId/new-season', requireAuth, async (req: AuthRequest
       await client.query(`DELETE FROM matchups WHERE league_id = $1`, [req.params.leagueId]);
       await client.query(`DELETE FROM league_events WHERE league_id = $1`, [req.params.leagueId]);
       await client.query(`DELETE FROM event_picks WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM event_champion_picks WHERE league_id = $1`, [req.params.leagueId]);
       await client.query(`DELETE FROM perfect_card_bonuses WHERE league_id = $1`, [req.params.leagueId]);
       await client.query(`DELETE FROM roster_win_bonuses WHERE league_id = $1`, [req.params.leagueId]);
       await client.query(`

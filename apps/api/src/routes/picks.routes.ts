@@ -133,6 +133,74 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
   } catch (err) { next(err); }
 });
 
+// Get this member's event champion pick (with fighter info + result)
+picksRouter.get('/:eventId/champion', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
+    const { rows: [pick] } = await db.query(`
+      SELECT ecp.fighter_id, ecp.fight_id, ecp.points_earned,
+             f.first_name, f.last_name, f.image_url,
+             fr.winner_id AS result_winner_id
+      FROM event_champion_picks ecp
+      JOIN fighters f ON f.id = ecp.fighter_id
+      LEFT JOIN fight_results fr ON fr.fight_id = ecp.fight_id
+      WHERE ecp.league_id = $1 AND ecp.member_id = $2 AND ecp.event_id = $3
+    `, [req.params.leagueId, member.id, req.params.eventId]);
+
+    res.json(pick ?? null);
+  } catch (err) { next(err); }
+});
+
+// Set event champion pick — locked once event goes live
+picksRouter.put('/:eventId/champion', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { fighterId } = z.object({ fighterId: z.string().uuid() }).parse(req.body);
+
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
+    const { rows: [event] } = await db.query(
+      `SELECT status FROM ufc_events WHERE id = $1`, [req.params.eventId],
+    );
+    if (!event) throw new AppError(404, 'Event not found');
+    if (event.status === 'live' || event.status === 'completed') {
+      throw new AppError(400, 'Champion pick is locked — event has already started');
+    }
+
+    // Fighter must be in one of the top-6 fights for this event
+    const { rows: [fight] } = await db.query(`
+      SELECT id FROM fights
+      WHERE event_id = $1 AND (red_fighter_id = $2 OR blue_fighter_id = $2)
+        AND id IN (
+          SELECT id FROM fights WHERE event_id = $1
+          ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
+          LIMIT 6
+        )
+    `, [req.params.eventId, fighterId]);
+    if (!fight) throw new AppError(400, 'Fighter is not in the top-6 fights for this event');
+
+    await db.query(`
+      INSERT INTO event_champion_picks (league_id, member_id, event_id, fighter_id, fight_id)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (league_id, member_id, event_id) DO UPDATE SET
+        fighter_id = EXCLUDED.fighter_id,
+        fight_id = EXCLUDED.fight_id,
+        points_earned = 0,
+        submitted_at = NOW()
+    `, [req.params.leagueId, member.id, req.params.eventId, fighterId, fight.id]);
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // All members' picks for an event — for the comparison view
 picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next) => {
   try {

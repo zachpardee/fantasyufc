@@ -84,10 +84,22 @@ export async function processFightResult(fightResultId: string) {
           lc.league_id,
         ]);
 
+        // Score event champion picks for this fight
+        await client.query(`
+          UPDATE event_champion_picks
+          SET points_earned = CASE WHEN fighter_id = $1 THEN 30 ELSE 0 END
+          WHERE fight_id = $2 AND league_id = $3
+        `, [fightResult.winner_id, fightResult.fight_id, lc.league_id]);
+
       } else {
         // Draw / NC — zero points, mark picks as incorrect
         await client.query(`
           UPDATE event_picks SET is_correct = false, points_earned = 0
+          WHERE fight_id = $1 AND league_id = $2
+        `, [fightResult.fight_id, lc.league_id]);
+
+        await client.query(`
+          UPDATE event_champion_picks SET points_earned = 0
           WHERE fight_id = $1 AND league_id = $2
         `, [fightResult.fight_id, lc.league_id]);
       }
@@ -101,7 +113,11 @@ export async function processFightResult(fightResultId: string) {
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
                 WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
-              END
+              END +
+              COALESCE((
+                SELECT ecp.points_earned FROM event_champion_picks ecp
+                WHERE ecp.league_id = $2 AND ecp.member_id = matchups.home_team_id AND ecp.event_id = $3
+              ), 0)
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.home_team_id
@@ -111,7 +127,11 @@ export async function processFightResult(fightResultId: string) {
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
                 WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
-              END
+              END +
+              COALESCE((
+                SELECT ecp.points_earned FROM event_champion_picks ecp
+                WHERE ecp.league_id = $2 AND ecp.member_id = matchups.away_team_id AND ecp.event_id = $3
+              ), 0)
             FROM event_picks ep
             WHERE ep.league_id = $2
               AND ep.member_id = matchups.away_team_id
