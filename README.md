@@ -81,9 +81,10 @@ npx tsx seed-full-league.ts
 
 **Terminal 1 — API server**
 ```bash
-export $(grep -v '^#' .env | xargs)
-npx tsx apps/api/src/index.ts
+npm run dev --workspace=apps/api
 ```
+
+Env vars are loaded automatically from `apps/api/.env` via `--env-file`.
 
 **Terminal 2 — Web app**
 ```bash
@@ -101,7 +102,7 @@ Then open [http://localhost:5173](http://localhost:5173).
 | App | Command | URL |
 |-----|---------|-----|
 | Web | `node_modules/.bin/vite apps/web` | http://localhost:5173 |
-| API | `npx tsx apps/api/src/index.ts` | http://localhost:3000 |
+| API | `npm run dev --workspace=apps/api` | http://localhost:3000 |
 | Mobile | `cd apps/mobile && npx expo start` | Expo Go app |
 
 ---
@@ -163,12 +164,12 @@ railway up --detach
 
 ### Updating the app
 
-Push to GitHub, then redeploy:
+Push to GitHub, then redeploy both services:
 
 ```bash
 git push
 railway up --detach   # redeploys the API (~2-3 min)
-                      # Vercel redeploys automatically on push
+vercel --prod         # redeploys the web app (~1 min)
 ```
 
 ---
