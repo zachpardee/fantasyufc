@@ -10,7 +10,7 @@ export function PicksPage() {
   const qc = useQueryClient();
   const [localPicks, setLocalPicks] = useState<Record<string, string>>({});
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -64,8 +64,7 @@ export function PicksPage() {
       return apiClient.post(`/leagues/${leagueId}/picks/${currentEvent!.id}`, { picks });
     },
     onSuccess: () => {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setShowSummary(true);
       qc.invalidateQueries({ queryKey: ['picks', leagueId, currentEvent?.id] });
     },
   });
@@ -101,8 +100,8 @@ export function PicksPage() {
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.title}>Event Picks</span>
         {locked && <span style={styles.lockedBadge}>LOCKED</span>}
-        {(isCommissioner || locked) && (
-          <Link to={`/league/${leagueId}/picks/comparison`} style={styles.compareLink}>Compare All →</Link>
+        {!locked && showSummary && (
+          <button style={styles.editPicksBtn} onClick={() => setShowSummary(false)}>Edit Picks</button>
         )}
       </nav>
 
@@ -128,49 +127,107 @@ export function PicksPage() {
         </div>
       )}
 
-      {[
-        { label: 'Main Card', fights: mainCard },
-        { label: 'Prelims', fights: prelims },
-        { label: 'Early Prelims', fights: earlyPrelims },
-      ].filter((g) => g.fights.length > 0).map((group) => (
-        <div key={group.label} style={styles.section}>
-          <div style={styles.sectionLabel}>{group.label}</div>
-          {group.fights.map((fight) => (
-            <FightPickRow
-              key={fight.id}
-              fight={fight}
-              picked={localPicks[fight.id]}
-              pickedMethod={localMethods[fight.id]}
-              locked={locked}
-              onChange={(fighterId) => {
-                if (locked) return;
-                setLocalPicks((p) => ({ ...p, [fight.id]: fighterId }));
-                setSaved(false);
-              }}
-              onMethodChange={(method) => {
-                if (locked) return;
-                setLocalMethods((p) => ({ ...p, [fight.id]: method }));
-                setSaved(false);
-              }}
-            />
-          ))}
-        </div>
-      ))}
+      {showSummary || locked ? (
+        <div style={styles.summaryWrap}>
+          <table style={styles.summaryTable}>
+            <thead>
+              <tr>
+                {['Fight', 'Your Pick', 'Method', ...(locked ? ['Result'] : [])].map((h) => (
+                  <th key={h} style={styles.summaryTh}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {fights.map((fight, i) => {
+                const pickedId = localPicks[fight.id];
+                const method = localMethods[fight.id];
+                const pickedRed = pickedId === fight.redFighterId;
+                const pickedName = pickedId
+                  ? (pickedRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`)
+                  : null;
+                const isCorrect = fight.isCorrect;
+                const isWrong = isCorrect === false;
+                const methodLabel: Record<string, string> = { ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ' };
+                return (
+                  <tr key={fight.id} style={i % 2 === 0 ? styles.summaryRowEven : styles.summaryRowOdd}>
+                    <td style={styles.summaryTd}>
+                      {fight.isTitleFight && <span style={styles.summaryBelt}>TITLE · </span>}
+                      <span style={{ color: '#c8102e' }}>{fight.redLastName}</span>
+                      <span style={styles.summaryVs}> v </span>
+                      <span style={{ color: '#4488cc' }}>{fight.blueLastName}</span>
+                      <div style={styles.summaryFightMeta}>{fight.weightClassName}</div>
+                    </td>
+                    <td style={{ ...styles.summaryTd, color: pickedName ? (pickedRed ? '#e05555' : '#5599dd') : '#333', fontWeight: 600 }}>
+                      {pickedName ?? '—'}
+                    </td>
+                    <td style={styles.summaryTd}>
+                      {method ? <span style={styles.methodBadge}>{methodLabel[method] ?? method}</span> : <span style={{ color: '#333' }}>—</span>}
+                    </td>
+                    {locked && (
+                      <td style={styles.summaryTd}>
+                        {isCorrect === true && <span style={styles.correctBadge}>✓ +{(+fight.pointsEarned).toFixed(0)} pts</span>}
+                        {isWrong && <span style={styles.wrongBadge}>✗ 0 pts</span>}
+                        {isCorrect === null && pickedId && <span style={{ color: '#555', fontSize: 12 }}>Pending</span>}
+                        {!pickedId && <span style={{ color: '#333', fontSize: 12 }}>No pick</span>}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-      {!locked && (
-        <div style={styles.footer}>
-          {saveMutation.isError && (
-            <span style={styles.footerError}>Failed to save — please try again</span>
-          )}
-          {saved && <span style={styles.savedMsg}>Picks saved!</span>}
-          <button
-            style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-          >
-            {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
-          </button>
+          <div style={styles.summaryFooter}>
+            {!locked && (
+              <button style={styles.editPicksFooterBtn} onClick={() => setShowSummary(false)}>Edit Picks</button>
+            )}
+            {(isCommissioner || locked) && (
+              <Link to={`/league/${leagueId}/picks/comparison`} style={styles.compareLink}>Compare All Picks →</Link>
+            )}
+          </div>
         </div>
+      ) : (
+        <>
+          {[
+            { label: 'Main Card', fights: mainCard },
+            { label: 'Prelims', fights: prelims },
+            { label: 'Early Prelims', fights: earlyPrelims },
+          ].filter((g) => g.fights.length > 0).map((group) => (
+            <div key={group.label} style={styles.section}>
+              <div style={styles.sectionLabel}>{group.label}</div>
+              {group.fights.map((fight) => (
+                <FightPickRow
+                  key={fight.id}
+                  fight={fight}
+                  picked={localPicks[fight.id]}
+                  pickedMethod={localMethods[fight.id]}
+                  locked={locked}
+                  onChange={(fighterId) => {
+                    if (locked) return;
+                    setLocalPicks((p) => ({ ...p, [fight.id]: fighterId }));
+                  }}
+                  onMethodChange={(method) => {
+                    if (locked) return;
+                    setLocalMethods((p) => ({ ...p, [fight.id]: method }));
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+
+          <div style={styles.footer}>
+            {saveMutation.isError && (
+              <span style={styles.footerError}>Failed to save — please try again</span>
+            )}
+            <button
+              style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -394,7 +451,22 @@ const styles: Record<string, React.CSSProperties> = {
   footerHint: { color: '#666', fontSize: 13, flex: 1 },
   footerError: { color: '#ff6b6b', fontSize: 13, flex: 1, fontWeight: 600 },
   savedMsg: { color: '#4caf50', fontSize: 13, fontWeight: 600 },
-  compareLink: { color: '#888', textDecoration: 'none', fontSize: 13, fontWeight: 600, marginLeft: 'auto' },
+  editPicksBtn: { background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#aaa', fontSize: 13, fontWeight: 600, padding: '6px 14px', cursor: 'pointer' },
+  summaryWrap: { padding: '24px' },
+  summaryTable: { width: '100%', borderCollapse: 'collapse', marginBottom: 24 },
+  summaryTh: { color: '#444', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, padding: '8px 14px', textAlign: 'left', borderBottom: '1px solid #1e1e1e' },
+  summaryTd: { padding: '14px', fontSize: 13, color: '#ccc', verticalAlign: 'middle' },
+  summaryRowEven: { background: '#0f0f0f' },
+  summaryRowOdd: { background: '#0a0a0a' },
+  summaryBelt: { color: '#ffd700', fontSize: 10, fontWeight: 800 },
+  summaryVs: { color: '#333' },
+  summaryFightMeta: { color: '#444', fontSize: 11, marginTop: 2 },
+  methodBadge: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, color: '#888', fontSize: 11, fontWeight: 700, padding: '2px 8px' },
+  correctBadge: { color: '#4caf50', fontWeight: 700, fontSize: 13 },
+  wrongBadge: { color: '#ff5252', fontWeight: 700, fontSize: 13 },
+  summaryFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 },
+  editPicksFooterBtn: { background: 'transparent', border: '1px solid #333', borderRadius: 6, color: '#888', fontSize: 13, fontWeight: 600, padding: '8px 18px', cursor: 'pointer' },
+  compareLink: { color: '#c8102e', textDecoration: 'none', fontSize: 14, fontWeight: 700 },
   saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   saveBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   empty: { color: '#555', textAlign: 'center', padding: 60, fontSize: 14 },
