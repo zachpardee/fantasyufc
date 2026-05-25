@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
-import type { League, UFCEvent } from '@fantasy-ufc/shared';
+import type { League, UFCEvent, Fighter } from '@fantasy-ufc/shared';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -12,6 +12,10 @@ export function DashboardPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [showFighters, setShowFighters] = useState(false);
+  const [fighterSearch, setFighterSearch] = useState('');
+  const [fighterWeightClass, setFighterWeightClass] = useState('');
+  const [zoomedFighter, setZoomedFighter] = useState<{ name: string; imageUrl: string } | null>(null);
 
   const { data: leagues = [], refetch: refetchLeagues } = useQuery<League[]>({
     queryKey: ['leagues'],
@@ -21,6 +25,19 @@ export function DashboardPage() {
   const { data: events = [] } = useQuery<UFCEvent[]>({
     queryKey: ['events'],
     queryFn: () => apiClient.get('/events'),
+  });
+
+  const { data: fighters } = useQuery<(Fighter & { weightClassName: string })[]>({
+    queryKey: ['fighters', fighterSearch, fighterWeightClass],
+    queryFn: () => {
+      const p = new URLSearchParams({ status: 'active' });
+      if (fighterSearch) p.set('search', fighterSearch);
+      if (fighterWeightClass) p.set('weightClass', fighterWeightClass);
+      return apiClient.get(`/fighters?${p}`);
+    },
+    enabled: showFighters,
+    staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
   const nextEvent = events?.find((e) => e.status === 'live') ?? events?.find((e) => e.status === 'scheduled');
@@ -36,7 +53,6 @@ export function DashboardPage() {
       <nav style={styles.nav}>
         <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         <div style={styles.navRight}>
-          <Link to="/fighters" style={styles.navLink}>Fighters</Link>
           {session?.user.email && <span style={styles.navEmail}>{session.user.email}</span>}
           <button
             style={styles.logoutBtn}
@@ -91,7 +107,85 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
+
+        <div style={{ ...styles.section, marginTop: 32 }}>
+          <button style={styles.fightersToggle} onClick={() => setShowFighters((v) => !v)}>
+            <span style={styles.sectionTitle}>Fighters</span>
+            <span style={styles.toggleChevron}>{showFighters ? '▲' : '▼'}</span>
+          </button>
+
+          {showFighters && (
+            <div style={styles.fightersBody}>
+              <div style={styles.fighterFilters}>
+                <input
+                  style={styles.fighterSearch}
+                  placeholder="Search fighters..."
+                  value={fighterSearch}
+                  onChange={(e) => setFighterSearch(e.target.value)}
+                />
+                <select
+                  style={styles.fighterSelect}
+                  value={fighterWeightClass}
+                  onChange={(e) => setFighterWeightClass(e.target.value)}
+                >
+                  <option value="">All Divisions</option>
+                  {['heavyweight','light-heavyweight','middleweight','welterweight','lightweight','featherweight','bantamweight','flyweight'].map((wc) => (
+                    <option key={wc} value={wc}>{wc.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                  ))}
+                </select>
+              </div>
+              <table style={styles.fighterTable}>
+                <thead>
+                  <tr>{['#', 'Fighter', 'Division', 'Record', 'Avg Pts'].map((h) => (
+                    <th key={h} style={styles.th}>{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {fighters?.map((f) => (
+                    <tr key={f.id} style={styles.fighterRow}>
+                      <td style={styles.td}><span style={styles.ranking}>{f.ranking ? `#${f.ranking}` : 'NR'}</span></td>
+                      <td style={styles.td}>
+                        <div style={styles.nameRow}>
+                          {(f as any).imageUrl && (
+                            <div
+                              style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', cursor: 'pointer' }}
+                              onClick={() => setZoomedFighter({ name: `${f.firstName} ${f.lastName}`, imageUrl: (f as any).imageUrl })}
+                            >
+                              <img src={(f as any).imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                            </div>
+                          )}
+                          {f.isChampion && <span style={styles.champ}>C</span>}
+                          <div>
+                            <span style={styles.fighterName}>{f.firstName} {f.lastName}</span>
+                            {f.nickname && <div style={styles.nickname}>"{f.nickname}"</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={styles.td}><span style={styles.division}>{f.weightClassName}</span></td>
+                      <td style={styles.td}><span style={styles.record}>{f.record.wins}-{f.record.losses}-{f.record.draws}</span></td>
+                      <td style={styles.td}><span style={styles.avgPts}>{f.averageFantasyPoints?.toFixed(1) ?? '--'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
+
+      {zoomedFighter && (
+        <div style={styles.modalBackdrop} onClick={() => setZoomedFighter(null)}>
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <img
+              src={zoomedFighter.imageUrl}
+              alt={zoomedFighter.name}
+              style={styles.modalImg}
+            />
+            <p style={styles.modalName}>{zoomedFighter.name}</p>
+            <button style={styles.modalClose} onClick={() => setZoomedFighter(null)}>✕</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -131,4 +225,27 @@ const styles: Record<string, React.CSSProperties> = {
   status: { fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   statusActive: { background: '#1a3a1a', color: '#4caf50' },
   statusSetup: { background: '#2a2a3a', color: '#8888ff' },
+  fightersToggle: { width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' },
+  toggleChevron: { color: '#aaa', fontSize: 13, fontWeight: 700 },
+  fightersBody: { marginTop: 4 },
+  fighterFilters: { display: 'flex', gap: 12, marginBottom: 16 },
+  fighterSearch: { background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, padding: '8px 14px', color: '#fff', fontSize: 14, outline: 'none', flex: 1, maxWidth: 300 },
+  fighterSelect: { background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, padding: '8px 14px', color: '#fff', fontSize: 14, outline: 'none' },
+  fighterTable: { width: '100%', borderCollapse: 'collapse' as const },
+  th: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, padding: '10px 14px', textAlign: 'left' as const, borderBottom: '1px solid #222' },
+  fighterRow: { borderBottom: '1px solid #1a1a1a' },
+  td: { padding: '12px 14px' },
+  ranking: { color: '#c8102e', fontWeight: 700, fontSize: 14 },
+  nameRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  champ: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3 },
+  fighterName: { color: '#fff', fontWeight: 600, fontSize: 14 },
+  nickname: { color: '#666', fontSize: 12, marginTop: 2 },
+  division: { color: '#888', fontSize: 13 },
+  record: { color: '#aaa', fontSize: 13, fontFamily: 'monospace' },
+  avgPts: { color: '#c8102e', fontWeight: 700, fontSize: 14 },
+  modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalBox: { position: 'relative', background: '#111', borderRadius: 12, overflow: 'hidden', maxWidth: 320, width: '90%' },
+  modalImg: { width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'top center', maxHeight: 480 },
+  modalName: { color: '#fff', fontWeight: 700, fontSize: 16, textAlign: 'center', padding: '12px 16px', margin: 0, background: '#111' },
+  modalClose: { position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: '#fff', width: 28, height: 28, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' },
 };
