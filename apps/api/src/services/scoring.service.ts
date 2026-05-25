@@ -43,6 +43,12 @@ export async function processFightResult(fightResultId: string) {
       : null;
     const isUnderdog = winnerOdds != null && winnerOdds >= 350;
 
+    if (fightResult.winner_id && winnerOdds == null) {
+      console.warn(`[Scoring] No odds on file for fight ${fightResult.fight_id} — underdog bonus skipped`);
+    } else if (isUnderdog) {
+      console.log(`[Scoring] Underdog bonus triggered for fight ${fightResult.fight_id} (odds: +${winnerOdds})`);
+    }
+
     for (const lc of leagueConfigs) {
       // Respect card segment settings
       if (fightResult.card_segment === 'early_prelims' && !lc.score_early_prelims) continue;
@@ -54,7 +60,7 @@ export async function processFightResult(fightResultId: string) {
           fightResult.outcome === 'ko_tko' ? lc.pts_ko_tko
           : fightResult.outcome === 'submission' ? lc.pts_submission
           : lc.pts_decision;
-        const underwogBonus = isUnderdog ? 100 : 0;
+        const underdogBonus = isUnderdog ? 100 : 0;
 
         // Score picks for this league with its settings
         await client.query(`
@@ -74,7 +80,7 @@ export async function processFightResult(fightResultId: string) {
         `, [
           fightResult.winner_id, fightResult.outcome,
           fightResult.fight_id,
-          ptsWin, ptsMethod, underwogBonus,
+          ptsWin, ptsMethod, underdogBonus,
           lc.league_id,
         ]);
 
