@@ -8,7 +8,7 @@ import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
-function BeltHalo({ size, variant = 'ufc' }: { size: number; variant?: 'ufc' | 'bmf' }) {
+function BeltHalo({ size, variant = 'ufc', position = 'top' }: { size: number; variant?: 'ufc' | 'bmf'; position?: 'top' | 'bottom' }) {
   const w = size * 1.9;
   const h = size * 0.3;
   const isBmf = variant === 'bmf';
@@ -27,7 +27,7 @@ function BeltHalo({ size, variant = 'ufc' }: { size: number; variant?: 'ufc' | '
   const textColor = isBmf ? '#c8a000' : '#1a0800';
   const label = isBmf ? 'BMF' : 'UFC';
   return (
-    <div style={{ position: 'absolute', top: -(size * 0.34), left: '50%', transform: 'translateX(-50%)', width: w, height: h, pointerEvents: 'none', zIndex: 2, filter: isBmf ? 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' : 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' }}>
+    <div style={{ position: 'absolute', ...(position === 'bottom' ? { bottom: -(size * 0.34) } : { top: -(size * 0.34) }), left: '50%', transform: 'translateX(-50%)', width: w, height: h, pointerEvents: 'none', zIndex: 2, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' }}>
       <svg viewBox="0 0 200 32" width={w} height={h} xmlns="http://www.w3.org/2000/svg">
         <rect x="0" y="11" width="200" height="10" fill="#111"/>
         <rect x="0" y="11" width="200" height="1.2" fill={strapEdge}/>
@@ -331,7 +331,7 @@ export function LeagueHomePage() {
                     {u.teamName.charAt(0).toUpperCase()}
                   </div>
                   {member && hasBelt(member) && <BeltHalo size={28} />}
-                  {member && hasBmfBelt(member) && <BeltHalo size={28} variant="bmf" />}
+                  {member && hasBmfBelt(member) && <BeltHalo size={28} variant="bmf" position={hasBelt(member) ? 'bottom' : 'top'} />}
                 </div>
               );
             })}
@@ -352,7 +352,7 @@ export function LeagueHomePage() {
                   {m.teamName.charAt(0).toUpperCase()}
                 </div>
                 {hasBelt(m) && <BeltHalo size={32} />}
-                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" />}
+                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}
               </div>
             );
           })}
@@ -438,7 +438,7 @@ export function LeagueHomePage() {
                   {m.teamName.charAt(0).toUpperCase()}
                 </div>
                 {hasBelt(m) && <BeltHalo size={32} />}
-                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" />}
+                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}
               </div>
             );
           })}
@@ -473,7 +473,7 @@ export function LeagueHomePage() {
                           <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <div style={{ ...styles.matchupAvatar, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
                             {homeMember && hasBelt(homeMember) && <BeltHalo size={50} />}
-                            {homeMember && hasBmfBelt(homeMember) && <BeltHalo size={50} variant="bmf" />}
+                            {homeMember && hasBmfBelt(homeMember) && <BeltHalo size={50} variant="bmf" position={hasBelt(homeMember) ? 'bottom' : 'top'} />}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             <div style={styles.matchupTeamName}>{matchup.homeTeamName}</div>
@@ -509,7 +509,7 @@ export function LeagueHomePage() {
                           <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <div style={{ ...styles.matchupAvatar, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
                             {awayMember && hasBelt(awayMember) && <BeltHalo size={50} />}
-                            {awayMember && hasBmfBelt(awayMember) && <BeltHalo size={50} variant="bmf" />}
+                            {awayMember && hasBmfBelt(awayMember) && <BeltHalo size={50} variant="bmf" position={hasBelt(awayMember) ? 'bottom' : 'top'} />}
                           </div>
                         </>
                       )}
@@ -708,7 +708,7 @@ export function LeagueHomePage() {
                     >
                       {msg.teamName?.charAt(0).toUpperCase()}
                     </div>
-                    {(() => { const m = members.find((mm) => mm.id === msg.memberId); return <>{m && hasBelt(m) && <BeltHalo size={28} />}{m && hasBmfBelt(m) && <BeltHalo size={28} variant="bmf" />}</>; })()}
+                    {(() => { const m = members.find((mm) => mm.id === msg.memberId); return <>{m && hasBelt(m) && <BeltHalo size={28} />}{m && hasBmfBelt(m) && <BeltHalo size={28} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}</>; })()}
                   </div>
                   <div style={styles.msgContent}>
                     <div style={styles.msgMeta}>
@@ -849,7 +849,7 @@ export function LeagueHomePage() {
                     {selectedMember.teamName.charAt(0).toUpperCase()}
                   </div>
                   {hasBelt(selectedMember) && <BeltHalo size={72} />}
-                  {hasBmfBelt(selectedMember) && <BeltHalo size={72} variant="bmf" />}
+                  {hasBmfBelt(selectedMember) && <BeltHalo size={72} variant="bmf" position={hasBelt(selectedMember) ? 'bottom' : 'top'} />}
                 </div>
                 <div style={styles.memberSheetName}>{selectedMember.teamName}</div>
                 <div style={styles.memberSheetUser}>@{selectedMember.username}</div>
