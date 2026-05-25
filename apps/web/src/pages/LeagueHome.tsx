@@ -60,6 +60,7 @@ export function LeagueHomePage() {
       catch { return null; }
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
+    refetchInterval: (query) => (query.state.data as any)?.eventStatus === 'live' ? 30_000 : false,
   });
 
   const markAllReadMutation = useMutation({

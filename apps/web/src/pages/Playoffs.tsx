@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { League } from '@fantasy-ufc/shared';
 
 type Seed = { id: string; teamName: string; wins: number; losses: number; totalPoints: number };
@@ -63,6 +64,7 @@ function TBDCard({ label, subtitle }: { label: string; subtitle?: string }) {
 export function PlayoffsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
+  const isMobile = useIsMobile();
   const qc = useQueryClient();
   const [selectedSemisEvent, setSelectedSemisEvent] = useState('');
   const [selectedFinalsEvent, setSelectedFinalsEvent] = useState('');
@@ -220,7 +222,7 @@ export function PlayoffsPage() {
         <div style={styles.bracketWrap}>
           <p style={styles.sectionLabel}>Bracket</p>
           {semisMatchups.length > 0 ? (
-            <div style={styles.bracket}>
+            <div style={{ ...styles.bracket, ...(isMobile ? styles.bracketMobile : {}) }}>
               {/* Semis column */}
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Semifinals</p>
@@ -228,10 +230,14 @@ export function PlayoffsPage() {
               </div>
 
               {/* Connector */}
-              <div style={styles.connector}>
-                <div style={styles.connectorLine} />
-                <span style={styles.connectorArrow}>→</span>
-                <div style={styles.connectorLine} />
+              <div style={isMobile ? styles.connectorMobile : styles.connector}>
+                {isMobile
+                  ? <span style={styles.connectorArrow}>↓</span>
+                  : <>
+                      <div style={styles.connectorLine} />
+                      <span style={styles.connectorArrow}>→</span>
+                      <div style={styles.connectorLine} />
+                    </>}
               </div>
 
               {/* Finals column */}
@@ -288,10 +294,12 @@ const styles: Record<string, React.CSSProperties> = {
   seedPts: { color: '#888', fontSize: 13 },
   bracketWrap: { padding: '0 24px 32px' },
   bracket: { display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 0, alignItems: 'center' },
+  bracketMobile: { display: 'flex', flexDirection: 'column' as const, gap: 0 },
   bracketSingle: { maxWidth: 600, margin: '0 auto' },
   bracketCol: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
   roundLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8, margin: '0 0 8px' },
   connector: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 4, color: '#333' },
+  connectorMobile: { display: 'flex', justifyContent: 'center', padding: '8px 0' },
   connectorLine: { flex: 1, width: 1, background: '#333', minHeight: 20 },
   connectorArrow: { color: '#444', fontSize: 18 },
   matchupCard: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 18px' },
