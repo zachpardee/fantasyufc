@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install --os=linux --cpu=x64"
+buildCommand = "npm install --os=linux --cpu=x64 && npm run build --workspace=apps/web"
 
 [deploy]
 startCommand = "npm run start --workspace=apps/api"

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { supabase } from './supabase';
 import { transformResponse } from './transforms';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 export const apiClient = axios.create({ baseURL: API_BASE });
 

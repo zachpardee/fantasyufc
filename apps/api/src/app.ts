@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import fs from 'fs';
 import { apiRouter } from './routes';
 import { errorHandler } from './middleware/error.middleware';
 
@@ -27,3 +29,10 @@ app.use('/api/v1', apiRouter);
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);
+
+// Serve built web app in production
+const webDist = path.resolve(__dirname, '../../../apps/web/dist');
+if (fs.existsSync(webDist)) {
+  app.use(express.static(webDist));
+  app.get('*', (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+}
