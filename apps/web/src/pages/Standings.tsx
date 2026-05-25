@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
+import { LoadingInline } from '../components/LoadingScreen';
 
 export function StandingsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const navigate = useNavigate();
 
-  const { data: standings } = useQuery<any[]>({
+  const { data: standings, isLoading } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
@@ -21,13 +22,14 @@ export function StandingsPage() {
       </nav>
 
       <div style={styles.content}>
+        {isLoading && <LoadingInline label="Loading standings..." />}
         <table style={styles.table}>
           <thead>
-            <tr>
+            {!isLoading && <tr>
               {['#', 'Team', 'Season Pts', 'W', 'L', 'T', 'Streak'].map((h) => (
                 <th key={h} style={styles.th}>{h}</th>
               ))}
-            </tr>
+            </tr>}
           </thead>
           <tbody>
             {standings?.map((member, i) => {
@@ -68,7 +70,7 @@ export function StandingsPage() {
             })}
           </tbody>
         </table>
-        {(!standings || standings.length === 0) && (
+        {!isLoading && standings?.length === 0 && (
           <p style={styles.empty}>No standings yet — check back after the season begins.</p>
         )}
       </div>

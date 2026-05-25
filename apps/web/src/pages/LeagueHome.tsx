@@ -5,12 +5,14 @@ import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
   const { session } = useAuthStore();
+  const isMobile = useIsMobile();
   const qc = useQueryClient();
   const [copyMsg, setCopyMsg] = useState('');
   const [editingName, setEditingName] = useState(false);
@@ -440,7 +442,7 @@ export function LeagueHomePage() {
 
       {/* Nav grid (shown when past setup) */}
       {league.status !== 'setup' && (
-        <div style={styles.navGrid}>
+        <div style={{ ...styles.navGrid, ...(isMobile ? styles.navGridMobile : {}) }}>
           {navLinks.filter((l) => l.show).map((item) => (
             <Link
               key={item.label}
@@ -589,6 +591,7 @@ const styles: Record<string, React.CSSProperties> = {
   draftingText: { color: '#ffd700', fontWeight: 700, fontSize: 14, flex: 1 },
   draftingLink: { color: '#4caf50', textDecoration: 'none', fontSize: 13, fontWeight: 700 },
   navGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 24 },
+  navGridMobile: { gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, padding: 16 },
   navCard: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
     padding: 24, textDecoration: 'none', display: 'flex', flexDirection: 'column',

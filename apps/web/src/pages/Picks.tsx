@@ -147,6 +147,9 @@ export function PicksPage() {
 
       {!locked && (
         <div style={styles.footer}>
+          {saveMutation.isError && (
+            <span style={styles.footerError}>Failed to save — please try again</span>
+          )}
           {saved && <span style={styles.savedMsg}>Picks saved!</span>}
           <button
             style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
