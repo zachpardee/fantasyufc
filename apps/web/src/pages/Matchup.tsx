@@ -393,28 +393,35 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   allMatchups: any[]; homeTeamId: string; awayTeamId: string;
   homeTeamName: string; awayTeamName: string; currentEventId: string;
 }) {
-  // One row per event: find each team's score from their own matchup that event
-  const eventMap = new Map<string, SeasonRow>();
+  // Collect unique events that involve either team, preserving first-seen metadata
+  const seenEventIds = new Set<string>();
+  const relevantEvents: any[] = [];
   for (const m of allMatchups) {
-    const homeInvolved = m.homeTeamId === homeTeamId || m.awayTeamId === homeTeamId;
-    const awayInvolved = m.homeTeamId === awayTeamId || m.awayTeamId === awayTeamId;
-    if (!homeInvolved && !awayInvolved) continue;
-
-    const entry = eventMap.get(m.eventId) ?? {
-      eventId: m.eventId as string,
-      eventName: m.eventName as string,
-      scheduledAt: m.scheduledAt as string,
-      homeScore: 0, awayScore: 0,
-      isCurrent: m.eventId === currentEventId,
-    };
-    if (homeInvolved)
-      entry.homeScore = +(m.homeTeamId === homeTeamId ? m.homeScore : m.awayScore);
-    if (awayInvolved)
-      entry.awayScore = +(m.homeTeamId === awayTeamId ? m.homeScore : m.awayScore);
-    eventMap.set(m.eventId, entry);
+    const involves = m.homeTeamId === homeTeamId || m.awayTeamId === homeTeamId
+                  || m.homeTeamId === awayTeamId  || m.awayTeamId === awayTeamId;
+    if (involves && !seenEventIds.has(m.eventId)) {
+      seenEventIds.add(m.eventId);
+      relevantEvents.push(m);
+    }
   }
 
-  const rows = [...eventMap.values()]
+  // For each unique event, explicitly look up each team's matchup score
+  const teamScore = (eventId: string, teamId: string): number => {
+    const m = allMatchups.find(
+      (x) => x.eventId === eventId && (x.homeTeamId === teamId || x.awayTeamId === teamId),
+    );
+    if (!m) return 0;
+    return +(m.homeTeamId === teamId ? m.homeScore : m.awayScore);
+  };
+
+  const rows: SeasonRow[] = relevantEvents.map((ev): SeasonRow => ({
+    eventId: ev.eventId as string,
+    eventName: ev.eventName as string,
+    scheduledAt: ev.scheduledAt as string,
+    homeScore: teamScore(ev.eventId, homeTeamId),
+    awayScore: teamScore(ev.eventId, awayTeamId),
+    isCurrent: ev.eventId === currentEventId,
+  }))
     .filter((r) => r.homeScore > 0 || r.awayScore > 0)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
