@@ -128,8 +128,7 @@ export function StakingPicksPage() {
     },
   });
 
-  const fights: any[] = picksData?.fights ?? [];
-  const mainCard = fights.filter((f) => f.cardSegment !== 'early_prelims' && f.cardSegment !== 'prelims').slice(0, 6);
+  const mainCard: any[] = betsData?.fights ?? [];
   const locked: boolean = picksData?.locked ?? false;
 
   const weeklyBudget: number = betsData?.weeklyBudget ?? 100;
@@ -493,7 +492,7 @@ export function StakingPicksPage() {
       </div>
 
       {/* Settled bets */}
-      {(betsData?.singles?.some((s: any) => s.status !== 'pending') || betsData?.parlay?.status !== 'pending') && (
+      {(betsData?.singles?.some((s: any) => s.status !== 'pending') || (betsData?.parlay != null && betsData.parlay.status !== 'pending')) && (
         <div style={s.section}>
           <div style={s.sectionHeader}>
             <span style={s.sectionTitle}>RESULTS</span>

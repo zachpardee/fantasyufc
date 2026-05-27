@@ -184,7 +184,7 @@ export function MatchupPage() {
                   hasScore ? (
                     <>
                       <span style={styles.chipOpp}>vs {oppName}</span>
-                      <span style={styles.chipScore}>{myScore!.toFixed(0)}–{oppScore!.toFixed(0)}</span>
+                      <span style={styles.chipScore}>{isStaking ? fmtStakeScore(myScore!) : myScore!.toFixed(0)}–{isStaking ? fmtStakeScore(oppScore!) : oppScore!.toFixed(0)}</span>
                       <span style={{ ...styles.chipResult, color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700' }}>
                         {isWin ? 'W' : isLoss ? 'L' : 'T'}
                       </span>
