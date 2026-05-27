@@ -2,8 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 
+function fmtBankroll(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
+  return (n < 0 ? '-$' : '+$') + s;
+}
+
 export function TeamPage() {
   const { leagueId, memberId } = useParams<{ leagueId: string; memberId: string }>();
+
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
 
   const { data: standings } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
@@ -11,6 +22,7 @@ export function TeamPage() {
   });
 
   const member = standings?.find((m) => m.id === memberId);
+  const isStaking = league?.leagueFormat === 'staking';
 
   return (
     <div style={styles.page}>
@@ -22,8 +34,10 @@ export function TeamPage() {
       {member && (
         <div style={styles.statBar}>
           <div style={styles.stat}>
-            <span style={styles.statLabel}>Season Points</span>
-            <span style={styles.statValue}>{(+(member.totalPoints ?? 0)).toFixed(1)}</span>
+            <span style={styles.statLabel}>{isStaking ? 'Season Bankroll' : 'Season Points'}</span>
+            <span style={{ ...styles.statValue, color: isStaking ? ((member.stakingBalance ?? 0) >= 0 ? '#4caf50' : '#ff5252') : '#fff' }}>
+              {isStaking ? fmtBankroll(+(member.stakingBalance ?? 0)) : (+(member.totalPoints ?? 0)).toFixed(1)}
+            </span>
           </div>
           <div style={styles.statDivider} />
           <div style={styles.stat}>
