@@ -399,7 +399,8 @@ leaguesRouter.post('/:leagueId/new-season', requireAuth, async (req: AuthRequest
       await client.query(`
         UPDATE league_members SET
           wins = 0, losses = 0, ties = 0, total_points = 0,
-          streak = 0, is_champion = false, draft_position = NULL
+          streak = 0, is_champion = false, draft_position = NULL,
+          staking_balance = 0
         WHERE league_id = $1
       `, [req.params.leagueId]);
 
@@ -414,6 +415,8 @@ leaguesRouter.post('/:leagueId/new-season', requireAuth, async (req: AuthRequest
         WHERE league_member_id IN (SELECT id FROM league_members WHERE league_id = $1)
       `, [req.params.leagueId]);
       await client.query(`DELETE FROM draft_sessions WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM staking_singles WHERE league_id = $1`, [req.params.leagueId]);
+      await client.query(`DELETE FROM staking_parlays WHERE league_id = $1`, [req.params.leagueId]);
 
       await client.query(`
         UPDATE leagues SET
