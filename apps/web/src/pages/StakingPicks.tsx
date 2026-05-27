@@ -471,7 +471,7 @@ export function StakingPicksPage() {
               <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
                 <button
                   style={{ ...s.saveBtn, flex: 1, opacity: parlayTouched && parlayLegCount >= 2 ? 1 : 0.4 }}
-                  disabled={!parlayTouched || parlayLegCount < 2 || !parlayStake || saveParlayMutation.isPending}
+                  disabled={!parlayTouched || parlayLegCount < 2 || !parlayStake || Object.values(parlayLegs).some((id) => !id) || saveParlayMutation.isPending}
                   onClick={() => saveParlayMutation.mutate()}
                 >
                   {saveParlayMutation.isPending ? 'Saving…' : 'Save Parlay'}
