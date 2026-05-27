@@ -67,6 +67,12 @@ export function MemberSheet({ member, members, league, onClose }: {
   const standingRank = members.findIndex((m: any) => m.id === member.id) + 1;
   const belt = hasBelt(member, members, league);
   const bmf = hasBmfBelt(member, league);
+  const isStaking = league?.leagueFormat === 'staking';
+  const bankroll = +(member.stakingBalance ?? 0);
+  const fmtBankroll = (n: number) => {
+    const abs = Math.abs(n);
+    return (n < 0 ? '-$' : '+$') + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  };
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -88,8 +94,10 @@ export function MemberSheet({ member, members, league, onClose }: {
           {standingRank > 0 && <div style={styles.rank}>#{standingRank} in standings</div>}
           <div style={styles.stats}>
             <div style={styles.stat}>
-              <span style={styles.statVal}>{(+(member.totalPoints ?? 0)).toFixed(0)}</span>
-              <span style={styles.statLabel}>Season Pts</span>
+              <span style={{ ...styles.statVal, color: isStaking ? (bankroll >= 0 ? '#4caf50' : '#ff5252') : '#fff' }}>
+                {isStaking ? fmtBankroll(bankroll) : (+(member.totalPoints ?? 0)).toFixed(0)}
+              </span>
+              <span style={styles.statLabel}>{isStaking ? 'Bankroll' : 'Season Pts'}</span>
             </div>
             <div style={styles.statDivider} />
             <div style={styles.stat}>
