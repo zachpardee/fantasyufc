@@ -45,7 +45,7 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
 
     // Settle parlay legs for this fight
     const { rows: legs } = await client.query(
-      `SELECT spl.* FROM staking_parlay_legs spl
+      `SELECT spl.*, sp.league_id FROM staking_parlay_legs spl
        JOIN staking_parlays sp ON sp.id = spl.parlay_id
        WHERE spl.fight_id = $1 AND spl.result = 'pending' AND sp.status = 'pending'`,
       [fightId],
@@ -60,12 +60,19 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
         [result, leg.id],
       );
 
-      // If any leg lost, immediately mark parlay as lost
+      // If any leg lost, immediately mark parlay as lost and deduct stake from bankroll
       if (result === 'lost') {
-        await client.query(
-          `UPDATE staking_parlays SET status = 'lost', actual_payout = 0, profit_loss = -stake, updated_at = now() WHERE id = $1 AND status = 'pending'`,
+        const { rows: [lostParlay] } = await client.query(
+          `UPDATE staking_parlays SET status = 'lost', actual_payout = 0, profit_loss = -stake, updated_at = now()
+           WHERE id = $1 AND status = 'pending' RETURNING member_id, stake`,
           [leg.parlay_id],
         );
+        if (lostParlay) {
+          await client.query(
+            `UPDATE league_members SET staking_balance = staking_balance - $1 WHERE id = $2`,
+            [parseFloat(lostParlay.stake), lostParlay.member_id],
+          );
+        }
       }
     }
 
