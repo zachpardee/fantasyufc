@@ -229,7 +229,7 @@ export function LeagueHomePage() {
   }
 
   const navLinks: { label: string; path?: string; icon: string; external?: boolean; show: boolean; onClick?: () => void }[] = [
-    { label: 'Picks', path: 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
+    { label: isStaking ? 'Staking' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
     { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' || league.status === 'playoffs' },
@@ -483,7 +483,7 @@ export function LeagueHomePage() {
                   </div>
                 );
               })()}
-              <Link to={`/league/${leagueId}/picks`} style={styles.eventPicksLink}>Make Picks →</Link>
+              <Link to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`} style={styles.eventPicksLink}>{isStaking ? 'Place Bets →' : 'Make Picks →'}</Link>
               {matchup && <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>Matchup Details →</Link>}
             </div>
             {matchup && (

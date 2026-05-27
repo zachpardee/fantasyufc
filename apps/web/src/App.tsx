@@ -17,6 +17,7 @@ import { TeamPage } from './pages/TeamPage';
 import { LeagueRulesPage } from './pages/LeagueRules';
 import { PlayoffsPage } from './pages/Playoffs';
 import { CommissionerToolsPage } from './pages/CommissionerTools';
+import { StakingPicksPage } from './pages/StakingPicks';
 import { LeagueSubLayout } from './components/LeagueSubLayout';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
           <Route path="/league/:leagueId/picks" element={<PicksPage />} />
           <Route path="/league/:leagueId/picks/comparison" element={<PicksComparisonPage />} />
+          <Route path="/league/:leagueId/staking" element={<StakingPicksPage />} />
           <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
           <Route path="/league/:leagueId/rules" element={<LeagueRulesPage />} />
           <Route path="/league/:leagueId/playoffs" element={<PlayoffsPage />} />
