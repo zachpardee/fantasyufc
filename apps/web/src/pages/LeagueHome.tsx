@@ -7,54 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
-
-function BeltHalo({ size, variant = 'ufc', position = 'top', offset = 0 }: { size: number; variant?: 'ufc' | 'bmf'; position?: 'top' | 'bottom'; offset?: number }) {
-  const w = size * 1.9;
-  const h = size * 0.3;
-  const isBmf = variant === 'bmf';
-  const rivetColor = isBmf ? '#333' : '#7a5a00';
-  const strapEdge = isBmf ? '#222' : '#6a4a00';
-  const sideOuter = isBmf ? '#0a0a0a' : '#111';
-  const sideRing1Fill = isBmf ? '#1a1a1a' : '#8a6500';
-  const sideRing1Stroke = isBmf ? '#333' : '#c8a000';
-  const sideRing2 = isBmf ? '#222' : '#b8900a';
-  const sideHighlight = isBmf ? 'rgba(255,255,255,0.03)' : 'rgba(255,215,0,0.3)';
-  const centerOuter = isBmf ? '#0a0a0a' : '#c8c8c8';
-  const centerOuterStroke = isBmf ? '#222' : '#e8e8e8';
-  const centerMid = isBmf ? '#111' : '#b8860b';
-  const centerInner = isBmf ? '#181818' : '#d4a017';
-  const centerHighlight = isBmf ? 'rgba(255,255,255,0.03)' : 'rgba(255,215,0,0.3)';
-  const textColor = isBmf ? '#c8a000' : '#1a0800';
-  const label = isBmf ? 'BMF' : 'UFC';
-  return (
-    <div style={{ position: 'absolute', ...(position === 'bottom' ? { top: size * 1.04 + offset } : { top: -(size * 0.34) + offset }), left: '50%', transform: 'translateX(-50%)', width: w, height: h, pointerEvents: 'none', zIndex: 2, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.9))' }}>
-      <svg viewBox="0 0 200 32" width={w} height={h} xmlns="http://www.w3.org/2000/svg">
-        <rect x="0" y="11" width="200" height="10" fill="#111"/>
-        <rect x="0" y="11" width="200" height="1.2" fill={strapEdge}/>
-        <rect x="0" y="19.8" width="200" height="1.2" fill={strapEdge}/>
-        <circle cx="6" cy="14.5" r="1" fill={rivetColor}/><circle cx="6" cy="17.5" r="1" fill={rivetColor}/>
-        <circle cx="11" cy="14.5" r="1" fill={rivetColor}/><circle cx="11" cy="17.5" r="1" fill={rivetColor}/>
-        <circle cx="16" cy="14.5" r="1" fill={rivetColor}/><circle cx="16" cy="17.5" r="1" fill={rivetColor}/>
-        <circle cx="184" cy="14.5" r="1" fill={rivetColor}/><circle cx="184" cy="17.5" r="1" fill={rivetColor}/>
-        <circle cx="189" cy="14.5" r="1" fill={rivetColor}/><circle cx="189" cy="17.5" r="1" fill={rivetColor}/>
-        <circle cx="194" cy="14.5" r="1" fill={rivetColor}/><circle cx="194" cy="17.5" r="1" fill={rivetColor}/>
-        <polygon points="37,1 57,1 63,7 63,25 57,31 37,31 31,25 31,7" fill={sideOuter} stroke={rivetColor} strokeWidth="0.8"/>
-        <polygon points="38,3 56,3 61,8 61,24 56,29 38,29 33,24 33,8" fill={sideRing1Fill} stroke={sideRing1Stroke} strokeWidth="0.5"/>
-        <polygon points="39,5 55,5 59,10 59,22 55,27 39,27 35,22 35,10" fill={sideRing2}/>
-        <rect x="39" y="5" width="20" height="7" rx="1" fill={sideHighlight}/>
-        <polygon points="80,0 120,0 131,9 131,23 120,32 80,32 69,23 69,9" fill={centerOuter} stroke={centerOuterStroke} strokeWidth="0.5"/>
-        <polygon points="83,3 117,3 127,11 127,21 117,29 83,29 73,21 73,11" fill={centerMid}/>
-        <polygon points="85,5 115,5 124,13 124,19 115,27 85,27 76,19 76,13" fill={centerInner}/>
-        <rect x="86" y="5" width="28" height="8" rx="1" fill={centerHighlight}/>
-        <text x="100" y="22" textAnchor="middle" fontSize="9" fontWeight="900" fill={textColor} fontFamily="Arial Black, Arial, sans-serif" letterSpacing="1.5">{label}</text>
-        <polygon points="143,1 163,1 169,7 169,25 163,31 143,31 137,25 137,7" fill={sideOuter} stroke={rivetColor} strokeWidth="0.8"/>
-        <polygon points="144,3 162,3 167,8 167,24 162,29 144,29 139,24 139,8" fill={sideRing1Fill} stroke={sideRing1Stroke} strokeWidth="0.5"/>
-        <polygon points="145,5 161,5 165,10 165,22 161,27 145,27 141,22 141,10" fill={sideRing2}/>
-        <rect x="145" y="5" width="20" height="7" rx="1" fill={sideHighlight}/>
-      </svg>
-    </div>
-  );
-}
+import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -255,10 +208,15 @@ export function LeagueHomePage() {
 
   const isCommissioner = session?.user.id === league.commissionerId;
   const canActivate = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
-  const anyChampion = members.some((m) => m.isChampion);
-  const hasBelt = (m: any) => m.isChampion || (!anyChampion && m.userId === league.commissionerId);
-  const hasBmfBelt = (m: any) => !!league.bmfBeltHolderId && m.id === league.bmfBeltHolderId;
   const myMember = members.find((m) => m.userId === session?.user.id);
+  const isStaking = (league as any).leagueFormat === 'staking';
+
+  function fmtScore(n: number) {
+    if (!isStaking) return n.toFixed(0);
+    const abs = Math.abs(n);
+    const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
+    return (n < 0 ? '-$' : '+$') + s;
+  }
 
   const champion = members.find((m) => m.isChampion);
   const showChampionBanner = league.status === 'completed' && !!champion && !!league.completedAt
@@ -334,8 +292,8 @@ export function LeagueHomePage() {
                   >
                     {u.teamName.charAt(0).toUpperCase()}
                   </div>
-                  {member && hasBelt(member) && <BeltHalo size={28} />}
-                  {member && hasBmfBelt(member) && <BeltHalo size={28} variant="bmf" position={hasBelt(member) ? 'bottom' : 'top'} />}
+                  {member && hasBelt(member, members, league) && <BeltHalo size={28} />}
+                  {member && hasBmfBelt(member, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(member, members, league) ? 'bottom' : 'top'} />}
                 </div>
               );
             })}
@@ -355,8 +313,8 @@ export function LeagueHomePage() {
                 <div style={{ ...styles.memberAvatar, background: color + '33', borderColor: color }} title={m.teamName} onClick={() => setSelectedMember(m)}>
                   {m.teamName.charAt(0).toUpperCase()}
                 </div>
-                {hasBelt(m) && <BeltHalo size={32} />}
-                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}
+                {hasBelt(m, members, league) && <BeltHalo size={32} />}
+                {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
               </div>
             );
           })}
@@ -423,7 +381,11 @@ export function LeagueHomePage() {
                     onClick={() => { setTeamNameInput(myMember.teamName); setEditingTeamName(true); }}
                   >✎</button>
                   <span style={styles.myTeamDot}>·</span>
-                  <span style={styles.myTeamPts}>{(+myMember.totalPoints).toFixed(0)} pts</span>
+                  <span style={styles.myTeamPts}>
+                    {isStaking
+                      ? fmtScore(+((myMember as any).stakingBalance ?? 0))
+                      : `${(+myMember.totalPoints).toFixed(0)} pts`}
+                  </span>
                   <span style={styles.myTeamDot}>·</span>
                   <span style={styles.myTeamRecord}>{myMember.wins}–{myMember.losses}</span>
                 </>
@@ -441,8 +403,8 @@ export function LeagueHomePage() {
                 <div style={{ ...styles.memberAvatar, background: color + '33', borderColor: color }} title={m.teamName} onClick={() => setSelectedMember(m)}>
                   {m.teamName.charAt(0).toUpperCase()}
                 </div>
-                {hasBelt(m) && <BeltHalo size={32} />}
-                {hasBmfBelt(m) && <BeltHalo size={32} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}
+                {hasBelt(m, members, league) && <BeltHalo size={32} />}
+                {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
               </div>
             );
           })}
@@ -476,12 +438,12 @@ export function LeagueHomePage() {
                         <>
                           <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <div style={{ ...styles.matchupAvatar, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
-                            {homeMember && hasBelt(homeMember) && <BeltHalo size={50} />}
-                            {homeMember && hasBmfBelt(homeMember) && <BeltHalo size={50} variant="bmf" position={hasBelt(homeMember) ? 'bottom' : 'top'} />}
+                            {homeMember && hasBelt(homeMember, members, league) && <BeltHalo size={50} />}
+                            {homeMember && hasBmfBelt(homeMember, league) && <BeltHalo size={50} variant="bmf" position={hasBelt(homeMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             <div style={styles.matchupTeamName}>{matchup.homeTeamName}</div>
-                            <div style={{ ...styles.matchupScore, color: home > away ? '#fff' : '#666' }}>{home.toFixed(0)}</div>
+                            <div style={{ ...styles.matchupScore, color: home > away ? '#fff' : '#666' }}>{fmtScore(home)}</div>
                           </div>
                         </>
                       )}
@@ -508,12 +470,12 @@ export function LeagueHomePage() {
                         <>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                             <div style={styles.matchupTeamName}>{matchup.awayTeamName}</div>
-                            <div style={{ ...styles.matchupScore, color: away > home ? '#fff' : '#666' }}>{away.toFixed(0)}</div>
+                            <div style={{ ...styles.matchupScore, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
                           </div>
                           <div style={{ position: 'relative', display: 'inline-flex' }}>
                             <div style={{ ...styles.matchupAvatar, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
-                            {awayMember && hasBelt(awayMember) && <BeltHalo size={50} />}
-                            {awayMember && hasBmfBelt(awayMember) && <BeltHalo size={50} variant="bmf" position={hasBelt(awayMember) ? 'bottom' : 'top'} />}
+                            {awayMember && hasBelt(awayMember, members, league) && <BeltHalo size={50} />}
+                            {awayMember && hasBmfBelt(awayMember, league) && <BeltHalo size={50} variant="bmf" position={hasBelt(awayMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
                         </>
                       )}
@@ -527,7 +489,7 @@ export function LeagueHomePage() {
             {matchup && (
               <div style={styles.matchupSubRow}>
                 {leading
-                  ? <span style={styles.matchupLeadLabel}>{leading} leads by {diff.toFixed(0)}</span>
+                  ? <span style={styles.matchupLeadLabel}>{leading} leads by {fmtScore(diff)}</span>
                   : <span style={styles.matchupTiedLabel}>TIED</span>}
               </div>
             )}
@@ -712,7 +674,7 @@ export function LeagueHomePage() {
                     >
                       {msg.teamName?.charAt(0).toUpperCase()}
                     </div>
-                    {(() => { const m = members.find((mm) => mm.id === msg.memberId); return <>{m && hasBelt(m) && <BeltHalo size={28} />}{m && hasBmfBelt(m) && <BeltHalo size={28} variant="bmf" position={hasBelt(m) ? 'bottom' : 'top'} />}</>; })()}
+                    {(() => { const m = members.find((mm) => mm.id === msg.memberId); return <>{m && hasBelt(m, members, league) && <BeltHalo size={28} />}{m && hasBmfBelt(m, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}</>; })()}
                   </div>
                   <div style={styles.msgContent}>
                     <div style={styles.msgMeta}>
@@ -837,76 +799,14 @@ export function LeagueHomePage() {
       )}
 
       {/* Member profile sheet */}
-      {selectedMember && (() => {
-        const color = (selectedMember as any).avatarColor ?? '#5555ff';
-        const streak = selectedMember.streak ?? 0;
-        const standingRank = members.findIndex((m) => m.id === selectedMember.id) + 1;
-        const isLeagueChamp = hasBelt(selectedMember);
-        const isBmfChamp = hasBmfBelt(selectedMember);
-        return (
-          <div style={styles.modalOverlay} onClick={() => setSelectedMember(null)}>
-            <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <span style={styles.modalTitle}>Player</span>
-                <button style={styles.modalClose} onClick={() => setSelectedMember(null)}>✕</button>
-              </div>
-              <div style={styles.memberSheetBody}>
-                <div style={{ position: 'relative', display: 'inline-flex' }}>
-                  <div style={{ ...styles.memberSheetAvatar, background: color + '33', borderColor: color }}>
-                    {selectedMember.teamName.charAt(0).toUpperCase()}
-                  </div>
-                  {hasBelt(selectedMember) && <BeltHalo size={72} offset={8} />}
-                  {hasBmfBelt(selectedMember) && <BeltHalo size={72} variant="bmf" position={hasBelt(selectedMember) ? 'bottom' : 'top'} />}
-                </div>
-                <div style={styles.memberSheetName}>{selectedMember.teamName}</div>
-                <div style={styles.memberSheetUser}>@{selectedMember.username}</div>
-                {standingRank > 0 && (
-                  <div style={styles.memberSheetRank}>#{standingRank} in standings</div>
-                )}
-                <div style={styles.memberSheetStats}>
-                  <div style={styles.memberSheetStat}>
-                    <span style={styles.memberSheetStatVal}>{(+(selectedMember.totalPoints ?? 0)).toFixed(0)}</span>
-                    <span style={styles.memberSheetStatLabel}>Season Pts</span>
-                  </div>
-                  <div style={styles.memberSheetStatDivider} />
-                  <div style={styles.memberSheetStat}>
-                    <span style={styles.memberSheetStatVal}>{selectedMember.wins}</span>
-                    <span style={styles.memberSheetStatLabel}>Wins</span>
-                  </div>
-                  <div style={styles.memberSheetStatDivider} />
-                  <div style={styles.memberSheetStat}>
-                    <span style={styles.memberSheetStatVal}>{selectedMember.losses}</span>
-                    <span style={styles.memberSheetStatLabel}>Losses</span>
-                  </div>
-                  {selectedMember.ties > 0 && <>
-                    <div style={styles.memberSheetStatDivider} />
-                    <div style={styles.memberSheetStat}>
-                      <span style={styles.memberSheetStatVal}>{selectedMember.ties}</span>
-                      <span style={styles.memberSheetStatLabel}>Ties</span>
-                    </div>
-                  </>}
-                </div>
-                {streak !== 0 && (
-                  <div style={{ ...styles.memberSheetStreak, color: streak > 0 ? '#4caf50' : '#ff5252' }}>
-                    {streak > 0 ? `W${streak} streak` : `L${Math.abs(streak)} streak`}
-                  </div>
-                )}
-                {(isLeagueChamp || isBmfChamp) && (
-                  <div style={styles.memberSheetBragRow}>
-                    {isLeagueChamp && isBmfChamp ? (
-                      <div style={styles.memberSheetBragBoth}>🏆 League Champion &amp; BMF Champion</div>
-                    ) : isLeagueChamp ? (
-                      <div style={styles.memberSheetBragUfc}>🏆 League Champion</div>
-                    ) : (
-                      <div style={styles.memberSheetBragBmf}>BMF Champion</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {selectedMember && (
+        <MemberSheet
+          member={selectedMember}
+          members={members}
+          league={league}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
 
       {/* Members roster (active leagues) */}
       {league.status === 'active' && members.length > 0 && (

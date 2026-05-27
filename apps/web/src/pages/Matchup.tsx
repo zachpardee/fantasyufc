@@ -5,6 +5,7 @@ import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 
 const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -19,11 +20,23 @@ export function MatchupPage() {
   const { session } = useAuthStore();
   const isMobile = useIsMobile();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
 
-  // All matchups in the league (for history list)
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
+
+  // All matchups in the league (for scores/results)
   const { data: allMatchups = [] } = useQuery<any[]>({
     queryKey: ['matchups-all', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
+  });
+
+  // All UFC events from season start (for chip strip — includes events with no matchup)
+  const { data: allSeasonEvents = [] } = useQuery<any[]>({
+    queryKey: ['season-events', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/season-events`),
   });
 
   // Current user's league member record
@@ -33,10 +46,23 @@ export function MatchupPage() {
   });
   const myMember = members.find((m) => m.userId === session?.user.id);
 
-  // Matchups the current user participated in, newest first
-  const myMatchups = allMatchups.filter(
-    (m) => m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id,
-  );
+  // allSeasonEvents is already sorted newest-first from the API
+  const seasonEvents = allSeasonEvents;
+
+  // Current user's matchup keyed by eventId
+  const myMatchupByEvent = new Map<string, any>();
+  for (const m of allMatchups) {
+    if (m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id) {
+      myMatchupByEvent.set(m.eventId, m);
+    }
+  }
+
+  // The most recent event the user has a matchup in (for default selection)
+  const mostRecentMyMatchup = seasonEvents.find((ev) => myMatchupByEvent.has(ev.eventId));
+
+  // The current/next event (earliest scheduled or live)
+  const currentUpcomingEventId = [...seasonEvents].reverse()
+    .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
 
   const { data: matchup, refetch } = useQuery<any>({
     queryKey: ['matchup-detail', leagueId, selectedMatchupId],
@@ -83,12 +109,25 @@ export function MatchupPage() {
     return () => { supabase.removeChannel(channel); };
   }, [matchup?.id, selectedMatchupId, refetch]);
 
+  const isStaking = league?.leagueFormat === 'staking';
+
+  const { data: homeStaking } = useQuery<any>({
+    queryKey: ['matchup-staking-home', leagueId, matchup?.eventId, matchup?.homeTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchup!.eventId}?memberId=${matchup!.homeTeamId}`),
+    enabled: isStaking && !!matchup?.eventId && !!matchup?.homeTeamId,
+  });
+  const { data: awayStaking } = useQuery<any>({
+    queryKey: ['matchup-staking-away', leagueId, matchup?.eventId, matchup?.awayTeamId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchup!.eventId}?memberId=${matchup!.awayTeamId}`),
+    enabled: isStaking && !!matchup?.eventId && !!matchup?.awayTeamId,
+  });
+
   const isLive = matchup?.eventStatus === 'live';
   const fights: any[] = homePicks?.fights ?? [];
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
 
-  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== myMatchups[0]?.id;
+  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== mostRecentMyMatchup?.id;
 
   return (
     <div style={styles.page}>
@@ -103,41 +142,61 @@ export function MatchupPage() {
         )}
       </nav>
 
-      {/* History strip — shown when user has past matchups */}
-      {myMatchups.length > 1 && (
+      {seasonEvents.length > 0 && (
         <div style={styles.historyStrip}>
-          {myMatchups.map((m) => {
-            const isMeHome = m.homeTeamId === myMember?.id;
-            const myScore = +(isMeHome ? m.homeScore : m.awayScore);
-            const oppScore = +(isMeHome ? m.awayScore : m.homeScore);
-            const oppName = isMeHome ? m.awayTeamName : m.homeTeamName;
-            const isWin = m.winnerId === myMember?.id;
-            const isLoss = m.winnerId && m.winnerId !== myMember?.id;
+          {seasonEvents.map((ev) => {
+            const myM = myMatchupByEvent.get(ev.eventId);
+            const isMeHome = myM?.homeTeamId === myMember?.id;
+            const myScore = myM ? +(isMeHome ? myM.homeScore : myM.awayScore) : null;
+            const oppScore = myM ? +(isMeHome ? myM.awayScore : myM.homeScore) : null;
+            const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
+            const isWin = myM?.winnerId && myM.winnerId === myMember?.id;
+            const isLoss = myM?.winnerId && myM.winnerId !== myMember?.id;
+            const hasScore = myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
             const isActive = selectedMatchupId
-              ? m.id === selectedMatchupId
-              : m.id === myMatchups[0]?.id;
-            const eventShort = m.eventName?.replace(/^UFC\s*/i, '').split(':')[0].trim() ?? m.eventName;
+              ? myM?.id === selectedMatchupId
+              : ev.eventId === mostRecentMyMatchup?.eventId;
+            const eventShort = ev.eventName
+              ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
+              .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
+            const dateStr = ev.scheduledAt
+              ? new Date(ev.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null;
+
+            const isCurrentEvent = ev.eventId === currentUpcomingEventId;
+            const isLiveEvent = ev.eventStatus === 'live';
 
             return (
               <button
-                key={m.id}
-                style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : {}) }}
-                onClick={() => setSelectedMatchupId(m.id === myMatchups[0]?.id ? null : m.id)}
+                key={ev.eventId}
+                style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : isCurrentEvent ? styles.historyChipCurrent : {}), ...(!myM ? styles.historyChipNoMatchup : {}) }}
+                onClick={() => myM && setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id)}
+                disabled={!myM}
               >
-                <div style={styles.chipEvent}>{eventShort}</div>
-                <div style={styles.chipOpp}>vs {oppName}</div>
-                {m.eventStatus === 'completed' || m.winnerId || myScore > 0 ? (
-                  <>
-                    <div style={styles.chipScore}>{myScore.toFixed(0)}–{oppScore.toFixed(0)}</div>
-                    <div style={{
-                      ...styles.chipResult,
-                      color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700',
-                    }}>
-                      {isWin ? 'W' : isLoss ? 'L' : 'T'}
-                    </div>
-                  </>
+                {isLiveEvent
+                  ? <span style={styles.chipLiveBadge}>LIVE</span>
+                  : isCurrentEvent
+                    ? <span style={styles.chipNextBadge}>NEXT</span>
+                    : null}
+                <span style={styles.chipEvent}>{eventShort}</span>
+                {dateStr && <span style={styles.chipDate}>{dateStr}</span>}
+                {myM ? (
+                  hasScore ? (
+                    <>
+                      <span style={styles.chipOpp}>vs {oppName}</span>
+                      <span style={styles.chipScore}>{myScore!.toFixed(0)}–{oppScore!.toFixed(0)}</span>
+                      <span style={{ ...styles.chipResult, color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700' }}>
+                        {isWin ? 'W' : isLoss ? 'L' : 'T'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={styles.chipOpp}>vs {oppName}</span>
+                      <span style={styles.chipPending}>Upcoming</span>
+                    </>
+                  )
                 ) : (
-                  <div style={styles.chipPending}>—</div>
+                  <span style={styles.chipPending}>No matchup</span>
                 )}
               </button>
             );
@@ -168,17 +227,32 @@ export function MatchupPage() {
           </div>
 
           {/* Scoreboard */}
+          {(() => {
+            const homeMember = members.find((m: any) => m.id === matchup.homeTeamId);
+            const awayMember = members.find((m: any) => m.id === matchup.awayTeamId);
+            const homeColor = homeMember?.avatarColor ?? '#5555ff';
+            const awayColor = awayMember?.avatarColor ?? '#5555ff';
+            const homeHasBelt = !!homeMember && hasBelt(homeMember, members, league);
+            const homeHasBmf = !!homeMember && hasBmfBelt(homeMember, league);
+            const awayHasBelt = !!awayMember && hasBelt(awayMember, members, league);
+            const awayHasBmf = !!awayMember && hasBmfBelt(awayMember, league);
+            return (
           <div style={{ ...styles.scoreboard, ...(isMobile ? styles.scoreboardMobile : {}) }}>
             <div style={styles.teamBlock}>
               <div style={styles.teamLabelRow}>
-                <div style={styles.teamAvatar}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={{ position: 'relative', display: 'inline-flex', cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>
+                  <div style={{ ...styles.teamAvatar, background: homeColor + '33', borderColor: homeColor }}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                  {homeHasBelt && <BeltHalo size={32} />}
+                  {homeHasBmf && <BeltHalo size={32} variant="bmf" position={homeHasBelt ? 'bottom' : 'top'} />}
+                </div>
                 <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
+                ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.homeTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{(+matchup.homeScore).toFixed(0)}</div>
-              <div style={styles.scoreUnit}>matchup pts</div>
+              }}>{isStaking ? fmtStakeScore(+matchup.homeScore) : (+matchup.homeScore).toFixed(0)}</div>
+              <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
             <div style={styles.vsBlock}>
@@ -195,19 +269,26 @@ export function MatchupPage() {
 
             <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
               <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
-                <div style={styles.teamAvatar}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={{ position: 'relative', display: 'inline-flex', cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>
+                  <div style={{ ...styles.teamAvatar, background: awayColor + '33', borderColor: awayColor }}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                  {awayHasBelt && <BeltHalo size={32} />}
+                  {awayHasBmf && <BeltHalo size={32} variant="bmf" position={awayHasBelt ? 'bottom' : 'top'} />}
+                </div>
                 <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
+                ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.awayTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{(+matchup.awayScore).toFixed(0)}</div>
-              <div style={styles.scoreUnit}>matchup pts</div>
+              }}>{isStaking ? fmtStakeScore(+matchup.awayScore) : (+matchup.awayScore).toFixed(0)}</div>
+              <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
           </div>
+            );
+          })()}
 
-          {/* Picks */}
-          {fights.length > 0 && (
+          {/* Picks (pick'em leagues) */}
+          {!isStaking && fights.length > 0 && (
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <span style={styles.sectionTitle}>PICKS</span>
@@ -227,22 +308,35 @@ export function MatchupPage() {
             </div>
           )}
 
-          {/* Score breakdown */}
-          <div style={styles.totalsBar}>
-            <ScoreBreakdown
-              label={matchup.homeTeamName}
-              picks={homePicks?.fights ?? []}
-              matchupPts={+matchup.homeScore}
-              championPts={homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0}
+          {/* Staking bets */}
+          {isStaking && (
+            <StakingBetsSection
+              fights={homeStaking?.fights ?? awayStaking?.fights ?? []}
+              homeStaking={homeStaking}
+              awayStaking={awayStaking}
+              homeTeamName={matchup.homeTeamName}
+              awayTeamName={matchup.awayTeamName}
             />
-            <div style={styles.totalsDivider} />
-            <ScoreBreakdown
-              label={matchup.awayTeamName}
-              picks={awayPicks?.fights ?? []}
-              matchupPts={+matchup.awayScore}
-              championPts={awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0}
-            />
-          </div>
+          )}
+
+          {/* Score breakdown (pick'em only) */}
+          {!isStaking && (
+            <div style={styles.totalsBar}>
+              <ScoreBreakdown
+                label={matchup.homeTeamName}
+                picks={homePicks?.fights ?? []}
+                matchupPts={+matchup.homeScore}
+                championPts={homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0}
+              />
+              <div style={styles.totalsDivider} />
+              <ScoreBreakdown
+                label={matchup.awayTeamName}
+                picks={awayPicks?.fights ?? []}
+                matchupPts={+matchup.awayScore}
+                championPts={awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0}
+              />
+            </div>
+          )}
 
           {/* Season breakdown table */}
           <SeasonTable
@@ -252,8 +346,18 @@ export function MatchupPage() {
             homeTeamName={matchup.homeTeamName}
             awayTeamName={matchup.awayTeamName}
             currentEventId={matchup.eventId}
+            isStaking={isStaking}
           />
         </>
+      )}
+
+      {selectedMember && league && (
+        <MemberSheet
+          member={selectedMember}
+          members={members}
+          league={league}
+          onClose={() => setSelectedMember(null)}
+        />
       )}
     </div>
   );
@@ -312,6 +416,8 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
             redImageUrl={fight.redImageUrl}
             blueImageUrl={fight.blueImageUrl}
+            redIsChampion={fight.redIsChampion}
+            blueIsChampion={fight.blueIsChampion}
             method={homePick.pickedMethod}
             isCorrect={homePick.isCorrect}
             pointsEarned={homePick.pointsEarned}
@@ -342,6 +448,8 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
             redImageUrl={fight.redImageUrl}
             blueImageUrl={fight.blueImageUrl}
+            redIsChampion={fight.redIsChampion}
+            blueIsChampion={fight.blueIsChampion}
             method={awayPick.pickedMethod}
             isCorrect={awayPick.isCorrect}
             pointsEarned={awayPick.pointsEarned}
@@ -353,10 +461,11 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
   );
 }
 
-function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, method, isCorrect, pointsEarned, align }: {
+function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, redIsChampion, blueIsChampion, method, isCorrect, pointsEarned, align }: {
   fighterId: string; redFighterId: string;
   redName: string; blueName: string;
   redImageUrl?: string; blueImageUrl?: string;
+  redIsChampion?: boolean; blueIsChampion?: boolean;
   method?: string;
   isCorrect: boolean | null; pointsEarned: number | null;
   align: 'left' | 'right';
@@ -364,15 +473,23 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, 
   const isRed = fighterId === redFighterId;
   const pickedName = isRed ? redName : blueName;
   const imageUrl = isRed ? redImageUrl : blueImageUrl;
+  const isChampion = isRed ? redIsChampion : blueIsChampion;
   const scored = isCorrect !== null;
   const color = scored ? (isCorrect ? '#4caf50' : '#555') : '#ddd';
 
   return (
     <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
       {imageUrl && (
-        <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !isCorrect ? 0.4 : 1 }}>
-          <img src={imageUrl} alt={pickedName}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+        <div style={{ position: 'relative', width: 36, height: 40, flexShrink: 0 }}>
+          <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', background: '#222', opacity: scored && !isCorrect ? 0.4 : 1 }}>
+            <img src={imageUrl} alt={pickedName}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+          </div>
+          {isChampion && (
+            <div style={{ position: 'absolute', bottom: -3, right: -4, background: '#ffd700', color: '#000', fontSize: 8, fontWeight: 900, borderRadius: 3, padding: '1px 3px', lineHeight: 1.2, letterSpacing: 0.2 }}>
+              CHAMP
+            </div>
+          )}
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
@@ -394,11 +511,10 @@ type SeasonRow = {
   isCurrent: boolean;
 };
 
-function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, currentEventId }: {
+function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, currentEventId, isStaking }: {
   allMatchups: any[]; homeTeamId: string; awayTeamId: string;
-  homeTeamName: string; awayTeamName: string; currentEventId: string;
+  homeTeamName: string; awayTeamName: string; currentEventId: string; isStaking?: boolean;
 }) {
-  // Collect unique events that involve either team, preserving first-seen metadata
   const seenEventIds = new Set<string>();
   const relevantEvents: any[] = [];
   for (const m of allMatchups) {
@@ -410,7 +526,6 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
     }
   }
 
-  // For each unique event, explicitly look up each team's matchup score
   const teamScore = (eventId: string, teamId: string): number => {
     const m = allMatchups.find(
       (x) => x.eventId === eventId && (x.homeTeamId === teamId || x.awayTeamId === teamId),
@@ -427,7 +542,7 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
     awayScore: teamScore(ev.eventId, awayTeamId),
     isCurrent: ev.eventId === currentEventId,
   }))
-    .filter((r) => r.homeScore > 0 || r.awayScore > 0)
+    .filter((r) => isStaking || r.homeScore > 0 || r.awayScore > 0)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   if (rows.length === 0) return null;
@@ -441,35 +556,41 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
         <span style={styles.sectionTitle}>SEASON BREAKDOWN</span>
       </div>
       <div style={styles.seasonTable}>
-        {/* Header */}
         <div style={styles.seasonHeaderRow}>
           <div style={styles.seasonTeamCell}>{homeTeamName}</div>
           <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>EVENT</div>
           <div style={{ ...styles.seasonTeamCell, justifyContent: 'flex-start' }}>{awayTeamName}</div>
         </div>
-        {/* Rows */}
         {rows.map((r) => {
           const short = r.eventName.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ').replace(/^UFC\s+/i, 'UFC ');
+          const fmtS = isStaking ? fmtStakeScore : (n: number) => n.toFixed(0);
           return (
             <div key={r.eventId} style={{ ...styles.seasonRow, ...(r.isCurrent ? styles.seasonRowCurrent : {}) }}>
               <div style={styles.seasonScoreCell}>
-                <span style={styles.seasonPts}>{r.homeScore.toFixed(0)}</span>
+                <span style={{ ...styles.seasonPts, ...(isStaking ? { color: r.homeScore < 0 ? '#ff5252' : r.homeScore > 0 ? '#4caf50' : '#555' } : {}) }}>
+                  {fmtS(r.homeScore)}
+                </span>
               </div>
               <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>{short}</div>
               <div style={{ ...styles.seasonScoreCell, justifyContent: 'flex-start' }}>
-                <span style={styles.seasonPts}>{r.awayScore.toFixed(0)}</span>
+                <span style={{ ...styles.seasonPts, ...(isStaking ? { color: r.awayScore < 0 ? '#ff5252' : r.awayScore > 0 ? '#4caf50' : '#555' } : {}) }}>
+                  {fmtS(r.awayScore)}
+                </span>
               </div>
             </div>
           );
         })}
-        {/* Totals */}
         <div style={styles.seasonTotalRow}>
           <div style={styles.seasonScoreCell}>
-            <span style={styles.seasonTotalPts}>{totalHome.toFixed(0)}</span>
+            <span style={{ ...styles.seasonTotalPts, ...(isStaking ? { color: totalHome < 0 ? '#ff5252' : '#ff8c42' } : {}) }}>
+              {isStaking ? fmtStakeScore(totalHome) : totalHome.toFixed(0)}
+            </span>
           </div>
           <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>SEASON TOTAL</div>
           <div style={{ ...styles.seasonScoreCell, justifyContent: 'flex-start' }}>
-            <span style={styles.seasonTotalPts}>{totalAway.toFixed(0)}</span>
+            <span style={{ ...styles.seasonTotalPts, ...(isStaking ? { color: totalAway < 0 ? '#ff5252' : '#ff8c42' } : {}) }}>
+              {isStaking ? fmtStakeScore(totalAway) : totalAway.toFixed(0)}
+            </span>
           </div>
         </div>
       </div>
@@ -495,7 +616,6 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
       <div style={{ ...styles.totalsTeam, marginBottom: 10 }}>{label}</div>
       {hasScores ? (
         <>
-          {/* Per-pick grid */}
           {picks.map((p) => {
             const isRed = p.pickedFighterId === p.redFighterId;
             const lastName: string = isRed ? p.redLastName : p.blueLastName;
@@ -528,7 +648,6 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
             );
           })}
 
-          {/* Bonus rows */}
           {(sweepBonus > 0 || championPts > 0) && (
             <div style={styles.breakdownDividerRow} />
           )}
@@ -547,7 +666,6 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
             </div>
           )}
 
-          {/* Total */}
           <div style={{ ...styles.breakdownDividerRow, marginTop: 'auto', paddingTop: 6 }} />
           <div style={{ ...styles.bdPickRow, paddingTop: 6 }}>
             <span style={{ ...styles.bdFighter, color: '#555', fontWeight: 700, textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5 }}>
@@ -564,6 +682,288 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
   );
 }
 
+// ── Staking helpers ──────────────────────────────────────────────────────────
+
+function fmtOddsAmerican(american: number): string {
+  return american >= 0 ? `+${american}` : `${american}`;
+}
+
+function fmtMoney(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
+  return (n < 0 ? '-$' : '$') + s;
+}
+
+function fmtStakeScore(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
+  return (n < 0 ? '-$' : '+$') + s;
+}
+
+function OddsBadge({ odds }: { odds: number }) {
+  const isUnderdog = odds > 0;
+  return (
+    <span style={{
+      background: isUnderdog ? '#162616' : '#1a1a1a',
+      color: isUnderdog ? '#5cb85c' : '#666',
+      fontSize: 10, fontWeight: 800, padding: '2px 5px', borderRadius: 3,
+      border: `1px solid ${isUnderdog ? '#2a4a2a' : '#2a2a2a'}`,
+      letterSpacing: 0.2, flexShrink: 0,
+    }}>
+      {fmtOddsAmerican(odds)}
+    </span>
+  );
+}
+
+function PnlBadge({ value, isPending, potentialPayout }: { value: number; isPending: boolean; potentialPayout: number }) {
+  if (isPending) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+        <span style={{ color: '#333', fontSize: 10 }}>→</span>
+        <span style={{ color: '#555', fontSize: 11, fontWeight: 600 }}>{fmtMoney(potentialPayout)}</span>
+      </div>
+    );
+  }
+  const isWon = value > 0;
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center',
+      background: isWon ? '#0d2214' : '#1e0808',
+      color: isWon ? '#4caf50' : '#e05555',
+      fontSize: 12, fontWeight: 800,
+      padding: '3px 7px', borderRadius: 4, marginTop: 2,
+      border: `1px solid ${isWon ? '#1e4a28' : '#3a1414'}`,
+    }}>
+      {fmtStakeScore(value)}
+    </div>
+  );
+}
+
+
+function ParlayDisplay({ parlay, legs, align }: { parlay: any; legs: any[]; align: 'left' | 'right' }) {
+  const isLost = parlay.status === 'lost';
+  const isWon = parlay.status === 'won';
+  const isPending = parlay.status === 'pending';
+  const rev = align === 'right';
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: rev ? 'flex-end' : 'flex-start',
+      gap: 5, opacity: isLost ? 0.45 : 1,
+    }}>
+      {legs.map((l: any) => (
+        <div key={l.fightId} style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          flexDirection: rev ? 'row-reverse' : 'row',
+        }}>
+          <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700 }}>
+            {l.fighterLastName}
+          </span>
+          <OddsBadge odds={+l.odds} />
+        </div>
+      ))}
+      <div style={{ color: '#444', fontSize: 10, marginTop: 1 }}>
+        {legs.length} legs · {(+parlay.decimalOdds).toFixed(2)}x · {fmtMoney(+parlay.stake)}
+      </div>
+      <PnlBadge value={+parlay.profitLoss} isPending={isPending} potentialPayout={+parlay.potentialPayout} />
+    </div>
+  );
+}
+
+function InlineBetDisplay({ single, align }: { single: any; align: 'left' | 'right' }) {
+  const isLost = single.status === 'lost';
+  const isWon = single.status === 'won';
+  const isPending = single.status === 'pending';
+  const rev = align === 'right';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: rev ? 'flex-end' : 'flex-start', gap: 4, opacity: isLost ? 0.4 : 1 }}>
+      <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
+        {single.fighterLastName}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexDirection: rev ? 'row-reverse' : 'row' }}>
+        <OddsBadge odds={+single.odds} />
+        <span style={{ color: '#555', fontSize: 10 }}>{fmtMoney(+single.stake)}</span>
+      </div>
+      <PnlBadge value={+single.profitLoss} isPending={isPending} potentialPayout={+single.potentialPayout} />
+    </div>
+  );
+}
+
+function FightCardRow({ fight, homeSingle, awaySingle }: { fight: any; homeSingle?: any; awaySingle?: any }) {
+  const hasResult = !!fight.resultWinnerId;
+  const redWon = hasResult && fight.resultWinnerId === fight.redFighterId;
+  const blueWon = hasResult && fight.resultWinnerId === fight.blueFighterId;
+
+  const showMeta = fight.isMainEvent || (hasResult && fight.resultOutcome);
+
+  return (
+    <div style={{ padding: '10px 14px' }}>
+      {showMeta && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+          {fight.isMainEvent && <span style={sk.mainBadge}>MAIN</span>}
+          {hasResult && fight.resultOutcome && (
+            <span style={{ marginLeft: 'auto', color: '#4caf50', fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
+              {METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Three columns: home bet | fight center | away bet */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+        {/* Home bet */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
+          {homeSingle
+            ? <InlineBetDisplay single={homeSingle} align="left" />
+            : <span style={{ color: '#1e1e1e', fontSize: 16 }}>—</span>}
+        </div>
+
+        {/* Fight center */}
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+          {fight.weightClassName && (
+            <span style={{ color: '#3a3a3a', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              {fight.weightClassName}
+            </span>
+          )}
+          <div style={{ display: 'flex' }}>
+            <div style={{ width: 52, height: 64, borderRadius: '6px 0 0 6px', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${redWon ? '#2a4a2a' : '#1e1e1e'}`, borderRight: 'none', opacity: hasResult && !redWon ? 0.18 : 1 }}>
+              {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
+            </div>
+            <div style={{ width: 44, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e', flexShrink: 0 }}>
+              <span style={{ color: '#303030', fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>VS</span>
+            </div>
+            <div style={{ width: 52, height: 64, borderRadius: '0 6px 6px 0', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${blueWon ? '#2a4a2a' : '#1e1e1e'}`, borderLeft: 'none', opacity: hasResult && !blueWon ? 0.18 : 1 }}>
+              {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
+            </div>
+          </div>
+          <div style={{ display: 'flex', width: 168 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingRight: 4, opacity: hasResult && !redWon ? 0.35 : 1 }}>
+              <span style={{ color: redWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: redWon ? 700 : 500, textAlign: 'right' }}>
+                {fight.redLastName}
+              </span>
+              {fight.redRecordWins != null && (
+                <span style={{ color: '#555', fontSize: 10 }}>
+                  {fight.redRecordWins}-{fight.redRecordLosses}{fight.redRecordDraws > 0 ? `-${fight.redRecordDraws}` : ''}
+                </span>
+              )}
+            </div>
+            <div style={{ width: 44 }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: 4, opacity: hasResult && !blueWon ? 0.35 : 1 }}>
+              <span style={{ color: blueWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: blueWon ? 700 : 500 }}>
+                {fight.blueLastName}
+              </span>
+              {fight.blueRecordWins != null && (
+                <span style={{ color: '#555', fontSize: 10 }}>
+                  {fight.blueRecordWins}-{fight.blueRecordLosses}{fight.blueRecordDraws > 0 ? `-${fight.blueRecordDraws}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', width: 168 }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', paddingRight: 4 }}>
+              {fight.redFighterOdds != null && <OddsBadge odds={fight.redFighterOdds} />}
+            </div>
+            <div style={{ width: 44 }} />
+            <div style={{ flex: 1, paddingLeft: 4 }}>
+              {fight.blueFighterOdds != null && <OddsBadge odds={fight.blueFighterOdds} />}
+            </div>
+          </div>
+        </div>
+
+        {/* Away bet */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+          {awaySingle
+            ? <InlineBetDisplay single={awaySingle} align="right" />
+            : <span style={{ color: '#1e1e1e', fontSize: 16 }}>—</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, awaySinglesMap }: {
+  fights: any[]; homeTeamName: string; awayTeamName: string;
+  homeSinglesMap: Map<string, any>; awaySinglesMap: Map<string, any>;
+}) {
+  if (fights.length === 0) return null;
+  return (
+    <div style={sk.card}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
+        <span style={{ flex: 1, color: '#555', fontSize: 11, fontWeight: 700 }}>{homeTeamName}</span>
+        <span style={{ ...sk.cardHeaderText, width: 168, flexShrink: 0, textAlign: 'center' }}>FIGHT CARD</span>
+        <span style={{ flex: 1, color: '#555', fontSize: 11, fontWeight: 700, textAlign: 'right' }}>{awayTeamName}</span>
+      </div>
+      {fights.map((fight, i) => (
+        <div key={fight.id} style={i < fights.length - 1 ? { borderBottom: '1px solid #161616' } : {}}>
+          <FightCardRow
+            fight={fight}
+            homeSingle={homeSinglesMap.get(fight.id)}
+            awaySingle={awaySinglesMap.get(fight.id)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, awayTeamName }: {
+  fights: any[]; homeStaking: any; awayStaking: any;
+  homeTeamName: string; awayTeamName: string;
+}) {
+  const homeSinglesMap = new Map<string, any>((homeStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
+  const awaySinglesMap = new Map<string, any>((awayStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
+
+  const homeParlay = homeStaking?.parlay ?? null;
+  const awayParlay = awayStaking?.parlay ?? null;
+
+  return (
+    <div style={styles.section}>
+      <div style={styles.sectionHeader}>
+        <span style={styles.sectionTitle}>BETS</span>
+      </div>
+
+      <StakingFightCard
+        fights={fights}
+        homeTeamName={homeTeamName}
+        awayTeamName={awayTeamName}
+        homeSinglesMap={homeSinglesMap}
+        awaySinglesMap={awaySinglesMap}
+      />
+
+      {(homeParlay || awayParlay) && (
+        <div style={{ background: '#0d0c00', border: '1px solid #2a2200', borderRadius: 8, padding: '14px', marginTop: 8 }}>
+          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 800, letterSpacing: 0.8, marginBottom: 12 }}>★ PARLAY</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              {homeParlay
+                ? <ParlayDisplay parlay={homeParlay} legs={homeStaking?.parlayLegs ?? []} align="left" />
+                : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
+            </div>
+            <div style={{ width: 1, background: '#2a2200', alignSelf: 'stretch', flexShrink: 0 }} />
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              {awayParlay
+                ? <ParlayDisplay parlay={awayParlay} legs={awayStaking?.parlayLegs ?? []} align="right" />
+                : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const sk: Record<string, React.CSSProperties> = {
+  card: { background: '#111', border: '1px solid #222', borderRadius: 10, overflow: 'hidden', marginBottom: 20 },
+  cardHeader: { background: '#0d0d0d', borderBottom: '1px solid #1e1e1e', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 },
+  cardHeaderText: { color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' },
+  fightRow: { padding: '12px 14px 10px' },
+  fightMeta: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 },
+  mainBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3, letterSpacing: 0.5 },
+  weightLabel: { color: '#333', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
+};
+
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
@@ -573,11 +973,10 @@ const styles: Record<string, React.CSSProperties> = {
   currentBtn: { background: 'transparent', border: '1px solid #333', borderRadius: 6, color: '#888', fontSize: 12, padding: '4px 10px', cursor: 'pointer' },
   empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
 
-  // History strip
   historyStrip: {
     display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 24px',
     background: '#0d0d0d', borderBottom: '1px solid #1a1a1a',
-    scrollbarWidth: 'none',
+    scrollbarWidth: 'thin', scrollbarColor: '#2a2a2a transparent',
   },
   historyChip: {
     flexShrink: 0, background: '#1a1a1a', border: '1px solid #2a2a2a',
@@ -585,11 +984,16 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 90,
   },
   historyChipActive: { border: '1px solid #c8102e', background: '#1a0808' },
+  historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
+  historyChipNoMatchup: { opacity: 0.4, cursor: 'default' },
+  chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
+  chipDate: { color: '#444', fontSize: 10, textAlign: 'center' },
   chipOpp: { color: '#555', fontSize: 10, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   chipScore: { color: '#fff', fontSize: 13, fontWeight: 800 },
   chipResult: { fontSize: 11, fontWeight: 800 },
-  chipPending: { color: '#444', fontSize: 13 },
+  chipPending: { color: '#444', fontSize: 10 },
 
   eventHeader: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '16px 24px', textAlign: 'center' },
   eventName: { color: '#fff', fontSize: 20, fontWeight: 800, marginBottom: 4 },
@@ -600,9 +1004,10 @@ const styles: Record<string, React.CSSProperties> = {
   scoreboardMobile: { padding: '16px', flexDirection: 'column', gap: 12 },
   teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
   teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
-  teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 },
+  teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a1a', border: '2px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' },
   teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
   matchupScore: { fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  matchupScoreStaking: { fontSize: 36 },
   scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   vsBlock: { flex: 1, textAlign: 'center' as const, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   vsText: { color: '#333', fontWeight: 700, fontSize: 18 },

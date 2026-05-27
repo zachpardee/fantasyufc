@@ -6,6 +6,26 @@ import { redis, CACHE_TTL } from '../config/redis';
 
 export const matchupsRouter = Router({ mergeParams: true });
 
+// All UFC events from season start (for chip strip — includes events with no matchup)
+matchupsRouter.get('/season-events', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
+    const { rows } = await db.query(`
+      SELECT e.id as event_id, e.name as event_name, e.scheduled_at, e.status as event_status
+      FROM ufc_events e
+      JOIN league_events le ON le.event_id = e.id
+      WHERE le.league_id = $1
+      ORDER BY e.scheduled_at DESC
+    `, [req.params.leagueId]);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
 matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [member] } = await db.query(

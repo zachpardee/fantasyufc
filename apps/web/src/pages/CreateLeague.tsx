@@ -11,6 +11,8 @@ export function CreateLeaguePage() {
     teamName: '',
     maxTeams: '10',
     seasonLengthMonths: '4',
+    leagueFormat: 'pickem' as 'pickem' | 'staking',
+    weeklyBudget: '100' as '100' | '500',
   });
 
   function set(field: string, value: string) {
@@ -27,6 +29,8 @@ export function CreateLeaguePage() {
         teamName: form.teamName || 'My Team',
         maxTeams: parseInt(form.maxTeams),
         seasonLengthMonths: parseInt(form.seasonLengthMonths) as 4 | 6,
+        leagueFormat: form.leagueFormat,
+        ...(form.leagueFormat === 'staking' ? { weeklyBudget: parseInt(form.weeklyBudget) } : {}),
       });
       navigate(`/league/${league.id}`);
     } catch (err: any) {
@@ -68,6 +72,33 @@ export function CreateLeaguePage() {
             </Field>
           </div>
 
+          <Field label="League Format">
+            <div style={styles.formatRow}>
+              {(['pickem', 'staking'] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  style={{ ...styles.formatBtn, ...(form.leagueFormat === fmt ? styles.formatBtnActive : {}) }}
+                  onClick={() => set('leagueFormat', fmt)}
+                >
+                  <span style={styles.formatBtnTitle}>{fmt === 'pickem' ? 'Pick\'em' : 'Staking'}</span>
+                  <span style={styles.formatBtnDesc}>
+                    {fmt === 'pickem' ? 'Pick fight winners + methods for points' : 'Bet a weekly budget on fights'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {form.leagueFormat === 'staking' && (
+            <Field label="Weekly Budget">
+              <select style={styles.input} value={form.weeklyBudget} onChange={(e) => set('weeklyBudget', e.target.value as '100' | '500')}>
+                <option value="100">$100 / week</option>
+                <option value="500">$500 / week</option>
+              </select>
+            </Field>
+          )}
+
           <div style={styles.hint}>
             Season runs from start date for the selected duration. The next 2 UFC events after the season ends become the playoffs (semis + finals).
           </div>
@@ -102,6 +133,11 @@ const styles: Record<string, React.CSSProperties> = {
   row: { display: 'flex', gap: 16 },
   input: { background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box' },
   hint: { color: '#555', fontSize: 12, lineHeight: 1.5 },
+  formatRow: { display: 'flex', gap: 10 },
+  formatBtn: { flex: 1, background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8, padding: '12px 14px', cursor: 'pointer', textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, gap: 4 },
+  formatBtnActive: { border: '1px solid #c8102e', background: '#1a0808' },
+  formatBtnTitle: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  formatBtnDesc: { color: '#666', fontSize: 11, lineHeight: 1.4 },
   btn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
   btnDisabled: { opacity: 0.6, cursor: 'not-allowed' },
   error: { color: '#ff6b6b', fontSize: 13, margin: 0 },

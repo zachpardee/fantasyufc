@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
+import { StakingPicksPage } from './StakingPicks';
 
 export function PicksPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -101,6 +102,8 @@ export function PicksPage() {
       apiClient.put(`/leagues/${leagueId}/picks/${currentEvent!.id}/champion`, { fighterId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] }),
   });
+
+  if (league?.leagueFormat === 'staking') return <StakingPicksPage />;
 
   const fights: any[] = picksData?.fights ?? [];
   const locked: boolean = picksData?.locked ?? false;

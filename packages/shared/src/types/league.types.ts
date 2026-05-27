@@ -22,6 +22,8 @@ export interface League {
   scoringSettings?: ScoringSettings;
   completedAt?: string;
   bmfBeltHolderId?: string;
+  leagueFormat?: 'pickem' | 'staking';
+  weeklyBudget?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +42,8 @@ export interface LeagueMember {
   auctionBudget?: number;
   isActive: boolean;
   isChampion?: boolean;
+  avatarColor?: string;
+  stakingBalance?: number;
   joinedAt: string;
   user?: {
     username: string;

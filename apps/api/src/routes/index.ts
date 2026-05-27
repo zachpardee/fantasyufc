@@ -12,6 +12,7 @@ import { scheduleRouter } from './schedule.routes';
 import { picksRouter } from './picks.routes';
 import { playoffsRouter } from './playoffs.routes';
 import { messagesRouter } from './messages.routes';
+import { stakingRouter } from './staking.routes';
 
 export const apiRouter = Router();
 
@@ -23,6 +24,7 @@ apiRouter.use('/leagues/:leagueId/matchups', matchupsRouter);
 apiRouter.use('/leagues/:leagueId/standings', matchupsRouter);
 apiRouter.use('/leagues/:leagueId/schedule', scheduleRouter);
 apiRouter.use('/leagues/:leagueId/picks', picksRouter);
+apiRouter.use('/leagues/:leagueId/staking', stakingRouter);
 apiRouter.use('/leagues/:leagueId/playoffs', playoffsRouter);
 apiRouter.use('/leagues/:leagueId/messages', messagesRouter);
 apiRouter.use('/fighters', fightersRouter);

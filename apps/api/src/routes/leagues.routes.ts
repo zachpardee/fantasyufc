@@ -31,7 +31,13 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
       maxTeams: z.number().int().min(2).max(20).default(10),
       isPublic: z.boolean().default(false),
       seasonLengthMonths: z.union([z.literal(4), z.literal(6)]).default(4),
+      leagueFormat: z.enum(['pickem', 'staking']).default('pickem'),
+      weeklyBudget: z.union([z.literal(100), z.literal(500)]).optional(),
     }).parse(req.body);
+
+    if (body.leagueFormat === 'staking' && !body.weeklyBudget) {
+      body.weeklyBudget = 100;
+    }
 
     const client = await db.connect();
     try {
@@ -41,11 +47,12 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
       const { rows: [league] } = await client.query(`
         INSERT INTO leagues (name, description, commissioner_id, invite_code, max_teams,
-          is_public, season_length_months)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
+          is_public, season_length_months, league_format, weekly_budget)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         RETURNING *
       `, [body.name, body.description ?? null, req.user!.id, inviteCode,
-          body.maxTeams, body.isPublic, body.seasonLengthMonths]);
+          body.maxTeams, body.isPublic, body.seasonLengthMonths,
+          body.leagueFormat, body.weeklyBudget ?? null]);
 
       const d = DEFAULT_SCORING_SETTINGS;
       const { rows: [ss] } = await client.query(`
@@ -59,11 +66,12 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
         [ss.id, league.id],
       );
 
+      const initialBalance = body.leagueFormat === 'staking' ? (body.weeklyBudget ?? 100) : 0;
       const { rows: [member] } = await client.query(`
-        INSERT INTO league_members (league_id, user_id, team_name)
-        VALUES ($1, $2, $3)
+        INSERT INTO league_members (league_id, user_id, team_name, staking_balance)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
-      `, [league.id, req.user!.id, body.teamName]);
+      `, [league.id, req.user!.id, body.teamName, initialBalance]);
 
       await client.query(
         `INSERT INTO rosters (league_member_id) VALUES ($1)`,
@@ -146,10 +154,11 @@ leaguesRouter.post('/join', requireAuth, async (req: AuthRequest, res, next) => 
       );
       if (parseInt(count) >= league.max_teams) throw new AppError(400, 'League is full');
 
+      const initialBalance = league.league_format === 'staking' ? (league.weekly_budget ?? 100) : 0;
       const { rows: [member] } = await client.query(`
-        INSERT INTO league_members (league_id, user_id, team_name, waiver_priority)
-        VALUES ($1, $2, $3, $4) RETURNING *
-      `, [league.id, req.user!.id, teamName, parseInt(count) + 1]);
+        INSERT INTO league_members (league_id, user_id, team_name, waiver_priority, staking_balance)
+        VALUES ($1, $2, $3, $4, $5) RETURNING *
+      `, [league.id, req.user!.id, teamName, parseInt(count) + 1, initialBalance]);
 
       await client.query(`INSERT INTO rosters (league_member_id) VALUES ($1)`, [member.id]);
 

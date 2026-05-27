@@ -12,6 +12,12 @@ const NUMERIC_FIELDS = new Set([
   'wins', 'losses', 'ties', 'streak',
   'ranking', 'recordWins', 'recordLosses', 'recordDraws', 'recordNc',
   'fightCount', 'matchupCount',
+  // staking fields
+  'stake', 'potentialPayout', 'actualPayout', 'profitLoss',
+  'stakingBalance', 'balance', 'pendingStake', 'decimalOdds',
+  'redFighterOdds', 'blueFighterOdds',
+  'redRecordWins', 'redRecordLosses', 'redRecordDraws',
+  'blueRecordWins', 'blueRecordLosses', 'blueRecordDraws',
 ]);
 
 function transformKeys(obj: unknown): unknown {

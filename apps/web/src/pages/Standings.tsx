@@ -4,15 +4,40 @@ import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import { LoadingInline } from '../components/LoadingScreen';
 
+function fmtBankroll(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
+  return (n < 0 ? '-$' : '+$') + s;
+}
+
 export function StandingsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const navigate = useNavigate();
 
-  const { data: standings, isLoading } = useQuery<any[]>({
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
+
+  const { data: rawStandings, isLoading } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
+
+  const isStaking = league?.leagueFormat === 'staking';
+
+  const standings = rawStandings
+    ? [...rawStandings].sort((a, b) =>
+        isStaking
+          ? (b.stakingBalance ?? 0) - (a.stakingBalance ?? 0)
+          : (b.totalPoints ?? 0) - (a.totalPoints ?? 0),
+      )
+    : undefined;
+
+  const headers = isStaking
+    ? ['#', 'Team', 'Bankroll', 'W', 'L', 'T', 'Streak']
+    : ['#', 'Team', 'Season Pts', 'W', 'L', 'T', 'Streak'];
 
   return (
     <div style={styles.page}>
@@ -25,15 +50,18 @@ export function StandingsPage() {
         {isLoading && <LoadingInline label="Loading standings..." />}
         <table style={styles.table}>
           <thead>
-            {!isLoading && <tr>
-              {['#', 'Team', 'Season Pts', 'W', 'L', 'T', 'Streak'].map((h) => (
-                <th key={h} style={styles.th}>{h}</th>
-              ))}
-            </tr>}
+            {!isLoading && (
+              <tr>
+                {headers.map((h) => (
+                  <th key={h} style={styles.th}>{h}</th>
+                ))}
+              </tr>
+            )}
           </thead>
           <tbody>
             {standings?.map((member, i) => {
               const isMe = member.userId === session?.user.id;
+              const bankroll = member.stakingBalance ?? 0;
               return (
                 <tr
                   key={member.id}
@@ -52,9 +80,15 @@ export function StandingsPage() {
                     </div>
                     <div style={styles.username}>@{member.username}</div>
                   </td>
-                  <td style={{ ...styles.td, ...styles.ptsCol }}>
-                    {(+(member.totalPoints ?? 0)).toFixed(0)}
-                  </td>
+                  {isStaking ? (
+                    <td style={{ ...styles.td, color: bankroll > 0 ? '#4caf50' : bankroll < 0 ? '#ff5252' : '#555', fontWeight: 700 }}>
+                      {fmtBankroll(bankroll)}
+                    </td>
+                  ) : (
+                    <td style={{ ...styles.td, ...styles.ptsCol }}>
+                      {(+(member.totalPoints ?? 0)).toFixed(0)}
+                    </td>
+                  )}
                   <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
                   <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>
                   <td style={styles.td}>{member.ties}</td>

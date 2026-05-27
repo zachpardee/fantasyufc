@@ -68,6 +68,8 @@ export function LeagueRulesPage() {
   });
 
   const seasonActive = league?.status === 'active' || league?.status === 'playoffs' || league?.status === 'completed';
+  const isStaking = league?.leagueFormat === 'staking';
+  const weeklyBudget = league?.weeklyBudget ?? 100;
 
   return (
     <div style={styles.page}>
@@ -78,6 +80,7 @@ export function LeagueRulesPage() {
 
       {league && (
         <Section title="Season">
+          <Row label="Format" value={isStaking ? 'Staking' : "Pick 'em"} />
           <Row label="Season length" value={league.seasonLengthMonths ? `${league.seasonLengthMonths} months` : '—'} />
           <Row label="Status" value={league.status.charAt(0).toUpperCase() + league.status.slice(1)} />
           {seasonActive && (
@@ -93,37 +96,78 @@ export function LeagueRulesPage() {
         </Section>
       )}
 
-      <Section title="How It Works">
-        <Row label="Format" value="Pick 'em — no rosters or drafts" />
-        <Row label="Picks per event" value="Top 6 fights (main card + top prelims)" />
-        <Row label="Pick deadline" value="Event start time" />
-        <Row label="Scoring" value="Points for correct winner + method" />
-        <Row label="Prelims scoring" value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'} />
-        <Row label="Early prelims" value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'} />
-      </Section>
+      {isStaking ? (
+        <>
+          <Section title="How It Works">
+            <Row label="Weekly budget" value={`$${weeklyBudget} per event`} />
+            <Row label="Unused budget" value="Added to your event payout total" />
+            <Row label="Bet deadline" value="Event start time" />
+            <Row label="Fights available" value="Top 6 fights (main card + top prelims)" />
+          </Section>
 
-      <Section title="Pick Scoring">
-        <Row label="Correct winner (any method)" value={ss ? pts(ss.ptsWin) : '—'} />
-        <Row label="+ KO/TKO method bonus" value={ss ? pts(ss.ptsKoTko) : '—'} />
-        <Row label="+ Submission method bonus" value={ss ? pts(ss.ptsSubmission) : '—'} />
-        <Row label="+ Decision method bonus" value={ss ? pts(ss.ptsDecision) : '—'} />
-        <Row label="Underdog bonus (winner ≥ +350 odds)" value="+10 pts" />
-        <Row label="Wrong pick" value="—" />
-      </Section>
+          <Section title="Singles">
+            <Row label="What it is" value="One bet on one fighter to win" />
+            <Row label="Payout (favorite)" value="Stake × decimal odds" />
+            <Row label="Payout (underdog)" value="Stake × decimal odds (higher multiplier)" />
+            <Row label="Wrong pick" value="Stake lost" />
+          </Section>
 
-      <Section title="Sweep Bonus">
-        <Row label="4 correct picks" value="+5 pts" />
-        <Row label="5 correct picks" value="+10 pts" />
-        <Row label="6 correct picks (sweep)" value="+20 pts" />
-      </Section>
+          <Section title="Parlays">
+            <Row label="What it is" value="Multiple fights combined into one bet" />
+            <Row label="Min / max legs" value="2 – 6 fights" />
+            <Row label="Odds" value="Each leg's decimal odds multiplied together" />
+            <Row label="To win" value="Every leg must be correct" />
+            <Row label="One leg wrong" value="Entire parlay lost" />
+          </Section>
 
-      <Section title="Matchups">
-        <Row label="Format" value="Head-to-head per event" />
-        <Row label="Matchup win bonus" value="+25 pts" />
-        <Row label="Tie bonus" value="+10 pts" />
-        <Row label="Loss" value="Event pick points only" />
-        <Row label="Standings" value="Total season points" />
-      </Section>
+          <Section title="Event Payout (Your Score)">
+            <Row label="Formula" value="Unbet budget + winnings from settled bets" />
+            <Row label="Example" value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130" />
+            <Row label="Matchup winner" value="Higher event payout wins the week" />
+          </Section>
+
+          <Section title="Season Bankroll">
+            <Row label="What it tracks" value="Running total of profit / loss across all events" />
+            <Row label="Win" value="+ (payout − stake)" />
+            <Row label="Loss" value="− stake" />
+            <Row label="Standings" value="Total season bankroll" />
+          </Section>
+        </>
+      ) : (
+        <>
+          <Section title="How It Works">
+            <Row label="Format" value="Pick 'em — no rosters or drafts" />
+            <Row label="Picks per event" value="Top 6 fights (main card + top prelims)" />
+            <Row label="Pick deadline" value="Event start time" />
+            <Row label="Scoring" value="Points for correct winner + method" />
+            <Row label="Prelims scoring" value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'} />
+            <Row label="Early prelims" value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'} />
+          </Section>
+
+          <Section title="Pick Scoring">
+            <Row label="Correct winner (any method)" value={ss ? pts(ss.ptsWin) : '—'} />
+            <Row label="+ KO/TKO method bonus" value={ss ? pts(ss.ptsKoTko) : '—'} />
+            <Row label="+ Submission method bonus" value={ss ? pts(ss.ptsSubmission) : '—'} />
+            <Row label="+ Decision method bonus" value={ss ? pts(ss.ptsDecision) : '—'} />
+            <Row label="Underdog bonus (winner ≥ +350 odds)" value="+10 pts" />
+            <Row label="Wrong pick" value="—" />
+          </Section>
+
+          <Section title="Sweep Bonus">
+            <Row label="4 correct picks" value="+5 pts" />
+            <Row label="5 correct picks" value="+10 pts" />
+            <Row label="6 correct picks (sweep)" value="+20 pts" />
+          </Section>
+
+          <Section title="Matchups">
+            <Row label="Format" value="Head-to-head per event" />
+            <Row label="Matchup win bonus" value="+25 pts" />
+            <Row label="Tie bonus" value="+10 pts" />
+            <Row label="Loss" value="Event pick points only" />
+            <Row label="Standings" value="Total season points" />
+          </Section>
+        </>
+      )}
 
       <div style={styles.spacer} />
     </div>

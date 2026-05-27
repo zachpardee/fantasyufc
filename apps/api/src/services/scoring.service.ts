@@ -1,5 +1,149 @@
 import { db } from '../config/database';
 
+function toDecimalOdds(american: number): number {
+  return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
+}
+
+export async function processStakingFightResult(fightId: string, winnerId: string | null) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [fightRow] } = await client.query(
+      `SELECT event_id FROM fights WHERE id = $1`, [fightId],
+    );
+    if (!fightRow) { await client.query('COMMIT'); return; }
+    const eventId = fightRow.event_id;
+
+    // Settle singles for this fight
+    const { rows: singles } = await client.query(
+      `SELECT ss.*, l.weekly_budget
+       FROM staking_singles ss
+       JOIN leagues l ON l.id = ss.league_id
+       WHERE ss.fight_id = $1 AND ss.status = 'pending'`,
+      [fightId],
+    );
+
+    for (const s of singles) {
+      const won = winnerId && s.fighter_id === winnerId;
+      const decOdds = toDecimalOdds(s.odds);
+      const actualPayout = won ? Math.round(parseFloat(s.stake) * decOdds * 100) / 100 : 0;
+      const profitLoss = actualPayout - parseFloat(s.stake);
+
+      await client.query(`
+        UPDATE staking_singles
+        SET status = $1, actual_payout = $2, profit_loss = $3, updated_at = now()
+        WHERE id = $4
+      `, [won ? 'won' : 'lost', actualPayout, profitLoss, s.id]);
+
+      // Credit net P&L to season bankroll (stake never deducted on placement)
+      await client.query(
+        `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
+        [profitLoss, s.member_id],
+      );
+    }
+
+    // Settle parlay legs for this fight
+    const { rows: legs } = await client.query(
+      `SELECT spl.* FROM staking_parlay_legs spl
+       JOIN staking_parlays sp ON sp.id = spl.parlay_id
+       WHERE spl.fight_id = $1 AND spl.result = 'pending' AND sp.status = 'pending'`,
+      [fightId],
+    );
+
+    for (const leg of legs) {
+      const result = winnerId
+        ? (leg.fighter_id === winnerId ? 'won' : 'lost')
+        : 'lost';
+      await client.query(
+        `UPDATE staking_parlay_legs SET result = $1 WHERE id = $2`,
+        [result, leg.id],
+      );
+
+      // If any leg lost, immediately mark parlay as lost
+      if (result === 'lost') {
+        await client.query(
+          `UPDATE staking_parlays SET status = 'lost', actual_payout = 0, profit_loss = -stake, updated_at = now() WHERE id = $1 AND status = 'pending'`,
+          [leg.parlay_id],
+        );
+      }
+    }
+
+    // Check parlays that may now be fully settled (all legs resolved, none lost)
+    const { rows: pendingParlays } = await client.query(`
+      SELECT sp.*
+      FROM staking_parlays sp
+      WHERE sp.status = 'pending'
+        AND NOT EXISTS (
+          SELECT 1 FROM staking_parlay_legs spl
+          WHERE spl.parlay_id = sp.id AND spl.result = 'pending'
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM staking_parlay_legs spl
+          WHERE spl.parlay_id = sp.id AND spl.result = 'lost'
+        )
+    `);
+
+    for (const parlay of pendingParlays) {
+      const actualPayout = Math.round(parseFloat(parlay.stake) * parseFloat(parlay.decimal_odds) * 100) / 100;
+      const profitLoss = actualPayout - parseFloat(parlay.stake);
+      await client.query(`
+        UPDATE staking_parlays SET status = 'won', actual_payout = $1, profit_loss = $2, updated_at = now() WHERE id = $3
+      `, [actualPayout, profitLoss, parlay.id]);
+      await client.query(
+        `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
+        [profitLoss, parlay.member_id],
+      );
+    }
+
+    // Recalculate staking matchup scores (sum of P&L for the event)
+    const affectedLeagueIds = [...new Set([
+      ...singles.map((s: any) => s.league_id),
+      ...legs.map((l: any) => l.league_id),
+    ])];
+
+    if (affectedLeagueIds.length > 0) {
+      const { rows: matchups } = await client.query(
+        `SELECT id, league_id, home_team_id, away_team_id FROM matchups
+         WHERE event_id = $1 AND league_id = ANY($2)`,
+        [eventId, affectedLeagueIds],
+      );
+
+      for (const m of matchups) {
+        // Score = unbet portion + actual payouts from settled bets
+        // unbet = weekly_budget - all stakes placed; payouts = 0 for losses, full payout for wins
+        await client.query(`
+          UPDATE matchups SET
+            home_score = (
+              SELECT COALESCE(l.weekly_budget, 100)
+                - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3), 0)
+                - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 LIMIT 1), 0)
+                + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3 AND s.status != 'pending'), 0)
+                + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 AND p.status != 'pending' LIMIT 1), 0)
+              FROM leagues l WHERE l.id = matchups.league_id
+            ),
+            away_score = (
+              SELECT COALESCE(l.weekly_budget, 100)
+                - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4), 0)
+                - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 LIMIT 1), 0)
+                + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4 AND s.status != 'pending'), 0)
+                + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 AND p.status != 'pending' LIMIT 1), 0)
+              FROM leagues l WHERE l.id = matchups.league_id
+            )
+          WHERE id = $1
+        `, [m.id, eventId, m.home_team_id, m.away_team_id]);
+      }
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function processFightResult(fightResultId: string) {
   const client = await db.connect();
   try {
@@ -156,4 +300,11 @@ export async function processFightResult(fightResultId: string) {
   } finally {
     client.release();
   }
+
+  // Also process staking bets for this fight (runs in its own transaction)
+  // Re-fetch fight/winner since fightResult is scoped to the try block above
+  const { rows: [fr] } = await db.query(
+    `SELECT fr.fight_id, fr.winner_id FROM fight_results fr WHERE fr.id = $1`, [fightResultId],
+  );
+  if (fr) await processStakingFightResult(fr.fight_id, fr.winner_id);
 }
