@@ -4,6 +4,35 @@ function toDecimalOdds(american: number): number {
   return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
 }
 
+export async function refreshStakingMatchupScores(leagueId: string, eventId: string) {
+  const { rows: matchups } = await db.query(
+    `SELECT id, home_team_id, away_team_id FROM matchups WHERE league_id = $1 AND event_id = $2`,
+    [leagueId, eventId],
+  );
+  for (const m of matchups) {
+    await db.query(`
+      UPDATE matchups SET
+        home_score = (
+          SELECT COALESCE(l.weekly_budget, 100)
+            - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3), 0)
+            - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 LIMIT 1), 0)
+            + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3 AND s.status != 'pending'), 0)
+            + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 AND p.status != 'pending' LIMIT 1), 0)
+          FROM leagues l WHERE l.id = $4
+        ),
+        away_score = (
+          SELECT COALESCE(l.weekly_budget, 100)
+            - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$5), 0)
+            - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$5 LIMIT 1), 0)
+            + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$5 AND s.status != 'pending'), 0)
+            + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$5 AND p.status != 'pending' LIMIT 1), 0)
+          FROM leagues l WHERE l.id = $4
+        )
+      WHERE id = $1
+    `, [m.id, eventId, m.home_team_id, m.away_team_id, leagueId]);
+  }
+}
+
 export async function processStakingFightResult(fightId: string, winnerId: string | null) {
   const client = await db.connect();
   try {
@@ -109,40 +138,12 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
       ...legs.map((l: any) => l.league_id),
     ])];
 
-    if (affectedLeagueIds.length > 0) {
-      const { rows: matchups } = await client.query(
-        `SELECT id, league_id, home_team_id, away_team_id FROM matchups
-         WHERE event_id = $1 AND league_id = ANY($2)`,
-        [eventId, affectedLeagueIds],
-      );
-
-      for (const m of matchups) {
-        // Score = unbet portion + actual payouts from settled bets
-        // unbet = weekly_budget - all stakes placed; payouts = 0 for losses, full payout for wins
-        await client.query(`
-          UPDATE matchups SET
-            home_score = (
-              SELECT COALESCE(l.weekly_budget, 100)
-                - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3), 0)
-                - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 LIMIT 1), 0)
-                + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3 AND s.status != 'pending'), 0)
-                + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 AND p.status != 'pending' LIMIT 1), 0)
-              FROM leagues l WHERE l.id = matchups.league_id
-            ),
-            away_score = (
-              SELECT COALESCE(l.weekly_budget, 100)
-                - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4), 0)
-                - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 LIMIT 1), 0)
-                + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4 AND s.status != 'pending'), 0)
-                + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 AND p.status != 'pending' LIMIT 1), 0)
-              FROM leagues l WHERE l.id = matchups.league_id
-            )
-          WHERE id = $1
-        `, [m.id, eventId, m.home_team_id, m.away_team_id]);
-      }
-    }
-
     await client.query('COMMIT');
+
+    // Refresh matchup scores outside the transaction (uses shared helper)
+    await Promise.all(affectedLeagueIds.filter(Boolean).map((lid) =>
+      refreshStakingMatchupScores(lid, eventId).catch(() => {}),
+    ));
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

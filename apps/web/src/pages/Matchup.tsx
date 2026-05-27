@@ -184,7 +184,7 @@ export function MatchupPage() {
                   hasScore ? (
                     <>
                       <span style={styles.chipOpp}>vs {oppName}</span>
-                      <span style={styles.chipScore}>{isStaking ? fmtStakeScore(myScore!) : myScore!.toFixed(0)}–{isStaking ? fmtStakeScore(oppScore!) : oppScore!.toFixed(0)}</span>
+                      <span style={styles.chipScore}>{isStaking ? fmtChipScore(myScore!) : myScore!.toFixed(0)}–{isStaking ? fmtChipScore(oppScore!) : oppScore!.toFixed(0)}</span>
                       <span style={{ ...styles.chipResult, color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700' }}>
                         {isWin ? 'W' : isLoss ? 'L' : 'T'}
                       </span>
@@ -698,6 +698,12 @@ function fmtStakeScore(n: number): string {
   const abs = Math.abs(n);
   const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
   return (n < 0 ? '-$' : '+$') + s;
+}
+
+function fmtChipScore(n: number): string {
+  const abs = Math.abs(n);
+  const s = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  return n < 0 ? `(${s})` : s;
 }
 
 function OddsBadge({ odds }: { odds: number }) {

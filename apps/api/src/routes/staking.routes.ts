@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
+import { refreshStakingMatchupScores } from '../services/scoring.service';
 import { z } from 'zod';
 
 export const stakingRouter = Router({ mergeParams: true });
@@ -192,6 +193,7 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
 
       await client.query('COMMIT');
       res.json(newRows);
+      refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -300,6 +302,7 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
          WHERE spl.parlay_id = $1`, [parlay.id],
       );
       res.json({ parlay, legs });
+      refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -331,6 +334,7 @@ stakingRouter.delete('/:eventId/parlay', requireAuth, async (req: AuthRequest, r
 
     await db.query(`DELETE FROM staking_parlays WHERE id = $1`, [parlay.id]);
     res.json({ ok: true });
+    refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
   } catch (err) { next(err); }
 });
 
@@ -356,5 +360,6 @@ stakingRouter.delete('/:eventId/singles/:fightId', requireAuth, async (req: Auth
 
     await db.query(`DELETE FROM staking_singles WHERE id = $1`, [single.id]);
     res.json({ ok: true });
+    refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
   } catch (err) { next(err); }
 });

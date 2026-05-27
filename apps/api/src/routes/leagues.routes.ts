@@ -66,7 +66,7 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
         [ss.id, league.id],
       );
 
-      const initialBalance = body.leagueFormat === 'staking' ? (body.weeklyBudget ?? 100) : 0;
+      const initialBalance = 0;
       const { rows: [member] } = await client.query(`
         INSERT INTO league_members (league_id, user_id, team_name, staking_balance)
         VALUES ($1, $2, $3, $4)
@@ -154,7 +154,7 @@ leaguesRouter.post('/join', requireAuth, async (req: AuthRequest, res, next) => 
       );
       if (parseInt(count) >= league.max_teams) throw new AppError(400, 'League is full');
 
-      const initialBalance = league.league_format === 'staking' ? (league.weekly_budget ?? 100) : 0;
+      const initialBalance = 0;
       const { rows: [member] } = await client.query(`
         INSERT INTO league_members (league_id, user_id, team_name, waiver_priority, staking_balance)
         VALUES ($1, $2, $3, $4, $5) RETURNING *
