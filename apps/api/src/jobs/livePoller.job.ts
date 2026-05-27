@@ -144,7 +144,7 @@ async function finalizeAllLeagueMatchups(eventId: string) {
 
 async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
   const { rows: [league] } = await db.query(`
-    SELECT status, season_ends_at, playoff_semis_event_id, playoff_finals_event_id
+    SELECT status, season_ends_at, playoff_semis_event_id, playoff_finals_event_id, league_format
     FROM leagues WHERE id = $1
   `, [leagueId]);
 
@@ -171,11 +171,11 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
 
   console.log(`[LivePoller] Auto-starting playoffs for league ${leagueId}`);
 
-  // Seed top 4 by total_points
+  const isStaking = league.league_format === 'staking';
   const { rows: topTeams } = await db.query(`
     SELECT id FROM league_members
     WHERE league_id = $1 AND is_active = true
-    ORDER BY total_points DESC, wins DESC
+    ORDER BY ${isStaking ? 'staking_balance' : 'total_points'} DESC, wins DESC
     LIMIT 4
   `, [leagueId]);
 

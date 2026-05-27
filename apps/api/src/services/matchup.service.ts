@@ -222,8 +222,11 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
       `, [m.id]);
       if (!matchupRow) continue;
 
-      const homeScore = parseFloat(matchupRow.home_score).toFixed(0);
-      const awayScore = parseFloat(matchupRow.away_score).toFixed(0);
+      const fmtScore = (n: number) => isStaking
+        ? (n < 0 ? '-$' : '$') + (Math.abs(n) % 1 < 0.005 ? Math.abs(n).toFixed(0) : Math.abs(n).toFixed(2))
+        : n.toFixed(0);
+      const homeScore = fmtScore(parseFloat(matchupRow.home_score));
+      const awayScore = fmtScore(parseFloat(matchupRow.away_score));
       const homeWon = matchupRow.winner_id === m.home_team_id;
       const awayWon = matchupRow.winner_id === m.away_team_id;
 
