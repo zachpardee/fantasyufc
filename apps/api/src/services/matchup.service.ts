@@ -109,6 +109,11 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
     WHERE league_id = $1 AND event_id = $2 AND winner_id IS NULL
   `, [leagueId, eventId]);
 
+  const { rows: [league] } = await db.query(
+    `SELECT league_format FROM leagues WHERE id = $1`, [leagueId],
+  );
+  const isStaking = league?.league_format === 'staking';
+
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -129,34 +134,56 @@ export async function finalizeMatchupResults(leagueId: string, eventId: string) 
       const MATCHUP_TIE_BONUS = 10;
 
       if (isTie) {
-        await client.query(
-          `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 + $3 WHERE id = $1`,
-          [m.home_team_id, homeScore, MATCHUP_TIE_BONUS],
-        );
-        await client.query(
-          `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 + $3 WHERE id = $1`,
-          [m.away_team_id, awayScore, MATCHUP_TIE_BONUS],
-        );
+        if (isStaking) {
+          await client.query(
+            `UPDATE league_members SET ties = ties + 1 WHERE id IN ($1, $2)`,
+            [m.home_team_id, m.away_team_id],
+          );
+        } else {
+          await client.query(
+            `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 + $3 WHERE id = $1`,
+            [m.home_team_id, homeScore, MATCHUP_TIE_BONUS],
+          );
+          await client.query(
+            `UPDATE league_members SET ties = ties + 1, total_points = total_points + $2 + $3 WHERE id = $1`,
+            [m.away_team_id, awayScore, MATCHUP_TIE_BONUS],
+          );
+        }
       } else {
         const winnerScore = winnerId === m.home_team_id ? homeScore : awayScore;
         const loserId = winnerId === m.home_team_id ? m.away_team_id : m.home_team_id;
         const loserScore = winnerId === m.home_team_id ? awayScore : homeScore;
 
-        await client.query(`
-          UPDATE league_members
-          SET wins = wins + 1,
-              streak = CASE WHEN streak >= 0 THEN streak + 1 ELSE 1 END,
-              total_points = total_points + $2 + $3
-          WHERE id = $1
-        `, [winnerId, winnerScore, MATCHUP_WIN_BONUS]);
+        if (isStaking) {
+          await client.query(`
+            UPDATE league_members
+            SET wins = wins + 1,
+                streak = CASE WHEN streak >= 0 THEN streak + 1 ELSE 1 END
+            WHERE id = $1
+          `, [winnerId]);
+          await client.query(`
+            UPDATE league_members
+            SET losses = losses + 1,
+                streak = CASE WHEN streak <= 0 THEN streak - 1 ELSE -1 END
+            WHERE id = $1
+          `, [loserId]);
+        } else {
+          await client.query(`
+            UPDATE league_members
+            SET wins = wins + 1,
+                streak = CASE WHEN streak >= 0 THEN streak + 1 ELSE 1 END,
+                total_points = total_points + $2 + $3
+            WHERE id = $1
+          `, [winnerId, winnerScore, MATCHUP_WIN_BONUS]);
 
-        await client.query(`
-          UPDATE league_members
-          SET losses = losses + 1,
-              streak = CASE WHEN streak <= 0 THEN streak - 1 ELSE -1 END,
-              total_points = total_points + $2
-          WHERE id = $1
-        `, [loserId, loserScore]);
+          await client.query(`
+            UPDATE league_members
+            SET losses = losses + 1,
+                streak = CASE WHEN streak <= 0 THEN streak - 1 ELSE -1 END,
+                total_points = total_points + $2
+            WHERE id = $1
+          `, [loserId, loserScore]);
+        }
 
         // Transfer BMF belt to the winner if the loser currently holds it
         await client.query(`
