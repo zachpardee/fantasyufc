@@ -151,14 +151,14 @@ function PlayoffsSection({ league, leagueId, qc }: { league: any; leagueId: stri
               <>
                 <p style={styles.roundLabel}>Semifinals</p>
                 {bracket.semisMatchups.map((m: any) => (
-                  <MatchupRow key={m.id} matchup={m} />
+                  <MatchupRow key={m.id} matchup={m} isStaking={bracket.isStaking} />
                 ))}
               </>
             )}
             {bracket.finalsMatchup && (
               <>
                 <p style={styles.roundLabel}>Finals</p>
-                <MatchupRow matchup={bracket.finalsMatchup} />
+                <MatchupRow matchup={bracket.finalsMatchup} isStaking={bracket.isStaking} />
               </>
             )}
           </div>
@@ -184,7 +184,14 @@ function PlayoffsSection({ league, leagueId, qc }: { league: any; leagueId: stri
   );
 }
 
-function MatchupRow({ matchup }: { matchup: any }) {
+function fmtMatchupScore(n: number, isStaking: boolean): string {
+  if (!isStaking) return n.toFixed(0);
+  const abs = Math.abs(n);
+  const s = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  return n < 0 ? `(${s})` : s;
+}
+
+function MatchupRow({ matchup, isStaking = false }: { matchup: any; isStaking?: boolean }) {
   const home = +matchup.homeScore;
   const away = +matchup.awayScore;
   const homeWon = matchup.winnerId === matchup.homeTeamId;
@@ -194,7 +201,7 @@ function MatchupRow({ matchup }: { matchup: any }) {
       <span style={{ ...styles.mTeam, ...(homeWon ? styles.mWinner : {}) }}>
         {matchup.homeTeamName}
       </span>
-      <span style={styles.mScore}>{home.toFixed(0)} – {away.toFixed(0)}</span>
+      <span style={styles.mScore}>{fmtMatchupScore(home, isStaking)} – {fmtMatchupScore(away, isStaking)}</span>
       <span style={{ ...styles.mTeam, textAlign: 'right', ...(awayWon ? styles.mWinner : {}) }}>
         {matchup.awayTeamName}
       </span>

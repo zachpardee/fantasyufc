@@ -5,7 +5,7 @@ import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League } from '@fantasy-ufc/shared';
 
-type Seed = { id: string; teamName: string; wins: number; losses: number; totalPoints: number };
+type Seed = { id: string; teamName: string; wins: number; losses: number; totalPoints: number; stakingBalance?: number };
 type PlayoffMatchup = {
   id: string;
   homeTeamId: string; homeTeamName: string; homeSeed: number; homeScore: number;
@@ -17,9 +17,17 @@ type Bracket = {
   seeds: Seed[];
   semisMatchups: PlayoffMatchup[];
   finalsMatchup: PlayoffMatchup | null;
+  isStaking: boolean;
 };
 
-function MatchupCard({ matchup }: { matchup: PlayoffMatchup }) {
+function fmtScore(n: number, isStaking: boolean): string {
+  if (!isStaking) return n.toFixed(0);
+  const abs = Math.abs(n);
+  const s = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  return n < 0 ? `(${s})` : s;
+}
+
+function MatchupCard({ matchup, isStaking }: { matchup: PlayoffMatchup; isStaking: boolean }) {
   const homeWon = !!matchup.winnerId ? matchup.winnerId === matchup.homeTeamId : +matchup.homeScore > +matchup.awayScore;
   const awayWon = !!matchup.winnerId ? matchup.winnerId === matchup.awayTeamId : +matchup.awayScore > +matchup.homeScore;
   const scored = +matchup.homeScore > 0 || +matchup.awayScore > 0;
@@ -32,7 +40,7 @@ function MatchupCard({ matchup }: { matchup: PlayoffMatchup }) {
           <span style={styles.seedBadge}>#{matchup.homeSeed}</span>
           <span style={styles.teamName}>{matchup.homeTeamName}</span>
           <span style={{ ...styles.score, ...(homeWon && scored ? styles.winnerScore : {}) }}>
-            {scored ? (+matchup.homeScore).toFixed(0) : '–'}
+            {scored ? fmtScore(+matchup.homeScore, isStaking) : '–'}
           </span>
         </div>
         <span style={styles.vs}>vs</span>
@@ -40,7 +48,7 @@ function MatchupCard({ matchup }: { matchup: PlayoffMatchup }) {
           <span style={styles.seedBadge}>#{matchup.awaySeed}</span>
           <span style={styles.teamName}>{matchup.awayTeamName}</span>
           <span style={{ ...styles.score, ...(awayWon && scored ? styles.winnerScore : {}) }}>
-            {scored ? (+matchup.awayScore).toFixed(0) : '–'}
+            {scored ? fmtScore(+matchup.awayScore, isStaking) : '–'}
           </span>
         </div>
       </div>
@@ -90,7 +98,7 @@ export function PlayoffsPage() {
 
   if (isLoading || !bracket) return <LoadingScreen />;
 
-  const { phase, seeds, semisMatchups, finalsMatchup } = bracket;
+  const { phase, seeds, semisMatchups, finalsMatchup, isStaking } = bracket;
 
   function fmtDate(iso: string | undefined) {
     if (!iso) return '—';
@@ -156,7 +164,11 @@ export function PlayoffsPage() {
                 <span style={styles.seedNum}>#{i + 1}</span>
                 <span style={styles.seedTeam}>{s.teamName}</span>
                 <span style={styles.seedRecord}>{s.wins}–{s.losses}</span>
-                <span style={styles.seedPts}>{(+s.totalPoints).toFixed(0)} pts</span>
+                <span style={styles.seedPts}>
+                  {isStaking
+                    ? fmtScore(+(s.stakingBalance ?? 0), true)
+                    : `${(+s.totalPoints).toFixed(0)} pts`}
+                </span>
               </div>
             ))}
           </div>
@@ -175,7 +187,7 @@ export function PlayoffsPage() {
             <div style={{ ...styles.bracket, ...(isMobile ? styles.bracketMobile : {}) }}>
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Semifinals</p>
-                {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} />)}
+                {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} isStaking={isStaking} />)}
               </div>
               <div style={isMobile ? styles.connectorMobile : styles.connector}>
                 {isMobile
@@ -184,13 +196,13 @@ export function PlayoffsPage() {
               </div>
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Finals</p>
-                {finalsMatchup ? <MatchupCard matchup={finalsMatchup} /> : <TBDCard subtitle="Awaiting semifinal results" />}
+                {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} /> : <TBDCard subtitle="Awaiting semifinal results" />}
               </div>
             </div>
           ) : (
             <div style={styles.bracketSingle}>
               <p style={styles.roundLabel}>Finals</p>
-              {finalsMatchup ? <MatchupCard matchup={finalsMatchup} /> : <TBDCard />}
+              {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} /> : <TBDCard />}
             </div>
           )}
         </div>

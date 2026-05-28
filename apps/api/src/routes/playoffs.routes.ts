@@ -2,10 +2,16 @@ import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
+import { refreshStakingMatchupScores } from '../services/scoring.service';
 
 export const playoffsRouter = Router({ mergeParams: true });
 
 async function getBracket(leagueId: string) {
+  const { rows: [leagueRow] } = await db.query(
+    `SELECT league_format FROM leagues WHERE id = $1`, [leagueId],
+  );
+  const isStaking = leagueRow?.league_format === 'staking';
+
   const { rows: semis } = await db.query(`
     SELECT m.id, m.home_team_id, m.away_team_id, m.home_score, m.away_score,
            m.home_seed, m.away_seed, m.winner_id, m.playoff_round,
@@ -32,11 +38,12 @@ async function getBracket(leagueId: string) {
     LIMIT 1
   `, [leagueId]);
 
+  const sortCol = isStaking ? 'lm.staking_balance' : 'lm.total_points';
   const { rows: seeds } = await db.query(`
-    SELECT lm.id, lm.team_name, lm.wins, lm.losses, lm.total_points
+    SELECT lm.id, lm.team_name, lm.wins, lm.losses, lm.total_points, lm.staking_balance
     FROM league_members lm
     WHERE lm.league_id = $1 AND lm.is_active = true
-    ORDER BY lm.total_points DESC, lm.wins DESC
+    ORDER BY ${sortCol} DESC, lm.wins DESC
     LIMIT 4
   `, [leagueId]);
 
@@ -45,7 +52,7 @@ async function getBracket(leagueId: string) {
   if (finals.length > 0) phase = 'finals';
   if (finals.length > 0 && finals[0].winner_id) phase = 'complete';
 
-  return { phase, seeds, semisMatchups: semis, finalsMatchup: finals[0] ?? null };
+  return { phase, seeds, semisMatchups: semis, finalsMatchup: finals[0] ?? null, isStaking };
 }
 
 playoffsRouter.get('/bracket', requireAuth, async (req: AuthRequest, res, next) => {
@@ -83,11 +90,17 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     );
     if (existing.length > 0) throw new AppError(400, 'Playoffs already started');
 
-    // Seed top 4 by total_points DESC (season score), tiebreak by wins — or use custom order from commissioner
+    const { rows: [startLeague] } = await db.query(
+      `SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId],
+    );
+    const isStartStaking = startLeague?.league_format === 'staking';
+    const startSortCol = isStartStaking ? 'staking_balance' : 'total_points';
+
+    // Seed top 4 by total_points (or staking_balance) DESC, tiebreak by wins — or use custom order from commissioner
     let topTeams: any[];
     if (Array.isArray(memberIds) && memberIds.length >= 2) {
       const { rows: allMembers } = await db.query(
-        `SELECT id, team_name, wins, losses, total_points FROM league_members WHERE league_id = $1 AND is_active = true`,
+        `SELECT id, team_name, wins, losses, total_points, staking_balance FROM league_members WHERE league_id = $1 AND is_active = true`,
         [req.params.leagueId],
       );
       const memberMap = new Map(allMembers.map((m: any) => [m.id, m]));
@@ -95,10 +108,10 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
       if (topTeams.length < 2) throw new AppError(400, 'Invalid memberIds — need at least 2 valid members');
     } else {
       const { rows } = await db.query(`
-        SELECT id, team_name, wins, losses, total_points
+        SELECT id, team_name, wins, losses, total_points, staking_balance
         FROM league_members
         WHERE league_id = $1 AND is_active = true
-        ORDER BY total_points DESC, wins DESC
+        ORDER BY ${startSortCol} DESC, wins DESC
         LIMIT 4
       `, [req.params.leagueId]);
       topTeams = rows;
@@ -124,6 +137,11 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     }
 
     await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [req.params.leagueId]);
+
+    // Initialize staking playoff matchup scores (members may have already placed bets)
+    if (isStartStaking) {
+      refreshStakingMatchupScores(req.params.leagueId, semisEventId).catch(() => {});
+    }
 
     res.json(await getBracket(req.params.leagueId));
   } catch (err) { next(err); }
@@ -188,12 +206,17 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
 
     if (semis.length < 1) throw new AppError(400, 'No semis matchups found');
 
-    // Get season points for tiebreaking
+    const { rows: [advLeague] } = await db.query(
+      `SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId],
+    );
+    const isAdvStaking = advLeague?.league_format === 'staking';
+
+    // Get season score for tiebreaking (staking_balance for staking leagues, total_points otherwise)
     const { rows: seasonPts } = await db.query(
-      `SELECT id, total_points FROM league_members WHERE league_id = $1`,
+      `SELECT id, total_points, staking_balance FROM league_members WHERE league_id = $1`,
       [req.params.leagueId],
     );
-    const pts = new Map(seasonPts.map((r: any) => [r.id, +r.total_points]));
+    const pts = new Map(seasonPts.map((r: any) => [r.id, +(isAdvStaking ? r.staking_balance : r.total_points)]));
 
     // Determine winner: higher matchup score; tie broken by season points
     function winner(m: any) {
@@ -216,6 +239,11 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
       INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
       VALUES ($1, $2, $3, $4, true, 'finals', $5, $6)
     `, [req.params.leagueId, finalsEventId, finalsHome.id, finalsAway.id, finalsHome.seed, finalsAway.seed]);
+
+    // Initialize staking finals matchup score (members may have already placed bets)
+    if (isAdvStaking) {
+      refreshStakingMatchupScores(req.params.leagueId, finalsEventId).catch(() => {});
+    }
 
     res.json(await getBracket(req.params.leagueId));
   } catch (err) { next(err); }

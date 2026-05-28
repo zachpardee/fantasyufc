@@ -366,6 +366,20 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
     // Generate round-robin matchups for regular season
     await generateMatchupsForLeague(req.params.leagueId);
 
+    // For staking leagues, initialize matchup scores to weekly_budget (no bets placed yet)
+    await db.query(`
+      UPDATE matchups m
+      SET home_score = l.weekly_budget,
+          away_score = l.weekly_budget
+      FROM leagues l
+      WHERE m.league_id = l.id
+        AND m.league_id = $1
+        AND l.league_format = 'staking'
+        AND m.home_score = 0
+        AND m.away_score = 0
+        AND m.winner_id IS NULL
+    `, [req.params.leagueId]);
+
     // Activate and store playoff event IDs
     await db.query(`
       UPDATE leagues SET
