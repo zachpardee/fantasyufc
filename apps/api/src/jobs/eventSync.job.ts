@@ -84,15 +84,32 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
 
   if (!redFighter || !blueFighter) return;
 
+  // If this ESPN fight ID doesn't exist yet, check whether either fighter is already
+  // booked for this event under a different ESPN fight ID. This prevents stale ESPN
+  // competition records (e.g. cancelled matchups) from creating duplicate DB rows.
+  const { rows: [existingById] } = await client.query(
+    `SELECT id FROM fights WHERE ufc_fight_id = $1`, [fight.espnFightId],
+  );
+  if (!existingById) {
+    const { rows: [duplicate] } = await client.query(`
+      SELECT id FROM fights
+      WHERE event_id = $1
+        AND ufc_fight_id != $2
+        AND (red_fighter_id IN ($3,$4) OR blue_fighter_id IN ($3,$4))
+      LIMIT 1
+    `, [eventId, fight.espnFightId, redFighter, blueFighter]);
+    if (duplicate) {
+      console.log(`[EventSync] Skipping duplicate fight ${fight.espnFightId} — fighter already booked for this event`);
+      return;
+    }
+  }
+
   // Resolve weight class
   const { rows: [weightClass] } = await client.query(
     `SELECT id FROM weight_classes WHERE name ILIKE $1 OR slug ILIKE $2 LIMIT 1`,
     [fight.weightClassText, fight.weightClassText.toLowerCase().replace(/\s+/g, '-')],
   );
   if (!weightClass) return;
-
-  const boutOrder = 0; // ESPN doesn't give us a reliable bout order
-  const isMainEvent = false; // Will be set by livePoller based on event structure
 
   await client.query(`
     INSERT INTO fights (
