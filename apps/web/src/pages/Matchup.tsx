@@ -812,96 +812,55 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
   const hasResult = !!fight.resultWinnerId;
   const redWon = hasResult && fight.resultWinnerId === fight.redFighterId;
   const blueWon = hasResult && fight.resultWinnerId === fight.blueFighterId;
-
-  const showMeta = fight.isMainEvent || (hasResult && fight.resultOutcome);
+  const fmtOdds = (n: number) => n >= 0 ? `+${n}` : `${n}`;
 
   return (
-    <div style={{ padding: '10px 14px' }}>
-      {showMeta && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
-          {fight.isMainEvent && <span style={sk.mainBadge}>MAIN</span>}
+    <div style={styles.pickRow}>
+      {/* Home bet column */}
+      <div style={styles.pickBadgeCol}>
+        {homeSingle
+          ? <InlineBetDisplay single={homeSingle} align="left" />
+          : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
+      </div>
+
+      {/* Fight card center — sheet style */}
+      <div style={styles.fightCardCenter}>
+        <div
+          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, opacity: hasResult && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+          onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
+        >
+          {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />}
+          <div style={styles.fightCardFighterInfo}>
+            <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
+            {fight.redFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>}
+          </div>
+        </div>
+
+        <div style={styles.fightCardVs}>
+          <span style={styles.vsText2}>VS</span>
+          <span style={styles.fightCardWeight}>{fight.weightClassName}</span>
           {hasResult && fight.resultOutcome && (
-            <span style={{ marginLeft: 'auto', color: '#4caf50', fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
-              {METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}
-            </span>
+            <span style={styles.fightCardResult}>{METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}</span>
           )}
         </div>
-      )}
 
-      {/* Three columns: home bet | fight center | away bet */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-
-        {/* Home bet */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
-          {homeSingle
-            ? <InlineBetDisplay single={homeSingle} align="left" />
-            : <span style={{ color: '#1e1e1e', fontSize: 16 }}>—</span>}
-        </div>
-
-        {/* Fight center */}
-        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-          {fight.weightClassName && (
-            <span style={{ color: '#3a3a3a', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-              {fight.weightClassName}
-            </span>
-          )}
-          <div style={{ display: 'flex' }}>
-            <div
-              style={{ width: 52, height: 64, borderRadius: '6px 0 0 6px', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${redWon ? '#2a4a2a' : '#1e1e1e'}`, borderRight: 'none', opacity: hasResult && !redWon ? 0.18 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
-              onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
-            >
-              {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
-            </div>
-            <div style={{ width: 44, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e', flexShrink: 0 }}>
-              <span style={{ color: '#303030', fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>VS</span>
-            </div>
-            <div
-              style={{ width: 52, height: 64, borderRadius: '0 6px 6px 0', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${blueWon ? '#2a4a2a' : '#1e1e1e'}`, borderLeft: 'none', opacity: hasResult && !blueWon ? 0.18 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
-              onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
-            >
-              {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
-            </div>
-          </div>
-          <div style={{ display: 'flex', width: 168 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingRight: 4, opacity: hasResult && !redWon ? 0.35 : 1 }}>
-              <span style={{ color: redWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: redWon ? 700 : 500, textAlign: 'right' }}>
-                {fight.redFirstName} {fight.redLastName}
-              </span>
-              {fight.redRecordWins != null && (
-                <span style={{ color: '#555', fontSize: 10 }}>
-                  {fight.redRecordWins}-{fight.redRecordLosses}{fight.redRecordDraws > 0 ? `-${fight.redRecordDraws}` : ''}
-                </span>
-              )}
-            </div>
-            <div style={{ width: 44 }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: 4, opacity: hasResult && !blueWon ? 0.35 : 1 }}>
-              <span style={{ color: blueWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: blueWon ? 700 : 500 }}>
-                {fight.blueFirstName} {fight.blueLastName}
-              </span>
-              {fight.blueRecordWins != null && (
-                <span style={{ color: '#555', fontSize: 10 }}>
-                  {fight.blueRecordWins}-{fight.blueRecordLosses}{fight.blueRecordDraws > 0 ? `-${fight.blueRecordDraws}` : ''}
-                </span>
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', width: 168 }}>
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', paddingRight: 4 }}>
-              {fight.redFighterOdds != null && <OddsBadge odds={fight.redFighterOdds} />}
-            </div>
-            <div style={{ width: 44 }} />
-            <div style={{ flex: 1, paddingLeft: 4 }}>
-              {fight.blueFighterOdds != null && <OddsBadge odds={fight.blueFighterOdds} />}
-            </div>
+        <div
+          style={{ flex: 1, display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 10, opacity: hasResult && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+          onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
+        >
+          {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />}
+          <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
+            <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
+            {fight.blueFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>}
           </div>
         </div>
+      </div>
 
-        {/* Away bet */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
-          {awaySingle
-            ? <InlineBetDisplay single={awaySingle} align="right" />
-            : <span style={{ color: '#1e1e1e', fontSize: 16 }}>—</span>}
-        </div>
+      {/* Away bet column */}
+      <div style={{ ...styles.pickBadgeCol, alignItems: 'flex-end' }}>
+        {awaySingle
+          ? <InlineBetDisplay single={awaySingle} align="right" />
+          : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
       </div>
     </div>
   );
