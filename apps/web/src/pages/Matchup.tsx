@@ -1023,10 +1023,10 @@ const styles: Record<string, React.CSSProperties> = {
   fightCardFighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0 },
   fightCardName: { fontSize: 14, fontWeight: 700, lineHeight: 1.2 },
   fightCardOdds: { color: '#555', fontSize: 12 },
-  fightCardVs: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 56, padding: '0 4px' },
-  vsText2: { color: '#2a2a2a', fontSize: 9, fontWeight: 700, letterSpacing: 1 },
-  fightCardWeight: { color: '#333', fontSize: 9, textAlign: 'center' as const, lineHeight: 1.3 },
-  fightCardResult: { color: '#888', fontSize: 9, fontWeight: 700, textAlign: 'center' as const, marginTop: 2 },
+  fightCardVs: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, minWidth: 72, padding: '0 10px' },
+  vsText2: { color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
+  fightCardWeight: { color: '#444', fontSize: 10, textAlign: 'center' as const, lineHeight: 1.3 },
+  fightCardResult: { color: '#aaa', fontSize: 10, fontWeight: 700, textAlign: 'center' as const, marginTop: 2 },
 
   // Legacy — kept for ChampionPickRow which still uses them
   fightInfo: { width: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },

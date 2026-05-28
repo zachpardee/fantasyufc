@@ -538,8 +538,8 @@ const s: Record<string, React.CSSProperties> = {
   fighterImg: { width: 36, height: 44, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
   fighterName: { color: '#ddd', fontSize: 14, fontWeight: 600, lineHeight: 1.2, textAlign: 'left' as const },
   oddsTag: { fontSize: 12, fontWeight: 700 },
-  vsBlock: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 44 },
-  vsLabel: { color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
+  vsBlock: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, minWidth: 56, padding: '0 8px' },
+  vsLabel: { color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
   vsWeight: { display: 'none' },
 
   stakeRow: { display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, padding: '10px 0 4px', borderTop: '1px solid #1a1a1a' },
