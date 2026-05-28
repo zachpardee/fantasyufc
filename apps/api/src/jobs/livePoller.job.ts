@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { db } from '../config/database';
 import { fetchEventsByDate } from '../services/espn.adapter';
 import { searchEventResults } from '../services/sportsdb.adapter';
-import { processFightResult } from '../services/scoring.service';
+import { processFightResult, refreshStakingMatchupScores } from '../services/scoring.service';
 import { sendNotification } from '../services/notification.service';
 import { finalizeMatchupResults } from '../services/matchup.service';
 
@@ -203,6 +203,12 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
   }
 
   await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [leagueId]);
+
+  // Initialize staking playoff matchup scores
+  if (isStaking) {
+    refreshStakingMatchupScores(leagueId, league.playoff_semis_event_id).catch(() => {});
+  }
+
   console.log(`[LivePoller] Playoffs started for league ${leagueId}`);
 }
 
