@@ -27,6 +27,7 @@ export function LeagueHomePage() {
   const [settingsColor, setSettingsColor] = useState('#5555ff');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [showFightCard, setShowFightCard] = useState(false);
   const [msgInput, setMsgInput] = useState('');
   const msgEndRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +60,12 @@ export function LeagueHomePage() {
       catch { return null; }
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
+  });
+
+  const { data: fightCardData } = useQuery<{ fights: any[] }>({
+    queryKey: ['fight-card', leagueId, currentEvent?.id],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}`),
+    enabled: showFightCard && !!currentEvent,
   });
 
   const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
@@ -449,7 +456,7 @@ export function LeagueHomePage() {
                       )}
                     </div>
                     <div style={styles.matchupCenter}>
-                      <span style={styles.matchupEventTitle}>{eventName}</span>
+                      <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
                       {currentEvent && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                           {(currentEvent.venue || currentEvent.location) && (
@@ -808,6 +815,72 @@ export function LeagueHomePage() {
         />
       )}
 
+      {/* Fight card sheet */}
+      {showFightCard && (
+        <div style={styles.sheetOverlay} onClick={() => setShowFightCard(false)}>
+          <div style={styles.bottomSheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.sheetHandle} />
+            <div style={styles.sheetHeader}>
+              <span style={styles.sheetTitle}>{currentEvent?.name ?? 'Fight Card'}</span>
+              <button style={styles.modalClose} onClick={() => setShowFightCard(false)}>✕</button>
+            </div>
+            {currentEvent && (
+              <div style={styles.sheetSubtitle}>
+                {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+                {currentEvent.scheduledAt && (
+                  <> · {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</>
+                )}
+              </div>
+            )}
+            <div style={styles.sheetBody}>
+              {!fightCardData ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>Loading...</div>
+              ) : fightCardData.fights.length === 0 ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No fight card available yet</div>
+              ) : (() => {
+                const segments = ['main', 'prelims', 'early_prelims'] as const;
+                const segmentLabel: Record<string, string> = { main: 'Main Card', prelims: 'Prelims', early_prelims: 'Early Prelims' };
+                return segments.map((seg) => {
+                  const fights = fightCardData.fights.filter((f: any) => f.cardSegment === seg);
+                  if (!fights.length) return null;
+                  return (
+                    <div key={seg}>
+                      <div style={styles.cardSegmentLabel}>{segmentLabel[seg]}</div>
+                      {fights.map((f: any) => {
+                        const redOdds = f.redFighterOdds != null ? (f.redFighterOdds > 0 ? `+${f.redFighterOdds}` : `${f.redFighterOdds}`) : null;
+                        const blueOdds = f.blueFighterOdds != null ? (f.blueFighterOdds > 0 ? `+${f.blueFighterOdds}` : `${f.blueFighterOdds}`) : null;
+                        return (
+                          <div key={f.id} style={styles.fightRow}>
+                            <div style={styles.fightRowFighter}>
+                              {f.redImageUrl && <img src={f.redImageUrl} alt="" style={styles.fightRowImg} />}
+                              <div style={styles.fightRowInfo}>
+                                <span style={styles.fightRowName}>{f.redFirstName} {f.redLastName}</span>
+                                {redOdds && <span style={styles.fightRowOdds}>{redOdds}</span>}
+                              </div>
+                            </div>
+                            <div style={styles.fightRowCenter}>
+                              <span style={styles.fightRowVs}>VS</span>
+                              <span style={styles.fightRowWeight}>{f.weightClassName}</span>
+                            </div>
+                            <div style={{ ...styles.fightRowFighter, flexDirection: 'row-reverse', textAlign: 'right' as const }}>
+                              {f.blueImageUrl && <img src={f.blueImageUrl} alt="" style={styles.fightRowImg} />}
+                              <div style={{ ...styles.fightRowInfo, alignItems: 'flex-end' }}>
+                                <span style={styles.fightRowName}>{f.blueFirstName} {f.blueLastName}</span>
+                                {blueOdds && <span style={styles.fightRowOdds}>{blueOdds}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Members roster (active leagues) */}
       {league.status === 'active' && members.length > 0 && (
         <div style={styles.memberSection}>
@@ -899,7 +972,7 @@ const styles: Record<string, React.CSSProperties> = {
   matchupLabelRow: { display: 'flex', alignItems: 'center', gap: 6 },
   matchupLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
   livePip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 3, letterSpacing: 0.5 },
-  matchupEventTitle: { color: '#fff', fontSize: 17, fontWeight: 700 },
+  matchupEventTitle: { color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer' },
   matchupScoreRow: { display: 'flex', alignItems: 'center', width: '100%' },
   matchupTeam: { flex: 1, display: 'flex', flexDirection: 'row' as const, alignItems: 'center', gap: 12 },
   matchupCenter: { flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1 },
@@ -1018,6 +1091,23 @@ const styles: Record<string, React.CSSProperties> = {
   notifItemTitle: { color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 2 },
   notifItemBody: { color: '#888', fontSize: 12, marginBottom: 4 },
   notifItemTime: { color: '#444', fontSize: 11 },
+  sheetOverlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'flex-end' },
+  bottomSheet: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '16px 16px 0 0', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' as const },
+  sheetHandle: { width: 36, height: 4, background: '#333', borderRadius: 2, margin: '12px auto 0' },
+  sheetHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 4px' },
+  sheetTitle: { color: '#fff', fontWeight: 700, fontSize: 16 },
+  sheetSubtitle: { color: '#555', fontSize: 12, padding: '0 20px 12px' },
+  sheetBody: { overflowY: 'auto' as const, flex: 1, padding: '0 20px 32px', display: 'flex', flexDirection: 'column' as const, gap: 4 },
+  cardSegmentLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, padding: '16px 0 8px' },
+  fightRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderBottom: '1px solid #1f1f1f' },
+  fightRowFighter: { flex: 1, display: 'flex', alignItems: 'center', gap: 8 },
+  fightRowImg: { width: 36, height: 44, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
+  fightRowInfo: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
+  fightRowName: { color: '#ddd', fontSize: 13, fontWeight: 600, lineHeight: 1.2 },
+  fightRowOdds: { color: '#555', fontSize: 11 },
+  fightRowCenter: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 50 },
+  fightRowVs: { color: '#333', fontSize: 10, fontWeight: 800, letterSpacing: 1 },
+  fightRowWeight: { color: '#444', fontSize: 9, textAlign: 'center' as const, lineHeight: 1.3 },
   newSeasonCard: { margin: '0 24px 16px', background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   newSeasonText: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
   newSeasonTitle: { color: '#fff', fontSize: 14, fontWeight: 700 },
