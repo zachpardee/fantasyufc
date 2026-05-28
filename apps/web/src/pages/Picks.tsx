@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import { StakingPicksPage } from './StakingPicks';
+import { FighterPhoto } from '../components/FighterPhoto';
 
 export function PicksPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -320,12 +321,11 @@ export function PicksPage() {
                       }}
                       disabled={locked}
                     >
-                      {fighter.imageUrl && (
-                        <div style={styles.champFighterImg}>
-                          <img src={fighter.imageUrl} alt={`${fighter.firstName} ${fighter.lastName}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
-                        </div>
-                      )}
+                      <FighterPhoto
+                        imageUrl={fighter.imageUrl}
+                        name={`${fighter.firstName} ${fighter.lastName}`}
+                        style={styles.champFighterImg}
+                      />
                       <span style={{ ...styles.champFighterName, color: fighter.corner === 'red' ? '#e05555' : '#5599dd' }}>
                         {fighter.firstName} {fighter.lastName}
                       </span>

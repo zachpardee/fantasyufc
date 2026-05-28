@@ -5,6 +5,7 @@ import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { SkeletonLeagueHeader, SkeletonFightRow } from '../components/LoadingScreen';
+import { FighterPhoto } from '../components/FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
@@ -864,7 +865,7 @@ export function LeagueHomePage() {
                         return (
                           <div key={f.id} style={styles.fightRow}>
                             <div style={styles.fightRowFighter}>
-                              {f.redImageUrl && <img src={f.redImageUrl} alt="" style={styles.fightRowImg} />}
+                              <FighterPhoto imageUrl={f.redImageUrl} name={`${f.redFirstName} ${f.redLastName}`} style={styles.fightRowImg} />
                               <div style={styles.fightRowInfo}>
                                 <span style={styles.fightRowName}>{f.redFirstName} {f.redLastName}</span>
                                 {redOdds && <span style={styles.fightRowOdds}>{redOdds}</span>}
@@ -875,7 +876,7 @@ export function LeagueHomePage() {
                               <span style={styles.fightRowWeight}>{f.weightClassName}</span>
                             </div>
                             <div style={{ ...styles.fightRowFighter, flexDirection: 'row-reverse', textAlign: 'right' as const }}>
-                              {f.blueImageUrl && <img src={f.blueImageUrl} alt="" style={styles.fightRowImg} />}
+                              <FighterPhoto imageUrl={f.blueImageUrl} name={`${f.blueFirstName} ${f.blueLastName}`} style={styles.fightRowImg} />
                               <div style={{ ...styles.fightRowInfo, alignItems: 'flex-end' }}>
                                 <span style={styles.fightRowName}>{f.blueFirstName} {f.blueLastName}</span>
                                 {blueOdds && <span style={styles.fightRowOdds}>{blueOdds}</span>}

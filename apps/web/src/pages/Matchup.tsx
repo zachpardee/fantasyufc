@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { SkeletonFightRow } from '../components/LoadingScreen';
+import { FighterPhoto } from '../components/FighterPhoto';
 
 const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -479,9 +480,7 @@ function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; home
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: resultWinner && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
         >
-          {fight.redImageUrl && (
-            <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />
-          )}
+          <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={styles.fightCardPhoto} />
           <div style={styles.fightCardFighterInfo}>
             <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
             {fight.redFighterOdds != null && (
@@ -504,9 +503,7 @@ function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; home
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: resultWinner && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
         >
-          {fight.blueImageUrl && (
-            <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />
-          )}
+          <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={styles.fightCardPhoto} />
           <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
             <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
             {fight.blueFighterOdds != null && (
@@ -836,7 +833,7 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: hasResult && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
         >
-          {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />}
+          <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={styles.fightCardPhoto} />
           <div style={styles.fightCardFighterInfo}>
             <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
             {fight.redFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>}
@@ -855,7 +852,7 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: hasResult && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
         >
-          {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />}
+          <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={styles.fightCardPhoto} />
           <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
             <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
             {fight.blueFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>}
