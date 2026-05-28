@@ -919,7 +919,7 @@ const styles: Record<string, React.CSSProperties> = {
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
-  logo: { height: 36, width: 'auto', objectFit: 'contain' as const },
+  logo: { height: 48, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
   avatarGroup: { display: 'flex', gap: 10, alignItems: 'center' },
