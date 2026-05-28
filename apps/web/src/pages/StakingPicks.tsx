@@ -500,31 +500,31 @@ const s: Record<string, React.CSSProperties> = {
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
-  lockedBadge: { background: '#222', color: '#555', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
+  lockedBadge: { background: '#222', color: '#555', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   empty: { color: '#555', padding: 48, textAlign: 'center' },
 
   eventHeader: { padding: '16px 24px 12px', borderBottom: '1px solid #1a1a1a' },
-  eventName: { color: '#fff', fontSize: 18, fontWeight: 800 },
+  eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
   eventDate: { color: '#555', fontSize: 12, marginTop: 2 },
 
   balanceBar: { display: 'flex', background: '#111', borderBottom: '1px solid #1e1e1e', padding: '14px 24px', gap: 0 },
   balanceStat: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 },
-  balanceVal: { color: '#fff', fontSize: 18, fontWeight: 800 },
+  balanceVal: { color: '#fff', fontSize: 18, fontWeight: 700 },
   balanceLabel: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
   balanceDivider: { width: 1, background: '#222', margin: '0 8px' },
 
-  errorBanner: { background: '#2a0a0a', border: '1px solid #c8102e44', color: '#ff6b6b', fontSize: 13, padding: '10px 24px', margin: '12px 24px 0', borderRadius: 8 },
+  errorBanner: { background: '#2a0a0a', border: '1px solid #c8102e44', color: '#ff6b6b', fontSize: 14, padding: '10px 24px', margin: '12px 24px 0', borderRadius: 8 },
 
   section: { padding: '0 24px 8px', marginTop: 24 },
   sectionHeader: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 },
-  sectionTitle: { color: '#444', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
-  sectionSub: { color: '#333', fontSize: 11 },
+  sectionTitle: { color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionSub: { color: '#333', fontSize: 12 },
 
   fightCard: { background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, padding: '14px', marginBottom: 10 },
   fightCardHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 },
   weightClass: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
-  mainEventBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
-  parlayTag: { background: '#ffd70022', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
+  mainEventBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
+  parlayTag: { background: '#ffd70022', color: '#ffd700', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
 
   fighterRow: { display: 'flex', alignItems: 'center', gap: 0 },
   fighterBtn: {
@@ -536,10 +536,10 @@ const s: Record<string, React.CSSProperties> = {
   fighterBtnSelected: { border: '1px solid #c8102e44', background: '#1a0808' },
   fighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1, alignItems: 'flex-start' },
   fighterImg: { width: 36, height: 44, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
-  fighterName: { color: '#ddd', fontSize: 13, fontWeight: 600, lineHeight: 1.2, textAlign: 'left' as const },
-  oddsTag: { fontSize: 11, fontWeight: 700 },
+  fighterName: { color: '#ddd', fontSize: 14, fontWeight: 600, lineHeight: 1.2, textAlign: 'left' as const },
+  oddsTag: { fontSize: 12, fontWeight: 700 },
   vsBlock: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 44 },
-  vsLabel: { color: '#333', fontSize: 10, fontWeight: 800, letterSpacing: 1 },
+  vsLabel: { color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
   vsWeight: { display: 'none' },
 
   stakeRow: { display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, padding: '10px 0 4px', borderTop: '1px solid #1a1a1a' },
@@ -548,34 +548,34 @@ const s: Record<string, React.CSSProperties> = {
   stakeInput: { background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: 16, fontWeight: 700, width: 80, padding: '0 8px' },
   payoutPreview: { color: '#555', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 },
   payoutAmt: { color: '#4caf50', fontWeight: 700, fontSize: 14 },
-  payoutProfit: { color: '#388e3c', fontSize: 11 },
+  payoutProfit: { color: '#388e3c', fontSize: 12 },
 
-  parlayToggle: { marginTop: 10, width: '100%', background: 'transparent', border: '1px dashed #2a2a2a', borderRadius: 6, color: '#444', fontSize: 11, fontWeight: 700, padding: '6px', cursor: 'pointer', letterSpacing: 0.5 },
+  parlayToggle: { marginTop: 10, width: '100%', background: 'transparent', border: '1px dashed #2a2a2a', borderRadius: 6, color: '#444', fontSize: 12, fontWeight: 700, padding: '6px', cursor: 'pointer', letterSpacing: 0.5 },
   parlayToggleActive: { border: '1px solid #ffd70055', color: '#ffd700', background: '#1a1800' },
 
-  parlayEmpty: { color: '#333', fontSize: 13, padding: '16px 0', fontStyle: 'italic' },
+  parlayEmpty: { color: '#333', fontSize: 14, padding: '16px 0', fontStyle: 'italic' },
   parlayLeg: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #1a1a1a' },
   parlayLegLeft: { flex: 1 },
-  parlayLegFight: { color: '#555', fontSize: 11, marginBottom: 6 },
+  parlayLegFight: { color: '#555', fontSize: 12, marginBottom: 6 },
   parlayLegFighters: { display: 'flex', gap: 6 },
-  parlayFighterBtn: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 11, fontWeight: 600, padding: '4px 10px', cursor: 'pointer' },
+  parlayFighterBtn: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, color: '#888', fontSize: 12, fontWeight: 600, padding: '4px 10px', cursor: 'pointer' },
   parlayFighterBtnSelected: { border: '1px solid #c8102e', color: '#fff', background: '#1a0808' },
-  parlayLegOdds: { fontSize: 14, fontWeight: 800, flexShrink: 0 },
+  parlayLegOdds: { fontSize: 14, fontWeight: 700, flexShrink: 0 },
   parlayRemove: { background: 'none', border: 'none', color: '#333', fontSize: 14, cursor: 'pointer', padding: '4px 6px' },
 
   parlayOddsBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #1a1a1a', marginTop: 4 },
   parlayOddsLabel: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
-  parlayOddsVal: { color: '#ffd700', fontSize: 18, fontWeight: 800 },
+  parlayOddsVal: { color: '#ffd700', fontSize: 18, fontWeight: 700 },
   parlayOddsDecimal: { color: '#555', fontSize: 12, fontWeight: 400, marginLeft: 6 },
 
   saveBtn: { width: '100%', background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 14 },
-  removeBtn: { background: '#1a1a1a', color: '#666', border: '1px solid #2a2a2a', borderRadius: 8, padding: '13px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginTop: 14 },
+  removeBtn: { background: '#1a1a1a', color: '#666', border: '1px solid #2a2a2a', borderRadius: 8, padding: '13px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', marginTop: 14 },
 };
 
 // Second style object to avoid name collision in results section
 const s2: Record<string, React.CSSProperties> = {
   resultRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid #111' },
-  resultFighter: { flex: 1, color: '#888', fontSize: 13, fontWeight: 600 },
-  resultPnl: { fontSize: 14, fontWeight: 800, minWidth: 60, textAlign: 'right' },
-  resultStatus: { color: '#444', fontSize: 11, minWidth: 30 },
+  resultFighter: { flex: 1, color: '#888', fontSize: 14, fontWeight: 600 },
+  resultPnl: { fontSize: 14, fontWeight: 700, minWidth: 60, textAlign: 'right' },
+  resultStatus: { color: '#444', fontSize: 12, minWidth: 30 },
 };

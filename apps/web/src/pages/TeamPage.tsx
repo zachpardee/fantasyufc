@@ -62,7 +62,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { color: '#fff', fontSize: 18, fontWeight: 700 },
   statBar: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '20px 24px', display: 'flex', gap: 0, alignItems: 'center' },
   stat: { display: 'flex', flexDirection: 'column', gap: 4, padding: '0 28px 0 0' },
-  statLabel: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
-  statValue: { color: '#fff', fontSize: 22, fontWeight: 800 },
+  statLabel: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
+  statValue: { color: '#fff', fontSize: 20, fontWeight: 700 },
   statDivider: { width: 1, height: 36, background: '#2a2a2a', marginRight: 28 },
 };

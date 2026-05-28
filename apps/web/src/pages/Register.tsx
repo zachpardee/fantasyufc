@@ -90,8 +90,8 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: 'flex', flexDirection: 'column', gap: 14 },
   input: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 8, padding: '14px 16px', color: '#fff', fontSize: 15, outline: 'none' },
   button: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 16px', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
-  error: { color: '#ff6b6b', fontSize: 13, margin: 0 },
+  error: { color: '#ff6b6b', fontSize: 14, margin: 0 },
   body: { color: '#aaa', lineHeight: 1.6, marginBottom: 16 },
-  hint: { color: '#666', fontSize: 13, lineHeight: 1.6, marginBottom: 24 },
+  hint: { color: '#666', fontSize: 14, lineHeight: 1.6, marginBottom: 24 },
   link: { display: 'block', textAlign: 'center', marginTop: 20, color: '#c8102e', fontSize: 14 },
 };

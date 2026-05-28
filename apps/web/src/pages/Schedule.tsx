@@ -181,7 +181,7 @@ const styles: Record<string, React.CSSProperties> = {
   eventCardLive: { border: '1px solid #c8102e', background: '#1a0808' },
   eventInfo: {},
   eventName: { color: '#fff', fontSize: 15, fontWeight: 600, marginBottom: 4 },
-  eventNameLive: { fontWeight: 800 },
+  eventNameLive: { fontWeight: 700 },
   eventMeta: { color: '#666', fontSize: 12, marginBottom: 6 },
   eventStats: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
   eventCardDone: { opacity: 0.45 },

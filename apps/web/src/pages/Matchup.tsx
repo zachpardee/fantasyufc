@@ -212,7 +212,7 @@ export function MatchupPage() {
         <div style={styles.empty}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⚔️</div>
           <div style={{ color: '#ccc', fontWeight: 700, marginBottom: 6 }}>No matchup yet</div>
-          <div style={{ color: '#555', fontSize: 13 }}>Matchups are generated when the season schedule is set. Check back after the commissioner starts the season.</div>
+          <div style={{ color: '#555', fontSize: 14 }}>Matchups are generated when the season schedule is set. Check back after the commissioner starts the season.</div>
         </div>
       ) : (
         <>
@@ -402,10 +402,10 @@ function ChampionPickRow({ homeChampion, awayChampion, locked, onPhotoClick }: {
           </div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
-          <div style={{ color: '#ddd', fontSize: 13, fontWeight: 600 }}>{champ.firstName} {champ.lastName}</div>
+          <div style={{ color: '#ddd', fontSize: 14, fontWeight: 600 }}>{champ.firstName} {champ.lastName}</div>
           {scored
-            ? <div style={{ color: won ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>{won ? '+30 pts' : '✗'}</div>
-            : <div style={{ color: '#888', fontSize: 11 }}>Pending</div>
+            ? <div style={{ color: won ? '#4caf50' : '#444', fontSize: 12, fontWeight: 700 }}>{won ? '+30 pts' : '✗'}</div>
+            : <div style={{ color: '#888', fontSize: 12 }}>Pending</div>
           }
         </div>
       </div>
@@ -416,7 +416,7 @@ function ChampionPickRow({ homeChampion, awayChampion, locked, onPhotoClick }: {
     <div style={{ ...styles.pickRow, background: '#0d0d00', borderTop: '2px solid #1e1e00' }}>
       <div style={styles.pickCell}>{renderSide(homeChampion, 'left')}</div>
       <div style={styles.fightInfo}>
-        <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>★ EVENT CHAMPION</div>
+        <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>★ EVENT CHAMPION</div>
         <div style={styles.fightWeight}>+30 pts if correct</div>
       </div>
       <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>{renderSide(awayChampion, 'right')}</div>
@@ -443,7 +443,7 @@ function PickBadge({ pick, fight, align }: { pick: any; fight: any; align: 'left
         <span style={{ color: '#444', fontSize: 10 }}>{PICK_METHOD_LABEL[pick.pickedMethod] ?? pick.pickedMethod}</span>
       )}
       {scored && (
-        <span style={{ color: correct ? '#4caf50' : '#333', fontSize: 11, fontWeight: 800 }}>
+        <span style={{ color: correct ? '#4caf50' : '#333', fontSize: 12, fontWeight: 700 }}>
           {correct ? `+${(+(pick.pointsEarned ?? 0)).toFixed(0)}` : '✗'}
         </span>
       )}
@@ -724,7 +724,7 @@ function OddsBadge({ odds }: { odds: number }) {
     <span style={{
       background: isUnderdog ? '#162616' : '#1a1a1a',
       color: isUnderdog ? '#5cb85c' : '#666',
-      fontSize: 10, fontWeight: 800, padding: '2px 5px', borderRadius: 3,
+      fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
       border: `1px solid ${isUnderdog ? '#2a4a2a' : '#2a2a2a'}`,
       letterSpacing: 0.2, flexShrink: 0,
     }}>
@@ -738,7 +738,7 @@ function PnlBadge({ value, isPending, potentialPayout }: { value: number; isPend
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
         <span style={{ color: '#333', fontSize: 10 }}>→</span>
-        <span style={{ color: '#555', fontSize: 11, fontWeight: 600 }}>{fmtMoney(potentialPayout)}</span>
+        <span style={{ color: '#555', fontSize: 12, fontWeight: 600 }}>{fmtMoney(potentialPayout)}</span>
       </div>
     );
   }
@@ -748,7 +748,7 @@ function PnlBadge({ value, isPending, potentialPayout }: { value: number; isPend
       display: 'inline-flex', alignItems: 'center',
       background: isWon ? '#0d2214' : '#1e0808',
       color: isWon ? '#4caf50' : '#e05555',
-      fontSize: 12, fontWeight: 800,
+      fontSize: 12, fontWeight: 700,
       padding: '3px 7px', borderRadius: 4, marginTop: 2,
       border: `1px solid ${isWon ? '#1e4a28' : '#3a1414'}`,
     }}>
@@ -875,9 +875,9 @@ function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, 
   return (
     <div style={sk.card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-        <span style={{ flex: 1, color: '#555', fontSize: 11, fontWeight: 700 }}>{homeTeamName}</span>
+        <span style={{ flex: 1, color: '#555', fontSize: 12, fontWeight: 700 }}>{homeTeamName}</span>
         <span style={{ ...sk.cardHeaderText, width: 168, flexShrink: 0, textAlign: 'center' }}>FIGHT CARD</span>
-        <span style={{ flex: 1, color: '#555', fontSize: 11, fontWeight: 700, textAlign: 'right' }}>{awayTeamName}</span>
+        <span style={{ flex: 1, color: '#555', fontSize: 12, fontWeight: 700, textAlign: 'right' }}>{awayTeamName}</span>
       </div>
       {fights.map((fight, i) => (
         <div key={fight.id} style={i < fights.length - 1 ? { borderBottom: '1px solid #161616' } : {}}>
@@ -921,7 +921,7 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
 
       {(homeParlay || awayParlay) && (
         <div style={{ background: '#0d0c00', border: '1px solid #2a2200', borderRadius: 8, padding: '14px', marginTop: 8 }}>
-          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 800, letterSpacing: 0.8, marginBottom: 12 }}>★ PARLAY</div>
+          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, marginBottom: 12 }}>★ PARLAY</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{ flex: 1 }}>
               {homeParlay
@@ -944,10 +944,10 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
 const sk: Record<string, React.CSSProperties> = {
   card: { background: '#111', border: '1px solid #222', borderRadius: 10, overflow: 'hidden', marginBottom: 20 },
   cardHeader: { background: '#0d0d0d', borderBottom: '1px solid #1e1e1e', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 },
-  cardHeaderText: { color: '#444', fontSize: 10, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' },
+  cardHeaderText: { color: '#444', fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' },
   fightRow: { padding: '12px 14px 10px' },
   fightMeta: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 },
-  mainBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 3, letterSpacing: 0.5 },
+  mainBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3, letterSpacing: 0.5 },
   weightLabel: { color: '#333', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
 };
 
@@ -956,7 +956,7 @@ const styles: Record<string, React.CSSProperties> = {
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
-  liveBadge: { background: '#c8102e', color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
+  liveBadge: { background: '#c8102e', color: '#fff', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   currentBtn: { background: 'transparent', border: '1px solid #333', borderRadius: 6, color: '#888', fontSize: 12, padding: '4px 10px', cursor: 'pointer' },
   empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
 
@@ -973,43 +973,43 @@ const styles: Record<string, React.CSSProperties> = {
   historyChipActive: { border: '1px solid #c8102e', background: '#1a0808' },
   historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
   historyChipNoMatchup: { opacity: 0.4, cursor: 'default' },
-  chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' },
-  chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
   chipDate: { color: '#444', fontSize: 10, textAlign: 'center' },
   chipOpp: { color: '#555', fontSize: 10, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  chipScore: { color: '#fff', fontSize: 13, fontWeight: 800 },
-  chipResult: { fontSize: 11, fontWeight: 800 },
+  chipScore: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  chipResult: { fontSize: 12, fontWeight: 700 },
   chipPending: { color: '#444', fontSize: 10 },
 
   eventHeader: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '16px 24px', textAlign: 'center' },
-  eventName: { color: '#fff', fontSize: 20, fontWeight: 800, marginBottom: 4 },
-  eventLocation: { color: '#555', fontSize: 13 },
+  eventName: { color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 4 },
+  eventLocation: { color: '#555', fontSize: 14 },
   eventDate: { color: '#444', fontSize: 12, marginTop: 2 },
 
   scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
   scoreboardMobile: { padding: '16px', flexDirection: 'column', gap: 12 },
   teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
   teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
-  teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a1a', border: '2px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' },
+  teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a1a', border: '2px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' },
   teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  matchupScore: { fontSize: 52, fontWeight: 800, lineHeight: 1 },
+  matchupScore: { fontSize: 52, fontWeight: 700, lineHeight: 1 },
   matchupScoreStaking: { fontSize: 36 },
   scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   vsBlock: { flex: 1, textAlign: 'center' as const, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   vsText: { color: '#333', fontWeight: 700, fontSize: 18 },
-  resultBadge: { color: '#ffd700', fontSize: 11, fontWeight: 700, textAlign: 'center' },
+  resultBadge: { color: '#ffd700', fontSize: 12, fontWeight: 700, textAlign: 'center' },
 
   section: { padding: '0 24px 8px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px' },
-  sectionTitle: { color: '#444', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionTitle: { color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
   lockedTag: { background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 },
 
   picksHeaderRow: { display: 'flex', alignItems: 'center', borderBottom: '1px solid #1a1a1a', paddingBottom: 6, marginBottom: 4 },
-  pickTeamHeader: { flex: 1, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' },
+  pickTeamHeader: { flex: 1, color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' },
   fightInfoHeader: { width: 160, textAlign: 'center', color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
 
-  noPick: { color: '#333', fontSize: 13 },
+  noPick: { color: '#333', fontSize: 14 },
 
   // Pick row — sheet-style fight card with pick badge columns on each side
   pickRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderBottom: '1px solid #141414' },
@@ -1017,16 +1017,16 @@ const styles: Record<string, React.CSSProperties> = {
   fightCardCenter: { flex: 1, display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 },
   fightCardPhoto: { width: 44, height: 54, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
   fightCardFighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0 },
-  fightCardName: { fontSize: 13, fontWeight: 700, lineHeight: 1.2 },
-  fightCardOdds: { color: '#555', fontSize: 11 },
+  fightCardName: { fontSize: 14, fontWeight: 700, lineHeight: 1.2 },
+  fightCardOdds: { color: '#555', fontSize: 12 },
   fightCardVs: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 56, padding: '0 4px' },
-  vsText2: { color: '#2a2a2a', fontSize: 9, fontWeight: 800, letterSpacing: 1 },
+  vsText2: { color: '#2a2a2a', fontSize: 9, fontWeight: 700, letterSpacing: 1 },
   fightCardWeight: { color: '#333', fontSize: 9, textAlign: 'center' as const, lineHeight: 1.3 },
   fightCardResult: { color: '#888', fontSize: 9, fontWeight: 700, textAlign: 'center' as const, marginTop: 2 },
 
   // Legacy — kept for ChampionPickRow which still uses them
   fightInfo: { width: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
-  fightName: { color: '#555', fontSize: 11, textAlign: 'center' },
+  fightName: { color: '#555', fontSize: 12, textAlign: 'center' },
   fightWeight: { color: '#333', fontSize: 10, textAlign: 'center' },
   fightResult: { color: '#888', fontSize: 10, textAlign: 'center', marginTop: 2 },
 
@@ -1038,21 +1038,21 @@ const styles: Record<string, React.CSSProperties> = {
   seasonTotalRow: { display: 'flex', padding: '10px 12px', background: '#0d0d0d', borderTop: '1px solid #222' },
   seasonEventCell: { flex: 1, color: '#666', fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   seasonScoreCell: { width: 80, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' },
-  seasonTeamCell: { width: 80, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
-  seasonPts: { color: '#ccc', fontSize: 13, fontWeight: 700 },
-  seasonBonus: { color: '#4caf50', fontSize: 11, fontWeight: 700 },
-  seasonTotalPts: { color: '#ff8c42', fontSize: 15, fontWeight: 800 },
+  seasonTeamCell: { width: 80, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
+  seasonPts: { color: '#ccc', fontSize: 14, fontWeight: 700 },
+  seasonBonus: { color: '#4caf50', fontSize: 12, fontWeight: 700 },
+  seasonTotalPts: { color: '#ff8c42', fontSize: 15, fontWeight: 700 },
   totalsBar: { background: '#111', borderTop: '1px solid #1e1e1e', padding: '20px 32px', display: 'flex', marginTop: 16 },
   totalsDivider: { width: 1, background: '#222', margin: '0 24px' },
-  totalsTeam: { color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
+  totalsTeam: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
   totalsLabel: { color: '#444', fontSize: 12 },
-  totalsMatchup: { color: '#c8102e', fontSize: 20, fontWeight: 800 },
-  totalsSeason: { color: '#ff8c42', fontSize: 20, fontWeight: 800 },
+  totalsMatchup: { color: '#c8102e', fontSize: 20, fontWeight: 700 },
+  totalsSeason: { color: '#ff8c42', fontSize: 20, fontWeight: 700 },
   breakdownRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24 },
   breakdownDividerRow: { borderTop: '1px solid #1e1e1e', margin: '4px 0' },
   breakdownPending: { color: '#333', fontSize: 12, fontStyle: 'italic' },
   bdPickRow: { display: 'grid', gridTemplateColumns: '1fr auto auto', alignItems: 'baseline', gap: '0 10px', padding: '3px 0' },
   bdFighter: { fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-  bdResult: { fontSize: 11, color: '#555', whiteSpace: 'nowrap' as const },
+  bdResult: { fontSize: 12, color: '#555', whiteSpace: 'nowrap' as const },
   bdPts: { fontSize: 12, fontWeight: 700, minWidth: 28, textAlign: 'right' as const },
 };

@@ -182,7 +182,7 @@ const styles: Record<string, React.CSSProperties> = {
   section: { margin: '0 24px 8px' },
   sectionTitle: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '20px 0 8px', borderBottom: '1px solid #1a1a1a', marginBottom: 2 },
   row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #111' },
-  rowLabel: { color: '#888', fontSize: 13 },
-  rowValue: { color: '#fff', fontSize: 13, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
+  rowLabel: { color: '#888', fontSize: 14 },
+  rowValue: { color: '#fff', fontSize: 14, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
   spacer: { height: 40 },
 };

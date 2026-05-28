@@ -45,6 +45,6 @@ const styles: Record<string, React.CSSProperties> = {
   form: { display: 'flex', flexDirection: 'column', gap: 16 },
   input: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 8, padding: '14px 16px', color: '#fff', fontSize: 15, outline: 'none' },
   button: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 16px', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
-  error: { color: '#ff6b6b', fontSize: 13 },
+  error: { color: '#ff6b6b', fontSize: 14 },
   link: { display: 'block', textAlign: 'center', marginTop: 20, color: '#c8102e', fontSize: 14 },
 };
