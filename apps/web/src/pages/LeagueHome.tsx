@@ -253,6 +253,7 @@ export function LeagueHomePage() {
         <Link to="/" style={styles.logoLink}>
           <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         </Link>
+        <Link to="/" style={styles.homeBtn}>🏠 Home</Link>
         <span style={{ flex: 1 }} />
         <div style={styles.bellWrap}>
           <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
@@ -919,6 +920,7 @@ const styles: Record<string, React.CSSProperties> = {
   loading: { color: '#888', padding: 40 },
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
+  homeBtn: { color: '#aaa', textDecoration: 'none', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 },
   logo: { height: 48, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
