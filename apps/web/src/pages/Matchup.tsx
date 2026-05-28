@@ -451,7 +451,7 @@ function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; home
       </div>
 
       <div style={styles.fightInfo}>
-        <div style={styles.fightName}>{fight.redLastName} vs {fight.blueLastName}</div>
+        <div style={styles.fightName}>{fight.redFirstName} {fight.redLastName} vs {fight.blueFirstName} {fight.blueLastName}</div>
         <div style={styles.fightWeight}>{fight.weightClassName}</div>
         {resultWinner && (
           <div style={styles.fightResult}>
@@ -647,7 +647,7 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
         <>
           {picks.map((p) => {
             const isRed = p.pickedFighterId === p.redFighterId;
-            const lastName: string = isRed ? p.redLastName : p.blueLastName;
+            const fullName: string = isRed ? `${p.redFirstName} ${p.redLastName}` : `${p.blueFirstName} ${p.blueLastName}`;
             const earned = +(p.pointsEarned ?? 0);
             const isDecision = ['decision_unanimous', 'decision_split', 'decision_majority'].includes(p.resultOutcome);
             const methodMatch =
@@ -663,9 +663,9 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
             }
 
             return (
-              <div key={p.id ?? lastName} style={styles.bdPickRow}>
+              <div key={p.id ?? fullName} style={styles.bdPickRow}>
                 <span style={{ ...styles.bdFighter, color: p.isCorrect ? '#ccc' : p.isCorrect === false ? '#333' : '#666' }}>
-                  {lastName}
+                  {fullName}
                 </span>
                 <span style={{ ...styles.bdResult, color: p.isCorrect ? '#666' : '#2a2a2a' }}>
                   {p.isCorrect === true ? resultLabel : p.isCorrect === false ? '✗' : '—'}
@@ -793,7 +793,7 @@ function ParlayDisplay({ parlay, legs, align }: { parlay: any; legs: any[]; alig
           flexDirection: rev ? 'row-reverse' : 'row',
         }}>
           <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700 }}>
-            {l.fighterLastName}
+            {l.fighterFirstName} {l.fighterLastName}
           </span>
           <OddsBadge odds={+l.odds} />
         </div>
@@ -814,7 +814,7 @@ function InlineBetDisplay({ single, align }: { single: any; align: 'left' | 'rig
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: rev ? 'flex-end' : 'flex-start', gap: 4, opacity: isLost ? 0.4 : 1 }}>
       <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
-        {single.fighterLastName}
+        {single.fighterFirstName} {single.fighterLastName}
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexDirection: rev ? 'row-reverse' : 'row' }}>
         <OddsBadge odds={+single.odds} />
@@ -882,7 +882,7 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
           <div style={{ display: 'flex', width: 168 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingRight: 4, opacity: hasResult && !redWon ? 0.35 : 1 }}>
               <span style={{ color: redWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: redWon ? 700 : 500, textAlign: 'right' }}>
-                {fight.redLastName}
+                {fight.redFirstName} {fight.redLastName}
               </span>
               {fight.redRecordWins != null && (
                 <span style={{ color: '#555', fontSize: 10 }}>
@@ -893,7 +893,7 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
             <div style={{ width: 44 }} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: 4, opacity: hasResult && !blueWon ? 0.35 : 1 }}>
               <span style={{ color: blueWon ? '#fff' : '#ccc', fontSize: 11, fontWeight: blueWon ? 700 : 500 }}>
-                {fight.blueLastName}
+                {fight.blueFirstName} {fight.blueLastName}
               </span>
               {fight.blueRecordWins != null && (
                 <span style={{ color: '#555', fontSize: 10 }}>
