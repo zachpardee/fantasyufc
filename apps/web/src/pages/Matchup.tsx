@@ -469,18 +469,18 @@ function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; home
       <div style={styles.fightCardCenter}>
         {/* Red fighter */}
         <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, opacity: resultWinner && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: resultWinner && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
         >
+          {fight.redImageUrl && (
+            <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />
+          )}
           <div style={styles.fightCardFighterInfo}>
             <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
             {fight.redFighterOdds != null && (
               <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>
             )}
           </div>
-          {fight.redImageUrl && (
-            <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />
-          )}
         </div>
 
         {/* VS + weight + result */}
@@ -494,18 +494,18 @@ function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; home
 
         {/* Blue fighter */}
         <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexDirection: 'row-reverse', gap: 10, opacity: resultWinner && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: resultWinner && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
         >
+          {fight.blueImageUrl && (
+            <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />
+          )}
           <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
             <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
             {fight.blueFighterOdds != null && (
               <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>
             )}
           </div>
-          {fight.blueImageUrl && (
-            <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />
-          )}
         </div>
       </div>
 
@@ -826,14 +826,14 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
       {/* Fight card center — sheet style */}
       <div style={styles.fightCardCenter}>
         <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, opacity: hasResult && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: hasResult && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
         >
+          {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />}
           <div style={styles.fightCardFighterInfo}>
             <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
             {fight.redFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>}
           </div>
-          {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />}
         </div>
 
         <div style={styles.fightCardVs}>
@@ -845,14 +845,14 @@ function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: 
         </div>
 
         <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexDirection: 'row-reverse', gap: 10, opacity: hasResult && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: hasResult && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
           onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
         >
+          {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />}
           <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
             <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
             {fight.blueFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>}
           </div>
-          {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />}
         </div>
       </div>
 
