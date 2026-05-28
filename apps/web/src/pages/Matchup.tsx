@@ -15,11 +15,15 @@ const METHOD_LABELS: Record<string, string> = {
   decision: 'DEC',
 };
 
+type PhotoClickHandler = (url: string, name: string) => void;
+
 export function MatchupPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const isMobile = useIsMobile();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string } | null>(null);
+  const openPhoto: PhotoClickHandler = (url, name) => setEnlargedPhoto({ url, name });
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const { data: league } = useQuery<any>({
@@ -300,10 +304,10 @@ export function MatchupPage() {
                 <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
               </div>
               {fights.map((fight) => (
-                <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} />
+                <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} onPhotoClick={openPhoto} />
               ))}
               {(homeChampion || awayChampion) && (
-                <ChampionPickRow homeChampion={homeChampion} awayChampion={awayChampion} locked={homePicks?.locked} />
+                <ChampionPickRow homeChampion={homeChampion} awayChampion={awayChampion} locked={homePicks?.locked} onPhotoClick={openPhoto} />
               )}
             </div>
           )}
@@ -316,6 +320,7 @@ export function MatchupPage() {
               awayStaking={awayStaking}
               homeTeamName={matchup.homeTeamName}
               awayTeamName={matchup.awayTeamName}
+              onPhotoClick={openPhoto}
             />
           )}
 
@@ -359,22 +364,40 @@ export function MatchupPage() {
           onClose={() => setSelectedMember(null)}
         />
       )}
+
+      {enlargedPhoto && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+          onClick={() => setEnlargedPhoto(null)}
+        >
+          <img
+            src={enlargedPhoto.url}
+            alt={enlargedPhoto.name}
+            style={{ maxWidth: '80vw', maxHeight: '75vh', objectFit: 'contain', objectPosition: 'top center', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+          />
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginTop: 16, letterSpacing: 0.5 }}>{enlargedPhoto.name}</div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ChampionPickRow({ homeChampion, awayChampion, locked }: {
-  homeChampion: any; awayChampion: any; locked?: boolean;
+function ChampionPickRow({ homeChampion, awayChampion, locked, onPhotoClick }: {
+  homeChampion: any; awayChampion: any; locked?: boolean; onPhotoClick?: PhotoClickHandler;
 }) {
   const renderSide = (champ: any, align: 'left' | 'right') => {
     if (!champ) return <span style={styles.noPick}>—</span>;
     const scored = locked && champ.resultWinnerId !== null;
     const won = scored && champ.pointsEarned > 0;
+    const name = `${champ.firstName} ${champ.lastName}`;
     return (
       <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
         {champ.imageUrl && (
-          <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !won ? 0.4 : 1 }}>
-            <img src={champ.imageUrl} alt={`${champ.firstName} ${champ.lastName}`}
+          <div
+            style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !won ? 0.4 : 1, cursor: 'zoom-in' }}
+            onClick={() => onPhotoClick?.(champ.imageUrl, name)}
+          >
+            <img src={champ.imageUrl} alt={name}
               style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
           </div>
         )}
@@ -401,7 +424,7 @@ function ChampionPickRow({ homeChampion, awayChampion, locked }: {
   );
 }
 
-function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awayPick: any }) {
+function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; homePick: any; awayPick: any; onPhotoClick?: PhotoClickHandler }) {
   const resultWinner = fight.resultWinnerId;
   const resultOutcome = fight.resultOutcome;
 
@@ -422,6 +445,7 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             isCorrect={homePick.isCorrect}
             pointsEarned={homePick.pointsEarned}
             align="left"
+            onPhotoClick={onPhotoClick}
           />
         ) : <span style={styles.noPick}>—</span>}
       </div>
@@ -454,6 +478,7 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
             isCorrect={awayPick.isCorrect}
             pointsEarned={awayPick.pointsEarned}
             align="right"
+            onPhotoClick={onPhotoClick}
           />
         ) : <span style={styles.noPick}>—</span>}
       </div>
@@ -461,7 +486,7 @@ function PickRow({ fight, homePick, awayPick }: { fight: any; homePick: any; awa
   );
 }
 
-function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, redIsChampion, blueIsChampion, method, isCorrect, pointsEarned, align }: {
+function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, redIsChampion, blueIsChampion, method, isCorrect, pointsEarned, align, onPhotoClick }: {
   fighterId: string; redFighterId: string;
   redName: string; blueName: string;
   redImageUrl?: string; blueImageUrl?: string;
@@ -469,6 +494,7 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, 
   method?: string;
   isCorrect: boolean | null; pointsEarned: number | null;
   align: 'left' | 'right';
+  onPhotoClick?: PhotoClickHandler;
 }) {
   const isRed = fighterId === redFighterId;
   const pickedName = isRed ? redName : blueName;
@@ -481,7 +507,10 @@ function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, 
     <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
       {imageUrl && (
         <div style={{ position: 'relative', width: 36, height: 40, flexShrink: 0 }}>
-          <div style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', background: '#222', opacity: scored && !isCorrect ? 0.4 : 1 }}>
+          <div
+            style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', background: '#222', opacity: scored && !isCorrect ? 0.4 : 1, cursor: 'zoom-in' }}
+            onClick={() => onPhotoClick?.(imageUrl, pickedName)}
+          >
             <img src={imageUrl} alt={pickedName}
               style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
           </div>
@@ -796,7 +825,7 @@ function InlineBetDisplay({ single, align }: { single: any; align: 'left' | 'rig
   );
 }
 
-function FightCardRow({ fight, homeSingle, awaySingle }: { fight: any; homeSingle?: any; awaySingle?: any }) {
+function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: any; homeSingle?: any; awaySingle?: any; onPhotoClick?: PhotoClickHandler }) {
   const hasResult = !!fight.resultWinnerId;
   const redWon = hasResult && fight.resultWinnerId === fight.redFighterId;
   const blueWon = hasResult && fight.resultWinnerId === fight.blueFighterId;
@@ -834,13 +863,19 @@ function FightCardRow({ fight, homeSingle, awaySingle }: { fight: any; homeSingl
             </span>
           )}
           <div style={{ display: 'flex' }}>
-            <div style={{ width: 52, height: 64, borderRadius: '6px 0 0 6px', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${redWon ? '#2a4a2a' : '#1e1e1e'}`, borderRight: 'none', opacity: hasResult && !redWon ? 0.18 : 1 }}>
+            <div
+              style={{ width: 52, height: 64, borderRadius: '6px 0 0 6px', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${redWon ? '#2a4a2a' : '#1e1e1e'}`, borderRight: 'none', opacity: hasResult && !redWon ? 0.18 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+              onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
+            >
               {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
             </div>
             <div style={{ width: 44, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d', borderTop: '1px solid #1e1e1e', borderBottom: '1px solid #1e1e1e', flexShrink: 0 }}>
               <span style={{ color: '#303030', fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>VS</span>
             </div>
-            <div style={{ width: 52, height: 64, borderRadius: '0 6px 6px 0', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${blueWon ? '#2a4a2a' : '#1e1e1e'}`, borderLeft: 'none', opacity: hasResult && !blueWon ? 0.18 : 1 }}>
+            <div
+              style={{ width: 52, height: 64, borderRadius: '0 6px 6px 0', overflow: 'hidden', background: '#1a1a1a', border: `1px solid ${blueWon ? '#2a4a2a' : '#1e1e1e'}`, borderLeft: 'none', opacity: hasResult && !blueWon ? 0.18 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+              onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
+            >
               {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />}
             </div>
           </div>
@@ -889,9 +924,10 @@ function FightCardRow({ fight, homeSingle, awaySingle }: { fight: any; homeSingl
   );
 }
 
-function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, awaySinglesMap }: {
+function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, awaySinglesMap, onPhotoClick }: {
   fights: any[]; homeTeamName: string; awayTeamName: string;
   homeSinglesMap: Map<string, any>; awaySinglesMap: Map<string, any>;
+  onPhotoClick?: PhotoClickHandler;
 }) {
   if (fights.length === 0) return null;
   return (
@@ -907,6 +943,7 @@ function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, 
             fight={fight}
             homeSingle={homeSinglesMap.get(fight.id)}
             awaySingle={awaySinglesMap.get(fight.id)}
+            onPhotoClick={onPhotoClick}
           />
         </div>
       ))}
@@ -914,9 +951,10 @@ function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, 
   );
 }
 
-function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, awayTeamName }: {
+function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, awayTeamName, onPhotoClick }: {
   fights: any[]; homeStaking: any; awayStaking: any;
   homeTeamName: string; awayTeamName: string;
+  onPhotoClick?: PhotoClickHandler;
 }) {
   const homeSinglesMap = new Map<string, any>((homeStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
   const awaySinglesMap = new Map<string, any>((awayStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
@@ -936,6 +974,7 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
         awayTeamName={awayTeamName}
         homeSinglesMap={homeSinglesMap}
         awaySinglesMap={awaySinglesMap}
+        onPhotoClick={onPhotoClick}
       />
 
       {(homeParlay || awayParlay) && (
