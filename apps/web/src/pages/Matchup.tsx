@@ -1016,7 +1016,7 @@ const styles: Record<string, React.CSSProperties> = {
   pickBadgeCol: { width: 68, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start' },
   fightCardCenter: { flex: 1, display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 },
   fightCardPhoto: { width: 44, height: 54, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
-  fightCardFighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0, flex: 1 },
+  fightCardFighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0 },
   fightCardName: { fontSize: 13, fontWeight: 700, lineHeight: 1.2 },
   fightCardOdds: { color: '#555', fontSize: 11 },
   fightCardVs: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 56, padding: '0 4px' },
