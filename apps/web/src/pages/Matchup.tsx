@@ -424,111 +424,94 @@ function ChampionPickRow({ homeChampion, awayChampion, locked, onPhotoClick }: {
   );
 }
 
-function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; homePick: any; awayPick: any; onPhotoClick?: PhotoClickHandler }) {
-  const resultWinner = fight.resultWinnerId;
-  const resultOutcome = fight.resultOutcome;
+const PICK_METHOD_LABEL: Record<string, string> = {
+  ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ',
+};
 
+function PickBadge({ pick, fight, align }: { pick: any; fight: any; align: 'left' | 'right' }) {
+  if (!pick?.pickedFighterId) return <span style={styles.noPick}>—</span>;
+  const isRed = pick.pickedFighterId === fight.redFighterId;
+  const lastName = isRed ? fight.redLastName : fight.blueLastName;
+  const scored = pick.isCorrect !== null;
+  const correct = pick.isCorrect === true;
   return (
-    <div style={styles.pickRow}>
-      <div style={styles.pickCell}>
-        {homePick?.pickedFighterId ? (
-          <PickDisplay
-            fighterId={homePick.pickedFighterId}
-            redFighterId={fight.redFighterId}
-            redName={`${fight.redFirstName} ${fight.redLastName}`}
-            blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
-            redImageUrl={fight.redImageUrl}
-            blueImageUrl={fight.blueImageUrl}
-            redIsChampion={fight.redIsChampion}
-            blueIsChampion={fight.blueIsChampion}
-            method={homePick.pickedMethod}
-            isCorrect={homePick.isCorrect}
-            pointsEarned={homePick.pointsEarned}
-            align="left"
-            onPhotoClick={onPhotoClick}
-          />
-        ) : <span style={styles.noPick}>—</span>}
-      </div>
-
-      <div style={styles.fightInfo}>
-        <div style={styles.fightName}>{fight.redFirstName} {fight.redLastName} vs {fight.blueFirstName} {fight.blueLastName}</div>
-        <div style={styles.fightWeight}>{fight.weightClassName}</div>
-        {resultWinner && (
-          <div style={styles.fightResult}>
-            {fight.redFighterId === resultWinner
-              ? `${fight.redFirstName} ${fight.redLastName}`
-              : `${fight.blueFirstName} ${fight.blueLastName}`}
-            {' '}· {METHOD_LABELS[resultOutcome] ?? resultOutcome}
-          </div>
-        )}
-      </div>
-
-      <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>
-        {awayPick?.pickedFighterId ? (
-          <PickDisplay
-            fighterId={awayPick.pickedFighterId}
-            redFighterId={fight.redFighterId}
-            redName={`${fight.redFirstName} ${fight.redLastName}`}
-            blueName={`${fight.blueFirstName} ${fight.blueLastName}`}
-            redImageUrl={fight.redImageUrl}
-            blueImageUrl={fight.blueImageUrl}
-            redIsChampion={fight.redIsChampion}
-            blueIsChampion={fight.blueIsChampion}
-            method={awayPick.pickedMethod}
-            isCorrect={awayPick.isCorrect}
-            pointsEarned={awayPick.pointsEarned}
-            align="right"
-            onPhotoClick={onPhotoClick}
-          />
-        ) : <span style={styles.noPick}>—</span>}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
+      <span style={{ color: scored ? (correct ? '#4caf50' : '#444') : '#ccc', fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
+        {lastName}
+      </span>
+      {pick.pickedMethod && (
+        <span style={{ color: '#444', fontSize: 10 }}>{PICK_METHOD_LABEL[pick.pickedMethod] ?? pick.pickedMethod}</span>
+      )}
+      {scored && (
+        <span style={{ color: correct ? '#4caf50' : '#333', fontSize: 11, fontWeight: 800 }}>
+          {correct ? `+${(+(pick.pointsEarned ?? 0)).toFixed(0)}` : '✗'}
+        </span>
+      )}
     </div>
   );
 }
 
-function PickDisplay({ fighterId, redFighterId, redName, blueName, redImageUrl, blueImageUrl, redIsChampion, blueIsChampion, method, isCorrect, pointsEarned, align, onPhotoClick }: {
-  fighterId: string; redFighterId: string;
-  redName: string; blueName: string;
-  redImageUrl?: string; blueImageUrl?: string;
-  redIsChampion?: boolean; blueIsChampion?: boolean;
-  method?: string;
-  isCorrect: boolean | null; pointsEarned: number | null;
-  align: 'left' | 'right';
-  onPhotoClick?: PhotoClickHandler;
-}) {
-  const isRed = fighterId === redFighterId;
-  const pickedName = isRed ? redName : blueName;
-  const imageUrl = isRed ? redImageUrl : blueImageUrl;
-  const isChampion = isRed ? redIsChampion : blueIsChampion;
-  const scored = isCorrect !== null;
-  const color = scored ? (isCorrect ? '#4caf50' : '#555') : '#ddd';
+function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; homePick: any; awayPick: any; onPhotoClick?: PhotoClickHandler }) {
+  const resultWinner = fight.resultWinnerId;
+  const resultOutcome = fight.resultOutcome;
+  const redWon = resultWinner === fight.redFighterId;
+  const blueWon = resultWinner === fight.blueFighterId;
+  const fmtOdds = (n: number) => n >= 0 ? `+${n}` : `${n}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-      {imageUrl && (
-        <div style={{ position: 'relative', width: 36, height: 40, flexShrink: 0 }}>
-          <div
-            style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', background: '#222', opacity: scored && !isCorrect ? 0.4 : 1, cursor: 'zoom-in' }}
-            onClick={() => onPhotoClick?.(imageUrl, pickedName)}
-          >
-            <img src={imageUrl} alt={pickedName}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+    <div style={styles.pickRow}>
+      {/* Home pick */}
+      <div style={styles.pickBadgeCol}>
+        <PickBadge pick={homePick} fight={fight} align="left" />
+      </div>
+
+      {/* Fight card — sheet style */}
+      <div style={styles.fightCardCenter}>
+        {/* Red fighter */}
+        <div
+          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, opacity: resultWinner && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+          onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
+        >
+          {fight.redImageUrl && (
+            <img src={fight.redImageUrl} alt="" style={styles.fightCardPhoto} />
+          )}
+          <div style={styles.fightCardFighterInfo}>
+            <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
+            {fight.redFighterOdds != null && (
+              <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>
+            )}
           </div>
-          {isChampion && (
-            <div style={{ position: 'absolute', bottom: -3, right: -4, background: '#ffd700', color: '#000', fontSize: 8, fontWeight: 900, borderRadius: 3, padding: '1px 3px', lineHeight: 1.2, letterSpacing: 0.2 }}>
-              CHAMP
-            </div>
+        </div>
+
+        {/* VS + weight + result */}
+        <div style={styles.fightCardVs}>
+          <span style={styles.vsText2}>VS</span>
+          <span style={styles.fightCardWeight}>{fight.weightClassName}</span>
+          {resultWinner && (
+            <span style={styles.fightCardResult}>{METHOD_LABELS[resultOutcome] ?? resultOutcome}</span>
           )}
         </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
-        <div style={{ color, fontSize: 13, fontWeight: 600 }}>{pickedName}</div>
-        {method && <div style={{ color: '#555', fontSize: 11 }}>{METHOD_LABELS[method] ?? method}</div>}
-        {scored && (
-          <div style={{ color: isCorrect ? '#4caf50' : '#444', fontSize: 11, fontWeight: 700 }}>
-            {isCorrect ? `+${(+pointsEarned!).toFixed(0)} pts` : '✗'}
+
+        {/* Blue fighter */}
+        <div
+          style={{ flex: 1, display: 'flex', alignItems: 'center', flexDirection: 'row-reverse', gap: 10, opacity: resultWinner && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+          onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
+        >
+          {fight.blueImageUrl && (
+            <img src={fight.blueImageUrl} alt="" style={styles.fightCardPhoto} />
+          )}
+          <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
+            <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
+            {fight.blueFighterOdds != null && (
+              <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>
+            )}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Away pick */}
+      <div style={{ ...styles.pickBadgeCol, alignItems: 'flex-end' }}>
+        <PickBadge pick={awayPick} fight={fight} align="right" />
       </div>
     </div>
   );
@@ -627,7 +610,7 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   );
 }
 
-const PICK_METHOD_LABEL: Record<string, string> = {
+const PICK_METHOD_LABEL2: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'Sub', decision: 'Dec',
 };
 
@@ -658,7 +641,7 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
             let resultLabel = '';
             if (p.isCorrect === true) {
               resultLabel = methodMatch
-                ? `Win + ${PICK_METHOD_LABEL[p.pickedMethod] ?? p.pickedMethod}`
+                ? `Win + ${PICK_METHOD_LABEL2[p.pickedMethod] ?? p.pickedMethod}`
                 : 'Win';
             }
 
@@ -1067,9 +1050,22 @@ const styles: Record<string, React.CSSProperties> = {
   pickTeamHeader: { flex: 1, color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' },
   fightInfoHeader: { width: 160, textAlign: 'center', color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
 
-  pickRow: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #111' },
-  pickCell: { flex: 1, display: 'flex', flexDirection: 'column' },
   noPick: { color: '#333', fontSize: 13 },
+
+  // Pick row — sheet-style fight card with pick badge columns on each side
+  pickRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderBottom: '1px solid #141414' },
+  pickBadgeCol: { width: 68, flexShrink: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start' },
+  fightCardCenter: { flex: 1, display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 },
+  fightCardPhoto: { width: 44, height: 54, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
+  fightCardFighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 3, minWidth: 0, flex: 1 },
+  fightCardName: { fontSize: 13, fontWeight: 700, lineHeight: 1.2 },
+  fightCardOdds: { color: '#555', fontSize: 11 },
+  fightCardVs: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 56, padding: '0 4px' },
+  vsText2: { color: '#2a2a2a', fontSize: 9, fontWeight: 800, letterSpacing: 1 },
+  fightCardWeight: { color: '#333', fontSize: 9, textAlign: 'center' as const, lineHeight: 1.3 },
+  fightCardResult: { color: '#888', fontSize: 9, fontWeight: 700, textAlign: 'center' as const, marginTop: 2 },
+
+  // Legacy — kept for ChampionPickRow which still uses them
   fightInfo: { width: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
   fightName: { color: '#555', fontSize: 11, textAlign: 'center' },
   fightWeight: { color: '#333', fontSize: 10, textAlign: 'center' },
