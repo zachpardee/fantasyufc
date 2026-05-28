@@ -1,4 +1,5 @@
 import { db } from '../config/database';
+import { redis } from '../config/redis';
 
 function toDecimalOdds(american: number): number {
   return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
@@ -140,9 +141,12 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
 
     await client.query('COMMIT');
 
-    // Refresh matchup scores outside the transaction (uses shared helper)
+    // Refresh matchup scores and invalidate standings cache for affected leagues
     await Promise.all(affectedLeagueIds.filter(Boolean).map((lid) =>
-      refreshStakingMatchupScores(lid, eventId).catch(() => {}),
+      Promise.all([
+        refreshStakingMatchupScores(lid, eventId).catch(() => {}),
+        redis.del(`standings:${lid}`).catch(() => {}),
+      ]),
     ));
   } catch (err) {
     await client.query('ROLLBACK');
