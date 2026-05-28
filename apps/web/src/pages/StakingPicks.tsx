@@ -237,6 +237,23 @@ export function StakingPicksPage() {
             ? calcPayout(parseFloat(single.stake), toDecimalOdds(selectedOdds)) : null;
           const inParlay = !!parlayLegs[fight.id];
 
+          const selectRed = () => {
+            if (locked) return;
+            setSingles((prev) => {
+              if (prev[fight.id]?.fighterId === fight.redFighterId) { const n = { ...prev }; delete n[fight.id]; return n; }
+              return { ...prev, [fight.id]: { fighterId: fight.redFighterId, stake: prev[fight.id]?.stake ?? '' } };
+            });
+            setSinglesTouched(true);
+          };
+          const selectBlue = () => {
+            if (locked) return;
+            setSingles((prev) => {
+              if (prev[fight.id]?.fighterId === fight.blueFighterId) { const n = { ...prev }; delete n[fight.id]; return n; }
+              return { ...prev, [fight.id]: { fighterId: fight.blueFighterId, stake: prev[fight.id]?.stake ?? '' } };
+            });
+            setSinglesTouched(true);
+          };
+
           return (
             <div key={fight.id} style={s.fightCard}>
               <div style={s.fightCardHeader}>
@@ -247,71 +264,26 @@ export function StakingPicksPage() {
 
               <div style={s.fighterRow}>
                 {/* Red corner */}
-                <button
-                  disabled={locked}
-                  style={{
-                    ...s.fighterBtn,
-                    ...(selectedId === fight.redFighterId ? s.fighterBtnSelected : {}),
-                  }}
-                  onClick={() => {
-                    if (locked) return;
-                    setSingles((prev) => {
-                      if (prev[fight.id]?.fighterId === fight.redFighterId) {
-                        const next = { ...prev };
-                        delete next[fight.id];
-                        return next;
-                      }
-                      return { ...prev, [fight.id]: { fighterId: fight.redFighterId, stake: prev[fight.id]?.stake ?? '' } };
-                    });
-                    setSinglesTouched(true);
-                  }}
-                >
-                  {fight.redImageUrl && (
-                    <div style={s.fighterThumb}>
-                      <img src={fight.redImageUrl} alt="" style={s.fighterImg} />
-                    </div>
-                  )}
-                  <div style={s.fighterName}>{fight.redFirstName} {fight.redLastName}</div>
-                  {redOdds != null && (
-                    <div style={{ ...s.oddsTag, color: redOdds < 0 ? '#aaa' : '#4caf50' }}>
-                      {fmtOdds(redOdds)}
-                    </div>
-                  )}
+                <button disabled={locked} style={{ ...s.fighterBtn, ...(selectedId === fight.redFighterId ? s.fighterBtnSelected : {}) }} onClick={selectRed}>
+                  {fight.redImageUrl && <img src={fight.redImageUrl} alt="" style={s.fighterImg} />}
+                  <div style={s.fighterInfo}>
+                    <span style={s.fighterName}>{fight.redFirstName} {fight.redLastName}</span>
+                    {redOdds != null && <span style={{ ...s.oddsTag, color: redOdds < 0 ? '#aaa' : '#4caf50' }}>{fmtOdds(redOdds)}</span>}
+                  </div>
                 </button>
 
-                <div style={s.vsLabel}>vs</div>
+                <div style={s.vsBlock}>
+                  <span style={s.vsLabel}>VS</span>
+                  <span style={s.vsWeight}>{fight.weightClassName}</span>
+                </div>
 
                 {/* Blue corner */}
-                <button
-                  disabled={locked}
-                  style={{
-                    ...s.fighterBtn,
-                    ...(selectedId === fight.blueFighterId ? s.fighterBtnSelected : {}),
-                  }}
-                  onClick={() => {
-                    if (locked) return;
-                    setSingles((prev) => {
-                      if (prev[fight.id]?.fighterId === fight.blueFighterId) {
-                        const next = { ...prev };
-                        delete next[fight.id];
-                        return next;
-                      }
-                      return { ...prev, [fight.id]: { fighterId: fight.blueFighterId, stake: prev[fight.id]?.stake ?? '' } };
-                    });
-                    setSinglesTouched(true);
-                  }}
-                >
-                  {fight.blueImageUrl && (
-                    <div style={s.fighterThumb}>
-                      <img src={fight.blueImageUrl} alt="" style={s.fighterImg} />
-                    </div>
-                  )}
-                  <div style={s.fighterName}>{fight.blueFirstName} {fight.blueLastName}</div>
-                  {blueOdds != null && (
-                    <div style={{ ...s.oddsTag, color: blueOdds < 0 ? '#aaa' : '#4caf50' }}>
-                      {fmtOdds(blueOdds)}
-                    </div>
-                  )}
+                <button disabled={locked} style={{ ...s.fighterBtn, ...s.fighterBtnRight, ...(selectedId === fight.blueFighterId ? s.fighterBtnSelected : {}) }} onClick={selectBlue}>
+                  <div style={{ ...s.fighterInfo, alignItems: 'flex-end' }}>
+                    <span style={s.fighterName}>{fight.blueFirstName} {fight.blueLastName}</span>
+                    {blueOdds != null && <span style={{ ...s.oddsTag, color: blueOdds < 0 ? '#aaa' : '#4caf50' }}>{fmtOdds(blueOdds)}</span>}
+                  </div>
+                  {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={s.fighterImg} />}
                 </button>
               </div>
 
@@ -554,18 +526,21 @@ const s: Record<string, React.CSSProperties> = {
   mainEventBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
   parlayTag: { background: '#ffd70022', color: '#ffd700', fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },
 
-  fighterRow: { display: 'flex', alignItems: 'stretch', gap: 8 },
+  fighterRow: { display: 'flex', alignItems: 'center', gap: 0 },
   fighterBtn: {
-    flex: 1, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8,
-    padding: '10px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 5, transition: 'border-color 0.15s',
+    flex: 1, background: 'transparent', border: '1px solid transparent', borderRadius: 8,
+    padding: '8px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'row' as const,
+    alignItems: 'center', gap: 8,
   },
-  fighterBtnSelected: { border: '1px solid #c8102e', background: '#1a0808' },
-  fighterThumb: { width: 36, height: 40, borderRadius: 4, overflow: 'hidden', background: '#222', flexShrink: 0 },
-  fighterImg: { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' },
-  fighterName: { color: '#ccc', fontSize: 12, fontWeight: 600, textAlign: 'center' },
-  oddsTag: { fontSize: 13, fontWeight: 800 },
-  vsLabel: { color: '#333', fontSize: 12, fontWeight: 700, alignSelf: 'center', flexShrink: 0 },
+  fighterBtnRight: { flexDirection: 'row-reverse' as const },
+  fighterBtnSelected: { border: '1px solid #c8102e44', background: '#1a0808' },
+  fighterInfo: { display: 'flex', flexDirection: 'column' as const, gap: 2, flex: 1, alignItems: 'flex-start' },
+  fighterImg: { width: 36, height: 44, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
+  fighterName: { color: '#ddd', fontSize: 13, fontWeight: 600, lineHeight: 1.2, textAlign: 'left' as const },
+  oddsTag: { fontSize: 11, fontWeight: 700 },
+  vsBlock: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, width: 44 },
+  vsLabel: { color: '#333', fontSize: 10, fontWeight: 800, letterSpacing: 1 },
+  vsWeight: { display: 'none' },
 
   stakeRow: { display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, padding: '10px 0 4px', borderTop: '1px solid #1a1a1a' },
   stakeInputWrap: { display: 'flex', alignItems: 'center', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 10, height: 38, minWidth: 100 },
