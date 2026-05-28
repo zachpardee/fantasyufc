@@ -520,7 +520,7 @@ const s: Record<string, React.CSSProperties> = {
   sectionTitle: { color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
   sectionSub: { color: '#333', fontSize: 12 },
 
-  fightCard: { background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, padding: '14px', marginBottom: 10 },
+  fightCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: '14px', marginBottom: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
   fightCardHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 },
   weightClass: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
   mainEventBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, letterSpacing: 0.5 },

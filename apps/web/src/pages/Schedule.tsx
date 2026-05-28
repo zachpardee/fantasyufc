@@ -175,8 +175,8 @@ const styles: Record<string, React.CSSProperties> = {
   content: { maxWidth: 700, margin: '0 auto', padding: 24 },
   empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: '40px 0' },
   eventCard: {
-    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: '16px 20px', marginBottom: 8,
+    background: '#141414', border: '1px solid #242424', borderRadius: 12,
+    padding: '16px 20px', marginBottom: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
   },
   eventCardLive: { border: '1px solid #c8102e', background: '#1a0808' },
   eventInfo: {},

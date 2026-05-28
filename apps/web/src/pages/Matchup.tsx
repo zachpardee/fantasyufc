@@ -949,7 +949,7 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
 }
 
 const sk: Record<string, React.CSSProperties> = {
-  card: { background: '#111', border: '1px solid #222', borderRadius: 10, overflow: 'hidden', marginBottom: 20 },
+  card: { background: '#141414', border: '1px solid #242424', borderRadius: 12, overflow: 'hidden', marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
   cardHeader: { background: '#0d0d0d', borderBottom: '1px solid #1e1e1e', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 },
   cardHeaderText: { color: '#444', fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' },
   fightRow: { padding: '12px 14px 10px' },
@@ -973,7 +973,7 @@ const styles: Record<string, React.CSSProperties> = {
     scrollbarWidth: 'thin', scrollbarColor: '#2a2a2a transparent',
   },
   historyChip: {
-    flexShrink: 0, background: '#1a1a1a', border: '1px solid #2a2a2a',
+    flexShrink: 0, background: '#141414', border: '1px solid #242424',
     borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 90,
   },
@@ -1038,7 +1038,7 @@ const styles: Record<string, React.CSSProperties> = {
   fightResult: { color: '#888', fontSize: 10, textAlign: 'center', marginTop: 2 },
 
   seasonSection: { padding: '0 24px 16px' },
-  seasonTable: { border: '1px solid #1e1e1e', borderRadius: 8, overflow: 'hidden' },
+  seasonTable: { border: '1px solid #242424', borderRadius: 8, overflow: 'hidden' },
   seasonHeaderRow: { display: 'flex', padding: '8px 12px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' },
   seasonRow: { display: 'flex', padding: '9px 12px', borderBottom: '1px solid #111' },
   seasonRowCurrent: { background: '#111' },

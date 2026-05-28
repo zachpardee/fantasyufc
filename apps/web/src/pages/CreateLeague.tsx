@@ -125,7 +125,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: 36, width: '100%', maxWidth: 520 },
+  card: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 36, width: '100%', maxWidth: 520, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
   header: { marginBottom: 28 },
   back: { color: '#666', fontSize: 14, textDecoration: 'none', display: 'block', marginBottom: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: 700, margin: 0 },
