@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
-import { LoadingScreen } from '../components/LoadingScreen';
+import { SkeletonLeagueHeader, SkeletonFightRow } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
@@ -211,7 +211,18 @@ export function LeagueHomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [leagueId, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!league) return <LoadingScreen />;
+  if (!league) return (
+    <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
+      <nav style={styles.nav}>
+        <Link to="/" style={styles.logoLink}><img src="/logo.jpg" alt="FFL" style={styles.logo} /></Link>
+        <Link to="/" style={styles.homeBtn}>🏠 Home</Link>
+      </nav>
+      <SkeletonLeagueHeader />
+      <div style={{ padding: '0 24px' }}>
+        {[0, 1, 2, 3, 4].map((i) => <SkeletonFightRow key={i} />)}
+      </div>
+    </div>
+  );
 
   const isCommissioner = session?.user.id === league.commissionerId;
   const canActivate = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
@@ -835,7 +846,7 @@ export function LeagueHomePage() {
             )}
             <div style={styles.sheetBody}>
               {!fightCardData ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>Loading...</div>
+                <div style={{ paddingTop: 8 }}>{[0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)}</div>
               ) : fightCardData.fights.length === 0 ? (
                 <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No fight card available yet</div>
               ) : (() => {

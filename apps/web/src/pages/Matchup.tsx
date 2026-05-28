@@ -6,6 +6,7 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
+import { SkeletonFightRow } from '../components/LoadingScreen';
 
 const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -80,13 +81,13 @@ export function MatchupPage() {
     },
   });
 
-  const { data: homePicks } = useQuery<any>({
+  const { data: homePicks, isLoading: homePicksLoading } = useQuery<any>({
     queryKey: ['matchup-picks-home', leagueId, matchup?.eventId, matchup?.homeTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}?memberId=${matchup!.homeTeamId}`),
     enabled: !!matchup?.eventId && !!matchup?.homeTeamId,
   });
 
-  const { data: awayPicks } = useQuery<any>({
+  const { data: awayPicks, isLoading: awayPicksLoading } = useQuery<any>({
     queryKey: ['matchup-picks-away', leagueId, matchup?.eventId, matchup?.awayTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup!.eventId}?memberId=${matchup!.awayTeamId}`),
     enabled: !!matchup?.eventId && !!matchup?.awayTeamId,
@@ -292,20 +293,26 @@ export function MatchupPage() {
           })()}
 
           {/* Picks (pick'em leagues) */}
-          {!isStaking && fights.length > 0 && (
+          {!isStaking && (homePicksLoading || fights.length > 0) && (
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <span style={styles.sectionTitle}>PICKS</span>
                 {homePicks?.locked && <span style={styles.lockedTag}>LOCKED</span>}
               </div>
-              <div style={styles.picksHeaderRow}>
-                <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
-                <div style={styles.fightInfoHeader}>FIGHT</div>
-                <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
-              </div>
-              {fights.map((fight) => (
-                <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} onPhotoClick={openPhoto} />
-              ))}
+              {homePicksLoading || awayPicksLoading ? (
+                [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
+              ) : (
+                <>
+                  <div style={styles.picksHeaderRow}>
+                    <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
+                    <div style={styles.fightInfoHeader}>FIGHT</div>
+                    <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
+                  </div>
+                  {fights.map((fight) => (
+                    <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} onPhotoClick={openPhoto} />
+                  ))}
+                </>
+              )}
               {(homeChampion || awayChampion) && (
                 <ChampionPickRow homeChampion={homeChampion} awayChampion={awayChampion} locked={homePicks?.locked} onPhotoClick={openPhoto} />
               )}

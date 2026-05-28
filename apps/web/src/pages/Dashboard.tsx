@@ -6,6 +6,7 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, UFCEvent, Fighter } from '@fantasy-ufc/shared';
+import { SkeletonEventCard, SkeletonLeagueCard } from '../components/LoadingScreen';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -19,12 +20,12 @@ export function DashboardPage() {
   const [fighterWeightClass, setFighterWeightClass] = useState('');
   const [zoomedFighter, setZoomedFighter] = useState<{ name: string; imageUrl: string } | null>(null);
 
-  const { data: leagues = [], refetch: refetchLeagues } = useQuery<League[]>({
+  const { data: leagues = [], isLoading: leaguesLoading, refetch: refetchLeagues } = useQuery<League[]>({
     queryKey: ['leagues'],
     queryFn: () => apiClient.get('/leagues'),
   });
 
-  const { data: events = [] } = useQuery<UFCEvent[]>({
+  const { data: events = [], isLoading: eventsLoading } = useQuery<UFCEvent[]>({
     queryKey: ['events'],
     queryFn: () => apiClient.get('/events'),
   });
@@ -66,7 +67,9 @@ export function DashboardPage() {
       </nav>
 
       <div style={{ ...styles.content, ...(isMobile ? styles.contentMobile : {}) }}>
-        {nextEvent && (
+        {eventsLoading ? (
+          <SkeletonEventCard />
+        ) : nextEvent ? (
           <div style={styles.eventCard}>
             <span style={styles.eventLabel}>NEXT EVENT</span>
             {nextEvent.status === 'live' && <span style={styles.liveBadge}>LIVE</span>}
@@ -77,7 +80,7 @@ export function DashboardPage() {
               })}
             </p>
           </div>
-        )}
+        ) : null}
 
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
@@ -98,15 +101,17 @@ export function DashboardPage() {
           )}
 
           <div style={{ ...styles.leagueGrid, ...(isMobile ? styles.leagueGridMobile : {}) }}>
-            {leagues?.map((league) => (
-              <Link key={league.id} to={`/league/${league.id}`} style={styles.leagueCard}>
-                <h3 style={styles.leagueName}>{league.name}</h3>
-                <p style={styles.leagueMeta}>{league.memberCount} teams</p>
-                <span style={{ ...styles.status, ...(league.status === 'active' ? styles.statusActive : styles.statusSetup) }}>
-                  {league.status}
-                </span>
-              </Link>
-            ))}
+            {leaguesLoading
+              ? [0, 1, 2].map((i) => <SkeletonLeagueCard key={i} />)
+              : leagues.map((league) => (
+                <Link key={league.id} to={`/league/${league.id}`} style={styles.leagueCard}>
+                  <h3 style={styles.leagueName}>{league.name}</h3>
+                  <p style={styles.leagueMeta}>{league.memberCount} teams</p>
+                  <span style={{ ...styles.status, ...(league.status === 'active' ? styles.statusActive : styles.statusSetup) }}>
+                    {league.status}
+                  </span>
+                </Link>
+              ))}
           </div>
         </div>
 
