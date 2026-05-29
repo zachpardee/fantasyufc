@@ -846,7 +846,9 @@ export function LeagueHomePage() {
               </div>
             )}
             <div style={styles.sheetBody}>
-              {!fightCardData ? (
+              {currentEvent === null ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No upcoming event</div>
+              ) : !fightCardData ? (
                 <div style={{ paddingTop: 8 }}>{[0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)}</div>
               ) : fightCardData.fights.length === 0 ? (
                 <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No fight card available yet</div>

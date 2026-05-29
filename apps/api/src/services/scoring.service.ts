@@ -261,14 +261,14 @@ export async function processFightResult(fightResultId: string) {
       }
     }
 
-    // Recalculate matchup scores from picks (includes sweep bonus for 4/5/6 correct)
+    // Recalculate matchup scores from picks (includes sweep bonus for 8/9/10 correct)
     for (const matchup of eventMatchups) {
       await client.query(`
         UPDATE matchups SET
           home_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
-                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
+                WHEN 10 THEN 20 WHEN 9 THEN 10 WHEN 8 THEN 5 ELSE 0
               END +
               COALESCE((
                 SELECT ecp.points_earned FROM event_champion_picks ecp
@@ -280,13 +280,13 @@ export async function processFightResult(fightResultId: string) {
               AND ep.fight_id IN (
                 SELECT id FROM fights WHERE event_id = $3
                 ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-                LIMIT 6
+                LIMIT 10
               )
           ),
           away_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
-                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
+                WHEN 10 THEN 20 WHEN 9 THEN 10 WHEN 8 THEN 5 ELSE 0
               END +
               COALESCE((
                 SELECT ecp.points_earned FROM event_champion_picks ecp
@@ -298,7 +298,7 @@ export async function processFightResult(fightResultId: string) {
               AND ep.fight_id IN (
                 SELECT id FROM fights WHERE event_id = $3
                 ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-                LIMIT 6
+                LIMIT 10
               )
           )
         WHERE id = $1

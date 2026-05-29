@@ -2,6 +2,31 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 
+function nextHolidayTarget(after: Date): Date {
+  const y = after.getFullYear();
+  const candidates = [
+    new Date(Date.UTC(y,     0, 1)),
+    new Date(Date.UTC(y,     6, 4)),
+    new Date(Date.UTC(y + 1, 0, 1)),
+    new Date(Date.UTC(y + 1, 6, 4)),
+  ].filter((d) => d > after);
+  return candidates.sort((a, b) => a.getTime() - b.getTime())[0];
+}
+
+function getPlayoffHint(months: number): string {
+  const end = new Date();
+  end.setMonth(end.getMonth() + months);
+  const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (months === 6) {
+    const holiday = nextHolidayTarget(end);
+    const holidayStr = holiday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `Season runs until ~${endStr}. Finals target the UFC event nearest ${holidayStr}; semis are the event just before it.`;
+  }
+
+  return `Season runs until ~${endStr}. Playoffs are the next 2 UFC events after the season ends (semis + finals).`;
+}
+
 export function CreateLeaguePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -10,7 +35,7 @@ export function CreateLeaguePage() {
     name: '',
     teamName: '',
     maxTeams: '10',
-    seasonLengthMonths: '4',
+    seasonLengthMonths: '6',
     leagueFormat: 'pickem' as 'pickem' | 'staking',
     weeklyBudget: '100' as '100' | '500',
   });
@@ -100,7 +125,7 @@ export function CreateLeaguePage() {
           )}
 
           <div style={styles.hint}>
-            Season runs from start date for the selected duration. The next 2 UFC events after the season ends become the playoffs (semis + finals).
+            {getPlayoffHint(parseInt(form.seasonLengthMonths))}
           </div>
 
           {error && <p style={styles.error}>{error}</p>}

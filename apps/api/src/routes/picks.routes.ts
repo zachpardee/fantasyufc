@@ -70,7 +70,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $3
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
-      LIMIT 6
+      LIMIT 10
     `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     const { rows: [event] } = await db.query(
@@ -107,15 +107,15 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
       throw new AppError(400, 'Picks are locked — event has already started');
     }
 
-    // Only the top-6 fights are pickable
+    // Only the top-10 fights are pickable
     const { rows: eligibleFights } = await db.query(`
       SELECT id FROM fights WHERE event_id = $1
       ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-      LIMIT 6
+      LIMIT 10
     `, [req.params.eventId]);
     const eligibleIds = new Set(eligibleFights.map((f) => f.id));
     if (picks.some((p) => !eligibleIds.has(p.fightId))) {
-      throw new AppError(400, 'Pick includes a fight not in the top 6 for this event');
+      throw new AppError(400, 'Pick includes a fight not in the top 10 for this event');
     }
 
     for (const pick of picks) {
@@ -186,17 +186,17 @@ picksRouter.put('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
       throw new AppError(400, 'Champion pick is locked — event has already started');
     }
 
-    // Fighter must be in one of the top-6 fights for this event
+    // Fighter must be in one of the top-10 fights for this event
     const { rows: [fight] } = await db.query(`
       SELECT id FROM fights
       WHERE event_id = $1 AND (red_fighter_id = $2 OR blue_fighter_id = $2)
         AND id IN (
           SELECT id FROM fights WHERE event_id = $1
           ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-          LIMIT 6
+          LIMIT 10
         )
     `, [req.params.eventId, fighterId]);
-    if (!fight) throw new AppError(400, 'Fighter is not in the top-6 fights for this event');
+    if (!fight) throw new AppError(400, 'Fighter is not in the top-10 fights for this event');
 
     await db.query(`
       INSERT INTO event_champion_picks (league_id, member_id, event_id, fighter_id, fight_id)
@@ -248,7 +248,7 @@ picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $1
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
-      LIMIT 6
+      LIMIT 10
     `, [req.params.eventId]);
 
     const { rows: allPicks } = await db.query(`

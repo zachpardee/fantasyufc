@@ -34,6 +34,7 @@ export default function FighterBrowserScreen() {
       <FlatList
         data={fighters ?? []}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}

@@ -120,7 +120,7 @@ export default function PicksScreen() {
   ]);
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
+    <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerLeft}>
@@ -419,8 +419,8 @@ const s = StyleSheet.create({
     backgroundColor: '#111', borderWidth: 1, borderColor: '#1e1e1e',
     borderRadius: 10, padding: 14, margin: 12, marginBottom: 0,
   },
-  titleTag: { color: '#ffd700', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
-  fightMeta: { color: '#555', fontSize: 11, marginBottom: 10 },
+  titleTag: { color: '#ffd700', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  fightMeta: { color: '#555', fontSize: 12, marginBottom: 10 },
   matchup: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   vsText: { color: '#333', fontWeight: '700', fontSize: 12, alignSelf: 'center' },
   fighterBtn: {
@@ -428,16 +428,16 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', minHeight: 60,
   },
   fighterBtnName: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  pickedTag: { color: '#c8102e', fontSize: 9, fontWeight: '800', marginTop: 4, letterSpacing: 0.5 },
+  pickedTag: { color: '#c8102e', fontSize: 11, fontWeight: '800', marginTop: 4, letterSpacing: 0.5 },
   pickResult: { color: '#4caf50', fontSize: 11, fontWeight: '700', marginTop: 4 },
   methodRow: { flexDirection: 'row', gap: 6, marginTop: 12, justifyContent: 'center' },
   methodBtn: {
-    flex: 1, paddingVertical: 6,
+    flex: 1, paddingVertical: 10,
     borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 5,
     backgroundColor: '#1a1a1a', alignItems: 'center',
   },
   methodBtnSelected: { borderColor: '#c8102e', backgroundColor: '#1a0a0a' },
-  methodBtnText: { color: '#666', fontSize: 11, fontWeight: '700' },
+  methodBtnText: { color: '#666', fontSize: 12, fontWeight: '700' },
   methodBtnTextSelected: { color: '#c8102e' },
   resultOutcome: { color: '#555', fontSize: 11, textAlign: 'center', marginTop: 10 },
   champSection: { margin: 12, marginTop: 16, backgroundColor: '#111', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#2a2000' },
@@ -452,7 +452,7 @@ const s = StyleSheet.create({
   champFighterBtnSelected: { borderColor: '#ffd700', backgroundColor: '#1a1600' },
   champFighterName: { fontSize: 11, fontWeight: '700', textAlign: 'center', lineHeight: 15 },
   champFighterNameSelected: { color: '#ffd700' },
-  champSelectedTag: { color: '#ffd700', fontSize: 10, fontWeight: '800', marginTop: 2 },
+  champSelectedTag: { color: '#ffd700', fontSize: 11, fontWeight: '800', marginTop: 2 },
   champSummaryCard: {
     margin: 12, marginTop: 8, backgroundColor: '#111',
     borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#2a2000',

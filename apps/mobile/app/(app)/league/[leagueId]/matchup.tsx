@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   team: { flex: 1 },
   awayTeam: { alignItems: 'flex-end' },
   teamName: { color: '#999', fontSize: 13, marginBottom: 4 },
-  totalScore: { fontSize: 48, fontWeight: 'bold', color: '#fff' },
+  totalScore: { fontSize: 36, fontWeight: 'bold', color: '#fff' },
   vs: { color: '#555', fontWeight: '700', paddingHorizontal: 16, fontSize: 16 },
   eventBadge: {
     flexDirection: 'row', alignItems: 'center', padding: 16,

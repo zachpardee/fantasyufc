@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   nameActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   cancelText: { color: '#666', fontSize: 13 },
-  saveBtn: { backgroundColor: '#c8102e', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 5 },
+  saveBtn: { backgroundColor: '#c8102e', borderRadius: 6, paddingHorizontal: 16, paddingVertical: 10 },
   disabledBtn: { opacity: 0.5 },
   saveText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 

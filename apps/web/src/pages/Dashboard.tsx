@@ -6,7 +6,8 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, UFCEvent, Fighter } from '@fantasy-ufc/shared';
-import { SkeletonEventCard, SkeletonLeagueCard } from '../components/LoadingScreen';
+import { SkeletonEventCard, SkeletonLeagueCard, SkeletonFightRow } from '../components/LoadingScreen';
+import { FighterPhoto } from '../components/FighterPhoto';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export function DashboardPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [showFightCard, setShowFightCard] = useState(false);
   const [showFighters, setShowFighters] = useState(false);
   const [fighterSearch, setFighterSearch] = useState('');
   const [fighterWeightClass, setFighterWeightClass] = useState('');
@@ -45,6 +47,13 @@ export function DashboardPage() {
 
   const nextEvent = events?.find((e) => e.status === 'live') ?? events?.find((e) => e.status === 'scheduled');
 
+  const { data: fightCardFights } = useQuery<any[]>({
+    queryKey: ['event-fights', nextEvent?.id],
+    queryFn: () => apiClient.get(`/events/${nextEvent!.id}/fights`),
+    enabled: showFightCard && !!nextEvent?.id,
+    staleTime: 60_000,
+  });
+
   async function joinLeague() {
     await apiClient.post('/leagues/join', { inviteCode, teamName });
     setShowJoin(false);
@@ -70,7 +79,7 @@ export function DashboardPage() {
         {eventsLoading ? (
           <SkeletonEventCard />
         ) : nextEvent ? (
-          <div style={styles.eventCard}>
+          <div style={{ ...styles.eventCard, cursor: 'pointer' }} onClick={() => setShowFightCard(true)}>
             <span style={styles.eventLabel}>NEXT EVENT</span>
             {nextEvent.status === 'live' && <span style={styles.liveBadge}>LIVE</span>}
             <h2 style={styles.eventName}>{nextEvent.name}</h2>
@@ -79,6 +88,12 @@ export function DashboardPage() {
                 weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
               })}
             </p>
+            {(nextEvent.venue || nextEvent.location) && (
+              <p style={styles.eventLocation}>
+                {[nextEvent.venue, nextEvent.location].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            <span style={styles.viewCardHint}>View fight card ›</span>
           </div>
         ) : null}
 
@@ -180,6 +195,59 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {showFightCard && (
+        <div style={styles.sheetOverlay} onClick={() => setShowFightCard(false)}>
+          <div style={styles.bottomSheet} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.sheetHandle} />
+            <div style={styles.sheetHeader}>
+              <span style={styles.sheetTitle}>{nextEvent?.name ?? 'Fight Card'}</span>
+              <button style={styles.sheetClose} onClick={() => setShowFightCard(false)}>✕</button>
+            </div>
+            {nextEvent && (
+              <div style={styles.sheetSubtitle}>
+                {new Date(nextEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+            <div style={styles.sheetBody}>
+              {!fightCardFights ? (
+                <div style={{ paddingTop: 8 }}>{[0,1,2,3,4,5].map((i) => <SkeletonFightRow key={i} />)}</div>
+              ) : fightCardFights.length === 0 ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No fight card available yet</div>
+              ) : (['main', 'prelims', 'early_prelims'] as const).map((seg) => {
+                const fights = fightCardFights.filter((f) => f.cardSegment === seg);
+                if (!fights.length) return null;
+                const segLabel: Record<string, string> = { main: 'Main Card', prelims: 'Prelims', early_prelims: 'Early Prelims' };
+                return (
+                  <div key={seg}>
+                    <div style={styles.cardSegmentLabel}>{segLabel[seg]}</div>
+                    {fights.map((f) => (
+                      <div key={f.id} style={styles.fightRow}>
+                        <div style={styles.fightRowFighter}>
+                          <FighterPhoto imageUrl={f.redImageUrl} name={`${f.redFirstName} ${f.redLastName}`} style={styles.fightRowImg} />
+                          <div style={styles.fightRowInfo}>
+                            <span style={styles.fightRowName}>{f.redFirstName} {f.redLastName}</span>
+                          </div>
+                        </div>
+                        <div style={styles.fightRowCenter}>
+                          <span style={styles.fightRowVs}>VS</span>
+                          <span style={styles.fightRowWeight}>{f.weightClassName}</span>
+                        </div>
+                        <div style={{ ...styles.fightRowFighter, flexDirection: 'row-reverse', textAlign: 'right' as const }}>
+                          <FighterPhoto imageUrl={f.blueImageUrl} name={`${f.blueFirstName} ${f.blueLastName}`} style={styles.fightRowImg} />
+                          <div style={{ ...styles.fightRowInfo, alignItems: 'flex-end' }}>
+                            <span style={styles.fightRowName}>{f.blueFirstName} {f.blueLastName}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {zoomedFighter && (
         <div style={styles.modalBackdrop} onClick={() => setZoomedFighter(null)}>
           <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
@@ -221,6 +289,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   eventName: { color: '#fff', fontSize: 24, marginTop: 8, marginBottom: 6 },
   eventDate: { color: '#888', fontSize: 14 },
+  eventLocation: { color: '#666', fontSize: 13, marginTop: 2 },
   section: {},
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 700 },
@@ -255,6 +324,24 @@ const styles: Record<string, React.CSSProperties> = {
   division: { color: '#888', fontSize: 14 },
   record: { color: '#aaa', fontSize: 14, fontFamily: 'monospace' },
   avgPts: { color: '#c8102e', fontWeight: 700, fontSize: 14 },
+  viewCardHint: { color: '#555', fontSize: 12, marginTop: 8, display: 'block' },
+  sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' },
+  bottomSheet: { background: '#111', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 600, maxHeight: '85vh', display: 'flex', flexDirection: 'column', border: '1px solid #222', borderBottom: 'none' },
+  sheetHandle: { width: 36, height: 4, background: '#333', borderRadius: 2, margin: '12px auto 0' },
+  sheetHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 8px' },
+  sheetTitle: { color: '#fff', fontWeight: 700, fontSize: 16 },
+  sheetClose: { background: 'transparent', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer', padding: 4 },
+  sheetSubtitle: { color: '#555', fontSize: 13, padding: '0 20px 12px', borderBottom: '1px solid #1e1e1e' },
+  sheetBody: { overflowY: 'auto', padding: '0 16px 24px', flex: 1 },
+  cardSegmentLabel: { color: '#555', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', padding: '16px 0 8px' },
+  fightRow: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #1a1a1a' },
+  fightRowFighter: { flex: 1, display: 'flex', alignItems: 'center', gap: 10 },
+  fightRowImg: { width: 44, height: 54, borderRadius: 4, objectFit: 'cover', objectPosition: 'top center', flexShrink: 0 },
+  fightRowInfo: { display: 'flex', flexDirection: 'column', gap: 2 },
+  fightRowName: { color: '#ddd', fontSize: 14, fontWeight: 600 },
+  fightRowCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 64, padding: '0 8px' },
+  fightRowVs: { color: '#555', fontSize: 11, fontWeight: 700 },
+  fightRowWeight: { color: '#444', fontSize: 10, textAlign: 'center', marginTop: 2 },
   modalBackdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modalBox: { position: 'relative', background: '#111', borderRadius: 12, overflow: 'hidden', maxWidth: 320, width: '90%' },
   modalImgWrap: { width: '100%', height: 380, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' },

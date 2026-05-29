@@ -294,7 +294,7 @@ export function MatchupPage() {
           })()}
 
           {/* Picks (pick'em leagues) */}
-          {!isStaking && (homePicksLoading || fights.length > 0) && (
+          {!isStaking && !!matchup?.eventId && (
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <span style={styles.sectionTitle}>PICKS</span>
@@ -302,6 +302,8 @@ export function MatchupPage() {
               </div>
               {homePicksLoading || awayPicksLoading ? (
                 [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
+              ) : fights.length === 0 ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '24px 0', fontSize: 13 }}>No fights scheduled yet</div>
               ) : (
                 <>
                   <div style={styles.picksHeaderRow}>

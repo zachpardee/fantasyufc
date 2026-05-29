@@ -75,6 +75,7 @@ export default function DraftScreen() {
       <FlatList
         data={draftState.availableFighters}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.fighterRow}
