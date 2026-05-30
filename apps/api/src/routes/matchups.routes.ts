@@ -16,10 +16,16 @@ matchupsRouter.get('/season-events', requireAuth, async (req: AuthRequest, res, 
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     const { rows } = await db.query(`
-      SELECT e.id as event_id, e.name as event_name, e.scheduled_at, e.status as event_status
+      SELECT DISTINCT e.id as event_id, e.name as event_name, e.scheduled_at, e.status as event_status
       FROM ufc_events e
-      JOIN league_events le ON le.event_id = e.id
-      WHERE le.league_id = $1
+      LEFT JOIN league_events le ON le.event_id = e.id AND le.league_id = $1
+      LEFT JOIN leagues l ON l.id = $1
+      WHERE le.league_id IS NOT NULL
+         OR (
+           l.status IN ('active', 'playoffs')
+           AND e.status IN ('scheduled', 'live')
+           AND e.scheduled_at <= COALESCE(l.season_ends_at + INTERVAL '90 days', NOW() + INTERVAL '1 year')
+         )
       ORDER BY e.scheduled_at DESC
     `, [req.params.leagueId]);
     res.json(rows);
