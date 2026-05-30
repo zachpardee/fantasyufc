@@ -37,7 +37,7 @@ export function CreateLeaguePage() {
     maxTeams: '10',
     seasonLengthMonths: '6',
     leagueFormat: 'pickem' as 'pickem' | 'staking',
-    weeklyBudget: '100' as '100' | '500',
+    weeklyBudget: '100' as '50' | '100' | '500',
   });
 
   function set(field: string, value: string) {
@@ -117,7 +117,8 @@ export function CreateLeaguePage() {
 
           {form.leagueFormat === 'staking' && (
             <Field label="Weekly Budget">
-              <select style={styles.input} value={form.weeklyBudget} onChange={(e) => set('weeklyBudget', e.target.value as '100' | '500')}>
+              <select style={styles.input} value={form.weeklyBudget} onChange={(e) => set('weeklyBudget', e.target.value as '50' | '100' | '500')}>
+                <option value="50">$50 / week</option>
                 <option value="100">$100 / week</option>
                 <option value="500">$500 / week</option>
               </select>
