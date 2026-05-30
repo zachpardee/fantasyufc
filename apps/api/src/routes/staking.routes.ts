@@ -87,7 +87,7 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       LEFT JOIN fight_results fres ON fres.fight_id = f.id
       WHERE f.event_id = $1 AND f.card_segment IN ('main', 'prelims')
       ORDER BY f.is_main_event DESC, f.bout_order DESC
-      LIMIT 10
+      LIMIT 6
     `, [eventId]);
 
     res.json({
@@ -140,7 +140,7 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
         FROM fights
         WHERE event_id = $1 AND card_segment IN ('main', 'prelims')
         ORDER BY is_main_event DESC, bout_order DESC
-        LIMIT 10
+        LIMIT 6
       `, [eventId]);
 
       const fightMap = new Map(fights.map((f: any) => [f.id, f]));

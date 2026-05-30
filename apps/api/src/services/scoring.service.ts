@@ -268,7 +268,7 @@ export async function processFightResult(fightResultId: string) {
           home_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
-                WHEN 10 THEN 20 WHEN 9 THEN 10 WHEN 8 THEN 5 ELSE 0
+                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
               END +
               COALESCE((
                 SELECT ecp.points_earned FROM event_champion_picks ecp
@@ -280,13 +280,13 @@ export async function processFightResult(fightResultId: string) {
               AND ep.fight_id IN (
                 SELECT id FROM fights WHERE event_id = $3
                 ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-                LIMIT 10
+                LIMIT 6
               )
           ),
           away_score = (
             SELECT COALESCE(SUM(ep.points_earned), 0) +
               CASE (COUNT(CASE WHEN ep.is_correct = true THEN 1 END))::int
-                WHEN 10 THEN 20 WHEN 9 THEN 10 WHEN 8 THEN 5 ELSE 0
+                WHEN 6 THEN 20 WHEN 5 THEN 10 WHEN 4 THEN 5 ELSE 0
               END +
               COALESCE((
                 SELECT ecp.points_earned FROM event_champion_picks ecp
@@ -298,7 +298,7 @@ export async function processFightResult(fightResultId: string) {
               AND ep.fight_id IN (
                 SELECT id FROM fights WHERE event_id = $3
                 ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-                LIMIT 10
+                LIMIT 6
               )
           )
         WHERE id = $1

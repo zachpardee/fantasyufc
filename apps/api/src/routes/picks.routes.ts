@@ -70,7 +70,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $3
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
-      LIMIT 10
+      LIMIT 6
     `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     const { rows: [event] } = await db.query(
@@ -111,7 +111,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     const { rows: eligibleFights } = await db.query(`
       SELECT id FROM fights WHERE event_id = $1
       ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-      LIMIT 10
+      LIMIT 6
     `, [req.params.eventId]);
     const eligibleIds = new Set(eligibleFights.map((f) => f.id));
     if (picks.some((p) => !eligibleIds.has(p.fightId))) {
@@ -193,7 +193,7 @@ picksRouter.put('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
         AND id IN (
           SELECT id FROM fights WHERE event_id = $1
           ORDER BY is_main_event DESC, is_co_main DESC, bout_order DESC, id DESC
-          LIMIT 10
+          LIMIT 6
         )
     `, [req.params.eventId, fighterId]);
     if (!fight) throw new AppError(400, 'Fighter is not in the top-10 fights for this event');
@@ -248,7 +248,7 @@ picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $1
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
-      LIMIT 10
+      LIMIT 6
     `, [req.params.eventId]);
 
     const { rows: allPicks } = await db.query(`
