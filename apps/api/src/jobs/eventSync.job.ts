@@ -71,15 +71,15 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
 
     // ESPN sometimes returns different event IDs for the same real event depending on the
     // query date. Guard against duplicates by checking if another non-cancelled event
-    // already exists on the same calendar date before inserting.
-    const scheduledDate = event.scheduledAt.slice(0, 10); // YYYY-MM-DD
+    // already exists within 24 hours before inserting (UFC cards span midnight UTC).
     const { rows: [existingByDate] } = await client.query(`
       SELECT id FROM ufc_events
-      WHERE DATE(scheduled_at AT TIME ZONE 'UTC') = $1::date
+      WHERE scheduled_at BETWEEN ($1::timestamptz - INTERVAL '24 hours')
+                              AND ($1::timestamptz + INTERVAL '24 hours')
         AND ufc_event_id != $2
         AND status != 'cancelled'
       LIMIT 1
-    `, [scheduledDate, event.espnEventId]);
+    `, [event.scheduledAt, event.espnEventId]);
 
     if (existingByDate) {
       await client.query('COMMIT');

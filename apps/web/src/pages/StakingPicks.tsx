@@ -56,6 +56,11 @@ export function StakingPicksPage() {
     enabled: !!currentEvent?.id,
   });
 
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
+
   const { data: allSeasonEvents = [] } = useQuery<any[]>({
     queryKey: ['season-events', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/season-events`),
@@ -298,6 +303,8 @@ export function StakingPicksPage() {
             const hasScore = myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
             const isCurrentEvent = ev.eventId === currentEvent?.id;
             const isLiveEvent = ev.eventStatus === 'live';
+            const isSemis = ev.eventId === league?.playoffSemisEventId;
+            const isFinals = ev.eventId === league?.playoffFinalsEventId;
             const eventShort = ev.eventName
               ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
               .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
@@ -318,6 +325,8 @@ export function StakingPicksPage() {
                   : isCurrentEvent
                     ? <span style={s.chipNextBadge}>NEXT</span>
                     : null}
+                {isFinals && <span style={s.chipFinalsBadge}>FINALS</span>}
+                {isSemis && <span style={s.chipSemisBadge}>SEMIS</span>}
                 <span style={s.chipEvent}>{eventShort}</span>
                 {dateStr && <span style={s.chipDate}>{dateStr}</span>}
                 {myM ? (
@@ -960,6 +969,8 @@ const s: Record<string, React.CSSProperties> = {
   historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
   historyChipLive: { border: '1px solid #c8102e', background: '#1a0808' },
   historyChipNoMatchup: { opacity: 0.4 },
+  chipFinalsBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' as const },
+  chipSemisBadge: { color: '#ff8c42', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' as const },
   chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
