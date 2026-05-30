@@ -153,6 +153,13 @@ export function LeagueRulesPage() {
             <Row label="Wrong pick" value="—" />
           </Section>
 
+          <Section title="Event Champion">
+            <Row label="What it is" value="Pick one fighter as your event champion" />
+            <Row label="Correct pick" value="+30 pts added to your matchup total" />
+            <Row label="Wrong pick" value="—" />
+            <Row label="Deadline" value="10 min before prelims begin" />
+          </Section>
+
           <Section title="Sweep Bonus">
             <Row label="4 correct picks" value="+5 pts" />
             <Row label="5 correct picks" value="+10 pts" />
