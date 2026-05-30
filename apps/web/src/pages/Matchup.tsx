@@ -184,9 +184,7 @@ export function MatchupPage() {
             const isWin = myM?.winnerId && myM.winnerId === myMember?.id;
             const isLoss = myM?.winnerId && myM.winnerId !== myMember?.id;
             const hasScore = myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
-            const isActive = selectedMatchupId
-              ? myM?.id === selectedMatchupId
-              : ev.eventId === mostRecentMyMatchup?.eventId;
+            const isActive = !!selectedMatchupId && myM?.id === selectedMatchupId;
             const eventShort = ev.eventName
               ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
               .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
