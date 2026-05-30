@@ -310,21 +310,19 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
     let finalsEventId: string;
 
     if (league.season_length_months === 6) {
-      // For 6-month seasons, target the UFC event nearest July 4th or Jan 1st after the season ends
+      // For 6-month seasons, target the UFC event nearest July 4th or Jan 1st after the season ends.
+      // No hard window — pick whatever event is closest to the target holiday.
       const finalsTarget = nextHolidayTarget(seasonEndsAt);
-      const windowMs = 21 * 24 * 60 * 60 * 1000; // ±21 days
-      const windowStart = new Date(finalsTarget.getTime() - windowMs);
-      const windowEnd = new Date(finalsTarget.getTime() + windowMs);
 
       const { rows: [targetEvent] } = await db.query(`
         SELECT id FROM ufc_events
-        WHERE scheduled_at BETWEEN $1 AND $2 AND status != 'cancelled'
-        ORDER BY ABS(EXTRACT(EPOCH FROM (scheduled_at - $3::timestamptz))) ASC
+        WHERE scheduled_at > $1 AND status != 'cancelled'
+        ORDER BY ABS(EXTRACT(EPOCH FROM (scheduled_at - $2::timestamptz))) ASC
         LIMIT 1
-      `, [windowStart.toISOString(), windowEnd.toISOString(), finalsTarget.toISOString()]);
+      `, [seasonEndsAt.toISOString(), finalsTarget.toISOString()]);
 
       if (targetEvent) {
-        // Semis = closest event before the finals target
+        // Semis = most recent event after season end and before the finals
         const { rows: [semisCandidate] } = await db.query(`
           SELECT id FROM ufc_events
           WHERE scheduled_at > $1 AND scheduled_at < (SELECT scheduled_at FROM ufc_events WHERE id = $2)
