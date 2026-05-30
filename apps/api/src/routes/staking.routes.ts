@@ -172,27 +172,27 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
         if (odds == null) throw new AppError(400, `No odds for fight ${bet.fightId}`);
       }
 
-      // Parlay stake counts against this week's budget
+      // Budget check: existing pending + new bets + pending parlay
       const { rows: [existingParlay] } = await client.query(
         `SELECT stake FROM staking_parlays WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
-      const parlayStake = existingParlay ? parseFloat(existingParlay.stake) : 0;
-
-      const weeklyBudget = parseFloat(member.weekly_budget ?? 100);
-      const newSinglesTotal = body.bets.reduce((s, b) => s + b.stake, 0);
-      const totalCommitted = newSinglesTotal + parlayStake;
-
-      if (totalCommitted > weeklyBudget + 0.001) {
-        throw new AppError(400, `Exceeds weekly budget of $${weeklyBudget}. Already allocated $${parlayStake.toFixed(2)} to parlay.`);
-      }
-
-      // Replace pending singles (no balance adjustment — budget is per-event, not from balance)
-      await client.query(
-        `DELETE FROM staking_singles WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
+      const { rows: [existingSinglesAgg] } = await client.query(
+        `SELECT COALESCE(SUM(stake), 0) AS total FROM staking_singles WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
+      const parlayStake = existingParlay ? parseFloat(existingParlay.stake) : 0;
+      const existingSinglesTotal = parseFloat(existingSinglesAgg.total);
+      const weeklyBudget = parseFloat(member.weekly_budget ?? 100);
+      const newSinglesTotal = body.bets.reduce((s, b) => s + b.stake, 0);
+      const totalCommitted = existingSinglesTotal + newSinglesTotal + parlayStake;
 
+      if (totalCommitted > weeklyBudget + 0.001) {
+        const remaining = Math.max(0, weeklyBudget - existingSinglesTotal - parlayStake);
+        throw new AppError(400, `Exceeds weekly budget. $${remaining.toFixed(2)} remaining.`);
+      }
+
+      // Append new singles — never delete existing ones
       const newRows: any[] = [];
       for (const bet of body.bets) {
         const fight = fightMap.get(bet.fightId)!;

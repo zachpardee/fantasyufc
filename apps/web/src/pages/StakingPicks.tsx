@@ -127,7 +127,15 @@ export function StakingPicksPage() {
         .filter((b) => b.fighterId && !isNaN(b.stake) && b.stake > 0);
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent!.id}/singles`, { bets });
     },
-    onSuccess: () => { setSinglesTouched(false); setSaveError(''); refetchBets(); qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] }); },
+    onSuccess: () => {
+      setSingles([]);
+      setParlayLegs({});
+      setSinglesTouched(false);
+      setParlayTouched(false);
+      setSaveError('');
+      refetchBets();
+      qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
+    },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save bets'),
   });
 
@@ -694,6 +702,12 @@ function SavedBetsPanel({ betsData }: { betsData: any }) {
   );
 }
 
+function fmtTs(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 function SavedSingleRow({ bet }: { bet: any }) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds ?? null;
@@ -708,6 +722,7 @@ function SavedSingleRow({ bet }: { bet: any }) {
         {odds != null && (
           <div style={{ ...sv.betOdds, color: odds < 0 ? '#888' : '#4caf50' }}>{fmtOdds(odds)}</div>
         )}
+        <div style={sv.betTs}>{fmtTs(bet.createdAt)}</div>
       </div>
       <div style={sv.betRight}>
         <div style={sv.betStake}>{fmtMoney(stake)}</div>
@@ -751,6 +766,7 @@ function SavedParlayRow({ parlay }: { parlay: any }) {
           }
         </div>
       </div>
+      <div style={sv.betTs}>{fmtTs(parlay.createdAt)}</div>
       {legs.length > 0 && (
         <>
           <button style={sv.toggleLegsBtn} onClick={() => setOpen(v => !v)}>
@@ -927,6 +943,7 @@ const sv: Record<string, React.CSSProperties> = {
   betStake: { color: '#fff', fontSize: 13, fontWeight: 700 },
   betPotential: { color: '#555', fontSize: 11, marginTop: 2 },
   betPnl: { fontSize: 13, fontWeight: 700, marginTop: 2 },
+  betTs: { color: '#333', fontSize: 10, marginTop: 3 },
   toggleLegsBtn: { background: 'none', border: 'none', color: '#c8102e', fontSize: 11, cursor: 'pointer', padding: '5px 0 2px', display: 'block' },
   legItem: { display: 'flex', alignItems: 'center', gap: 6, paddingTop: 4, paddingLeft: 2 },
   legDot: { fontSize: 11, fontWeight: 700, flexShrink: 0, width: 12 },
