@@ -41,8 +41,9 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     // Allow viewing another member's picks (for matchup page) — verify they're in this league
+    const viewingOpponent = !!(req.query.memberId && req.query.memberId !== member.id);
     let targetMemberId = member.id;
-    if (req.query.memberId && req.query.memberId !== member.id) {
+    if (viewingOpponent) {
       const { rows: [targetMember] } = await db.query(
         `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
         [req.params.leagueId, req.query.memberId],
@@ -50,6 +51,13 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       if (!targetMember) throw new AppError(404, 'Member not found in this league');
       targetMemberId = targetMember.id;
     }
+
+    const { rows: [event] } = await db.query(
+      `SELECT status, name, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
+    );
+    const eventLive = event?.status === 'live' || event?.status === 'completed';
+    // Opponent picks are hidden until the event goes live
+    const revealOpponent = !viewingOpponent || eventLive;
 
     const { rows: fights } = await db.query(`
       SELECT
@@ -77,11 +85,8 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
       WHERE f.event_id = $3
       ORDER BY f.is_main_event DESC, f.is_co_main DESC, f.bout_order DESC, f.id DESC
       LIMIT 6
-    `, [req.params.leagueId, targetMemberId, req.params.eventId]);
+    `, [req.params.leagueId, revealOpponent ? targetMemberId : null, req.params.eventId]);
 
-    const { rows: [event] } = await db.query(
-      `SELECT status, name, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
-    );
     const locked = event ? isEventLocked(event) : false;
 
     res.json({ fights, locked, eventStatus: event?.status, eventName: event?.name, scheduledAt: event?.scheduled_at });
@@ -147,14 +152,22 @@ picksRouter.get('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
+    const viewingOpponent = !!(req.query.memberId && req.query.memberId !== member.id);
     let targetMemberId = member.id;
-    if (req.query.memberId && req.query.memberId !== member.id) {
+    if (viewingOpponent) {
       const { rows: [targetMember] } = await db.query(
         `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
         [req.params.leagueId, req.query.memberId],
       );
       if (!targetMember) throw new AppError(404, 'Member not found in this league');
       targetMemberId = targetMember.id;
+    }
+
+    if (viewingOpponent) {
+      const { rows: [event] } = await db.query(
+        `SELECT status FROM ufc_events WHERE id = $1`, [req.params.eventId],
+      );
+      if (event?.status !== 'live' && event?.status !== 'completed') return res.json(null);
     }
 
     const { rows: [pick] } = await db.query(`
@@ -228,6 +241,7 @@ picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next
       [req.params.eventId],
     );
     if (!event) throw new AppError(404, 'Event not found');
+    const eventLive = event.status === 'live' || event.status === 'completed';
 
     const { rows: members } = await db.query(
       `SELECT id, team_name FROM league_members WHERE league_id = $1 AND is_active = true ORDER BY total_points DESC`,
@@ -253,33 +267,36 @@ picksRouter.get('/:eventId/all', requireAuth, async (req: AuthRequest, res, next
       LIMIT 6
     `, [req.params.eventId]);
 
-    const { rows: allPicks } = await db.query(`
-      SELECT ep.fight_id, ep.member_id, ep.picked_fighter_id, ep.picked_method, ep.is_correct, ep.points_earned
-      FROM event_picks ep
-      WHERE ep.league_id = $1 AND ep.fight_id = ANY($2::uuid[])
-    `, [req.params.leagueId, fights.map((f) => f.id)]);
-
-    // Index picks by fight_id → member_id
+    // Only reveal picks once event is live
     const pickMap: Record<string, Record<string, any>> = {};
-    for (const p of allPicks) {
-      if (!pickMap[p.fight_id]) pickMap[p.fight_id] = {};
-      pickMap[p.fight_id][p.member_id] = p;
+    if (eventLive) {
+      const { rows: allPicks } = await db.query(`
+        SELECT ep.fight_id, ep.member_id, ep.picked_fighter_id, ep.picked_method, ep.is_correct, ep.points_earned
+        FROM event_picks ep
+        WHERE ep.league_id = $1 AND ep.fight_id = ANY($2::uuid[])
+      `, [req.params.leagueId, fights.map((f) => f.id)]);
+
+      for (const p of allPicks) {
+        if (!pickMap[p.fight_id]) pickMap[p.fight_id] = {};
+        pickMap[p.fight_id][p.member_id] = p;
+      }
     }
 
     const fightsWithPicks = fights.map((f) => ({ ...f, picks: pickMap[f.id] ?? {} }));
 
-    const { rows: championPicks } = await db.query(`
-      SELECT ecp.member_id, ecp.fighter_id, ecp.points_earned,
-             f.first_name, f.last_name,
-             fr.winner_id AS result_winner_id
-      FROM event_champion_picks ecp
-      JOIN fighters f ON f.id = ecp.fighter_id
-      LEFT JOIN fight_results fr ON fr.fight_id = ecp.fight_id
-      WHERE ecp.league_id = $1 AND ecp.event_id = $2
-    `, [req.params.leagueId, req.params.eventId]);
-
     const championMap: Record<string, any> = {};
-    for (const cp of championPicks) championMap[cp.member_id] = cp;
+    if (eventLive) {
+      const { rows: championPicks } = await db.query(`
+        SELECT ecp.member_id, ecp.fighter_id, ecp.points_earned,
+               f.first_name, f.last_name,
+               fr.winner_id AS result_winner_id
+        FROM event_champion_picks ecp
+        JOIN fighters f ON f.id = ecp.fighter_id
+        LEFT JOIN fight_results fr ON fr.fight_id = ecp.fight_id
+        WHERE ecp.league_id = $1 AND ecp.event_id = $2
+      `, [req.params.leagueId, req.params.eventId]);
+      for (const cp of championPicks) championMap[cp.member_id] = cp;
+    }
 
     res.json({ event, members, fights: fightsWithPicks, championPicks: championMap });
   } catch (err) { next(err); }

@@ -35,7 +35,15 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
     );
     if (!me) throw new AppError(403, 'Not a member of this league');
 
+    const viewingOpponent = !!(memberId && memberId !== me.id);
     const targetMemberId = memberId ?? me.id;
+
+    // Gate opponent bets until event is live
+    const { rows: [event] } = await db.query(
+      `SELECT status FROM ufc_events WHERE id = $1`, [eventId],
+    );
+    const eventLive = event?.status === 'live' || event?.status === 'completed';
+    const revealOpponent = !viewingOpponent || eventLive;
 
     const { rows: singles } = await db.query(`
       SELECT ss.*,
@@ -47,14 +55,14 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       JOIN fighters rf ON rf.id = ss.fighter_id
       WHERE ss.league_id = $1 AND ss.event_id = $2 AND ss.member_id = $3
       ORDER BY f.is_main_event DESC, f.bout_order DESC
-    `, [leagueId, eventId, targetMemberId]);
+    `, [leagueId, eventId, revealOpponent ? targetMemberId : null]);
 
     // Fetch all parlays for this event/member (multiple allowed — e.g. settled + new pending)
     const { rows: parlayRows } = await db.query(`
       SELECT sp.* FROM staking_parlays sp
       WHERE sp.league_id = $1 AND sp.event_id = $2 AND sp.member_id = $3
       ORDER BY sp.created_at ASC
-    `, [leagueId, eventId, targetMemberId]);
+    `, [leagueId, eventId, revealOpponent ? targetMemberId : null]);
 
     // Fetch all legs for all parlays in one query
     let allLegRows: any[] = [];
