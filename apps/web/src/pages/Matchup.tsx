@@ -194,6 +194,8 @@ export function MatchupPage() {
 
             const isCurrentEvent = ev.eventId === currentUpcomingEventId;
             const isLiveEvent = ev.eventStatus === 'live';
+            const isSemis = ev.eventId === league?.playoffSemisEventId;
+            const isFinals = ev.eventId === league?.playoffFinalsEventId;
 
             return (
               <button
@@ -207,6 +209,8 @@ export function MatchupPage() {
                   : isCurrentEvent
                     ? <span style={styles.chipNextBadge}>NEXT</span>
                     : null}
+                {isFinals && <span style={styles.chipFinalsBadge}>FINALS</span>}
+                {isSemis && <span style={styles.chipSemisBadge}>SEMIS</span>}
                 <span style={styles.chipEvent}>{eventShort}</span>
                 {dateStr && <span style={styles.chipDate}>{dateStr}</span>}
                 {myM ? (
@@ -978,6 +982,8 @@ const styles: Record<string, React.CSSProperties> = {
   historyChipNoMatchup: { opacity: 0.4, cursor: 'default' },
   chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipFinalsBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipSemisBadge: { color: '#ff8c42', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
   chipDate: { color: '#444', fontSize: 10, textAlign: 'center' },
   chipOpp: { color: '#555', fontSize: 10, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
