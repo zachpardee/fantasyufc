@@ -675,6 +675,46 @@ function fmtChipScore(n: number): string {
 
 // ── Staking matchup layout ────────────────────────────────────────────────────
 
+function MatchupParlayRow({ parlay }: { parlay: any }) {
+  const stake = parseFloat(parlay.stake) || 0;
+  const isPending = parlay.status === 'pending';
+  const pl = parseFloat(parlay.profitLoss);
+  const potentialPayout = parseFloat(parlay.potentialPayout) || 0;
+  const decimalOdds = parseFloat(parlay.decimalOdds) || 0;
+  const legs: any[] = parlay.legs ?? [];
+  const rowBg = !isPending ? (parlay.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
+
+  return (
+    <div style={{ ...mb.betRow, flexDirection: 'column', gap: 6, background: rowBg }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={mb.betLeft}>
+          <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : parlay.status === 'won' ? '#4caf50' : '#ff5252' }}>
+            Parlay <span style={{ color: '#555', fontWeight: 400 }}>({legs.length} legs)</span>
+          </div>
+          {decimalOdds > 0 && (
+            <div style={{ ...mb.betOdds, color: '#4caf50' }}>×{decimalOdds.toFixed(2)}</div>
+          )}
+        </div>
+        <div style={mb.betRight}>
+          <div style={mb.betStake}>{fmtMoney(stake)}</div>
+          {isPending
+            ? <div style={mb.betPotential}>Win {fmtMoney(potentialPayout)}</div>
+            : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+                {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+              </div>
+          }
+        </div>
+      </div>
+      {legs.map((leg: any, i: number) => (
+        <div key={i} style={mb.parlayLeg}>
+          <span style={mb.parlayLegName}>{leg.fighterFirstName} {leg.fighterLastName}</span>
+          <span style={mb.parlayLegOdds}>×{(parseFloat(leg.decimalOdds) || 0).toFixed(2)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MatchupBetRow({ bet }: { bet: any }) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds != null ? +bet.odds : null;
@@ -707,23 +747,28 @@ function MatchupBetRow({ bet }: { bet: any }) {
   );
 }
 
-function MatchupBetPanel({ teamName, singles, isLocked, isOwn, leagueId, isEventLive }: {
-  teamName: string; singles: any[]; isLocked: boolean;
+function MatchupBetPanel({ teamName, singles, parlays, isLocked, isOwn, leagueId, isEventLive }: {
+  teamName: string; singles: any[]; parlays: any[]; isLocked: boolean;
   isOwn?: boolean; leagueId?: string; isEventLive?: boolean;
 }) {
-  const pending = singles.filter((s: any) => s.status === 'pending');
-  const settled = singles.filter((s: any) => s.status !== 'pending');
+  const pendingSingles = singles.filter((s: any) => s.status === 'pending');
+  const settledSingles = singles.filter((s: any) => s.status !== 'pending');
+  const pendingParlays = parlays.filter((p: any) => p.status === 'pending');
+  const settledParlays = parlays.filter((p: any) => p.status !== 'pending');
 
-  const totalStaked = singles.reduce((sum, s) => sum + (parseFloat(s.stake) || 0), 0);
-  const totalPotential = pending.reduce((sum, s) => sum + (parseFloat(s.potentialPayout) || 0), 0);
-  const totalPnl = settled.reduce((sum, s) => sum + (parseFloat(s.profitLoss) || 0), 0);
-  const showTotals = !isLocked && singles.length > 0;
+  const totalStaked = [...singles, ...parlays].reduce((sum, b) => sum + (parseFloat(b.stake) || 0), 0);
+  const totalPotential = [...pendingSingles, ...pendingParlays].reduce((sum, b) => sum + (parseFloat(b.potentialPayout) || 0), 0);
+  const totalPnl = [...settledSingles, ...settledParlays].reduce((sum, b) => sum + (parseFloat(b.profitLoss) || 0), 0);
+  const totalBets = singles.length + parlays.length;
+  const showTotals = !isLocked && totalBets > 0;
+  const hasSettled = settledSingles.length > 0 || settledParlays.length > 0;
+  const hasPending = pendingSingles.length > 0 || pendingParlays.length > 0;
 
   return (
     <div style={mb.panel}>
       <div style={mb.header}>
         <span style={mb.headerTitle}>{teamName}</span>
-        {singles.length > 0 && <span style={mb.badge}>{singles.length}</span>}
+        {totalBets > 0 && <span style={mb.badge}>{totalBets}</span>}
         {isOwn && leagueId && !isEventLive && (
           <Link to={`/league/${leagueId}/staking`} style={mb.editLink}>Edit Bets</Link>
         )}
@@ -734,20 +779,22 @@ function MatchupBetPanel({ teamName, singles, isLocked, isOwn, leagueId, isEvent
           <div style={{ fontSize: 20, marginBottom: 6 }}>🔒</div>
           <div style={{ color: '#333', fontSize: 11, fontStyle: 'italic' }}>Revealed at event start</div>
         </div>
-      ) : singles.length === 0 ? (
+      ) : totalBets === 0 ? (
         <div style={mb.empty}>No bets placed</div>
       ) : (
         <>
-          {pending.length > 0 && (
+          {hasPending && (
             <>
               <div style={mb.sectionLabel}>PENDING</div>
-              {pending.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+              {pendingSingles.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+              {pendingParlays.map((p: any) => <MatchupParlayRow key={p.id} parlay={p} />)}
             </>
           )}
-          {settled.length > 0 && (
+          {hasSettled && (
             <>
               <div style={mb.sectionLabel}>SETTLED</div>
-              {settled.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+              {settledSingles.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+              {settledParlays.map((p: any) => <MatchupParlayRow key={p.id} parlay={p} />)}
             </>
           )}
         </>
@@ -759,13 +806,13 @@ function MatchupBetPanel({ teamName, singles, isLocked, isOwn, leagueId, isEvent
             <span style={mb.totalLabel}>Staked</span>
             <span style={mb.totalVal}>{fmtMoney(totalStaked)}</span>
           </div>
-          {pending.length > 0 && totalPotential > 0 && (
+          {hasPending && totalPotential > 0 && (
             <div style={mb.totalItem}>
               <span style={mb.totalLabel}>To win</span>
               <span style={{ ...mb.totalVal, color: '#4caf50' }}>{fmtMoney(totalPotential)}</span>
             </div>
           )}
-          {settled.length > 0 && (
+          {hasSettled && (
             <div style={mb.totalItem}>
               <span style={mb.totalLabel}>P&L</span>
               <span style={{ ...mb.totalVal, color: totalPnl >= 0 ? '#4caf50' : '#ff5252' }}>
@@ -927,9 +974,9 @@ function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeam
         <span style={styles.sectionTitle}>BETS</span>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} isLocked={!amInMatchup && !isEventLive} isOwn={amInMatchup} leagueId={leagueId} isEventLive={isEventLive} />
+        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} parlays={myStaking?.parlays ?? []} isLocked={!amInMatchup && !isEventLive} isOwn={amInMatchup} leagueId={leagueId} isEventLive={isEventLive} />
         <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
-        <MatchupBetPanel teamName={oppTeamName} singles={oppStaking?.singles ?? []} isLocked={!isEventLive} />
+        <MatchupBetPanel teamName={oppTeamName} singles={oppStaking?.singles ?? []} parlays={oppStaking?.parlays ?? []} isLocked={!isEventLive} />
       </div>
     </div>
   );
@@ -950,6 +997,9 @@ const mb: Record<string, React.CSSProperties> = {
   betPotential: { color: '#555', fontSize: 11, marginTop: 2 },
   betPnl: { fontSize: 12, fontWeight: 700, marginTop: 2 },
   editLink: { color: '#c8102e', fontSize: 11, fontWeight: 700, textDecoration: 'none', marginLeft: 4 },
+  parlayLeg: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 10, borderLeft: '2px solid #222' },
+  parlayLegName: { color: '#777', fontSize: 11 },
+  parlayLegOdds: { color: '#444', fontSize: 10, fontWeight: 700 },
   locked: { padding: '28px 14px', textAlign: 'center' },
   empty: { padding: '28px 14px', textAlign: 'center', color: '#333', fontSize: 12 },
   totalsRow: { display: 'flex', gap: 0, borderTop: '1px solid #1e1e1e', background: '#0d0d0d' },
