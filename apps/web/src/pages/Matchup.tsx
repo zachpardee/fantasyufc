@@ -353,6 +353,7 @@ export function MatchupPage() {
               oppTeamName={oppStakingTeamName ?? matchup.awayTeamName}
               isEventLive={eventIsLive}
               amInMatchup={isMeHome || isMeAway}
+              leagueId={leagueId}
               onPhotoClick={openPhoto}
             />
           )}
@@ -685,7 +686,10 @@ function MatchupBetRow({ bet }: { bet: any }) {
   );
 }
 
-function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; singles: any[]; isLocked: boolean }) {
+function MatchupBetPanel({ teamName, singles, isLocked, isOwn, leagueId, isEventLive }: {
+  teamName: string; singles: any[]; isLocked: boolean;
+  isOwn?: boolean; leagueId?: string; isEventLive?: boolean;
+}) {
   const pending = singles.filter((s: any) => s.status === 'pending');
   const settled = singles.filter((s: any) => s.status !== 'pending');
 
@@ -699,6 +703,9 @@ function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; si
       <div style={mb.header}>
         <span style={mb.headerTitle}>{teamName}</span>
         {singles.length > 0 && <span style={mb.badge}>{singles.length}</span>}
+        {isOwn && leagueId && !isEventLive && (
+          <Link to={`/league/${leagueId}/staking`} style={mb.editLink}>Edit Bets</Link>
+        )}
       </div>
 
       {isLocked ? (
@@ -888,10 +895,10 @@ function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClic
   );
 }
 
-function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeamName, isEventLive, amInMatchup, onPhotoClick }: {
+function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeamName, isEventLive, amInMatchup, leagueId, onPhotoClick }: {
   fights: any[]; myStaking: any; oppStaking: any;
   myTeamName: string; oppTeamName: string;
-  isEventLive: boolean; amInMatchup: boolean; onPhotoClick?: PhotoClickHandler;
+  isEventLive: boolean; amInMatchup: boolean; leagueId?: string; onPhotoClick?: PhotoClickHandler;
 }) {
   return (
     <div style={styles.section}>
@@ -899,7 +906,7 @@ function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeam
         <span style={styles.sectionTitle}>BETS</span>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} isLocked={!amInMatchup && !isEventLive} />
+        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} isLocked={!amInMatchup && !isEventLive} isOwn={amInMatchup} leagueId={leagueId} isEventLive={isEventLive} />
         <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
         <MatchupBetPanel teamName={oppTeamName} singles={oppStaking?.singles ?? []} isLocked={!isEventLive} />
       </div>
