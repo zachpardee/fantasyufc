@@ -130,6 +130,7 @@ export function StakingPicksPage() {
     onSuccess: () => {
       setSingles([]);
       setParlayLegs({});
+      setParlayStake('');
       setSinglesTouched(false);
       setParlayTouched(false);
       setSaveError('');
@@ -146,7 +147,16 @@ export function StakingPicksPage() {
         .map(([fightId, fighterId]) => ({ fightId, fighterId }));
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent!.id}/parlay`, { stake: parseFloat(parlayStake), legs });
     },
-    onSuccess: () => { setParlayTouched(false); setSaveError(''); refetchBets(); qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] }); },
+    onSuccess: () => {
+      setSingles([]);
+      setParlayLegs({});
+      setParlayStake('');
+      setSinglesTouched(false);
+      setParlayTouched(false);
+      setSaveError('');
+      refetchBets();
+      qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
+    },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save parlay'),
   });
 
