@@ -16,6 +16,8 @@ export function DashboardPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
   const [showFightCard, setShowFightCard] = useState(false);
   const [showFighters, setShowFighters] = useState(false);
   const [fighterSearch, setFighterSearch] = useState('');
@@ -54,10 +56,21 @@ export function DashboardPage() {
     staleTime: 60_000,
   });
 
-  async function joinLeague() {
-    await apiClient.post('/leagues/join', { inviteCode, teamName });
-    setShowJoin(false);
-    refetchLeagues();
+  async function joinLeague(e: React.FormEvent) {
+    e.preventDefault();
+    setJoinLoading(true);
+    setJoinError('');
+    try {
+      await apiClient.post('/leagues/join', { inviteCode, teamName });
+      setShowJoin(false);
+      setInviteCode('');
+      setTeamName('');
+      refetchLeagues();
+    } catch (err: any) {
+      setJoinError(err.error ?? err.message ?? 'Failed to join league');
+    } finally {
+      setJoinLoading(false);
+    }
   }
 
   return (
@@ -106,14 +119,6 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {showJoin && (
-            <div style={styles.joinForm}>
-              <input style={styles.input} placeholder="Invite code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} />
-              <input style={styles.input} placeholder="Team name" value={teamName} onChange={(e) => setTeamName(e.target.value)} />
-              <button style={styles.btnPrimary} onClick={joinLeague}>Join</button>
-              <button style={styles.btn} onClick={() => setShowJoin(false)}>Cancel</button>
-            </div>
-          )}
 
           <div style={{ ...styles.leagueGrid, ...(isMobile ? styles.leagueGridMobile : {}) }}>
             {leaguesLoading
@@ -248,6 +253,47 @@ export function DashboardPage() {
         </div>
       )}
 
+      {showJoin && (
+        <div style={styles.joinOverlay} onClick={() => setShowJoin(false)}>
+          <div style={styles.joinCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.joinHeader}>
+              <h2 style={styles.joinTitle}>Join League</h2>
+              <button style={styles.joinClose} onClick={() => setShowJoin(false)}>✕</button>
+            </div>
+            <form onSubmit={joinLeague} style={styles.joinForm}>
+              <div style={styles.joinField}>
+                <label style={styles.joinLabel}>Invite Code</label>
+                <input
+                  style={styles.joinInput}
+                  placeholder="Enter invite code"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div style={styles.joinField}>
+                <label style={styles.joinLabel}>Your Team Name</label>
+                <input
+                  style={styles.joinInput}
+                  placeholder="My Team"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                />
+              </div>
+              {joinError && <p style={styles.joinError}>{joinError}</p>}
+              <button
+                type="submit"
+                style={{ ...styles.joinBtn, ...(joinLoading ? styles.joinBtnDisabled : {}) }}
+                disabled={joinLoading}
+              >
+                {joinLoading ? 'Joining...' : 'Join League'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {zoomedFighter && (
         <div style={styles.modalBackdrop} onClick={() => setZoomedFighter(null)}>
           <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
@@ -296,8 +342,19 @@ const styles: Record<string, React.CSSProperties> = {
   actions: { display: 'flex', gap: 10 },
   btn: { background: '#2a2a2a', color: '#ccc', border: '1px solid #444', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontSize: 14 },
   btnPrimary: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontSize: 14, fontWeight: 700 },
-  joinForm: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   input: { background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, padding: '8px 14px', color: '#fff', fontSize: 14, outline: 'none', flex: 1, minWidth: 140 },
+  joinOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  joinCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 36, width: '100%', maxWidth: 480, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' },
+  joinHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
+  joinTitle: { color: '#fff', fontSize: 24, fontWeight: 700, margin: 0 },
+  joinClose: { background: 'transparent', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1 },
+  joinForm: { display: 'flex', flexDirection: 'column', gap: 20 },
+  joinField: { display: 'flex', flexDirection: 'column', gap: 6 },
+  joinLabel: { color: '#888', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  joinInput: { background: '#2a2a2a', border: '1px solid #3a3a3a', borderRadius: 8, padding: '11px 14px', color: '#fff', fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box' },
+  joinError: { color: '#ff6b6b', fontSize: 14, margin: 0 },
+  joinBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: 14, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
+  joinBtnDisabled: { opacity: 0.6, cursor: 'not-allowed' },
   leagueGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 },
   leagueGridMobile: { gridTemplateColumns: '1fr' },
   leagueCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 20, textDecoration: 'none', display: 'block', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
