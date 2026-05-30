@@ -12,6 +12,25 @@ import { sendNotification } from './notification.service';
  * - For N odd: add a bye slot, same algorithm, teams paired with bye get no matchup.
  * - If events > rounds in the cycle, repeat the schedule.
  */
+/**
+ * Returns an array of round indices (length = numEvents) such that each of the
+ * numRounds rounds appears either floor or ceil times — never more than 1 apart.
+ * Successive full cycles alternate direction (forward/backward) so the pairs
+ * that receive the "extra" game rotate rather than always being the same ones.
+ */
+export function buildBalancedRoundSequence(numEvents: number, numRounds: number): number[] {
+  if (numRounds === 0) return [];
+  const seq: number[] = [];
+  for (let i = 0; i < numEvents; i++) {
+    const cycle = Math.floor(i / numRounds);
+    const pos = i % numRounds;
+    // Alternate direction each cycle so the extra game rotates to different pairs
+    const roundIdx = cycle % 2 === 0 ? pos : numRounds - 1 - pos;
+    seq.push(roundIdx);
+  }
+  return seq;
+}
+
 export function buildRoundRobinSchedule(teamIds: string[]): Array<Array<[string, string]>> {
   const teams = [...teamIds];
   if (teams.length % 2 !== 0) teams.push('BYE');
@@ -64,29 +83,45 @@ export async function generateMatchupsForLeague(leagueId: string) {
   const teamIds = members.map((m) => m.id);
   const schedule = buildRoundRobinSchedule(teamIds);
 
-  // Delete unplayed matchups only — preserve any with a winner or non-zero scores (ties)
+  // Delete future (scheduled) non-playoff matchups so we can regenerate a balanced schedule.
+  // We intentionally preserve live/completed matchups and all playoff matchups.
   await db.query(`
-    DELETE FROM matchups
-    WHERE league_id = $1
-      AND winner_id IS NULL
-      AND home_score = 0
-      AND away_score = 0
+    DELETE FROM matchups m
+    USING ufc_events e
+    WHERE m.league_id = $1
+      AND m.is_playoffs = false
+      AND m.winner_id IS NULL
+      AND m.event_id = e.id
+      AND e.status = 'scheduled'
   `, [leagueId]);
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
 
+    // Build an optimal sequence of round indices across all events so every pair
+    // plays each other as evenly as possible (max difference of 1 game).
+    const n = schedule.length;
+    const roundSequence = buildBalancedRoundSequence(events.length, n);
+
+    // Pre-load which events already have matchups (live/completed — not touched by DELETE above)
+    const { rows: existingCounts } = await client.query(`
+      SELECT event_id FROM matchups
+      WHERE league_id = $1 AND is_playoffs = false
+      GROUP BY event_id
+    `, [leagueId]);
+    const eventsWithMatchups = new Set(existingCounts.map((r: any) => r.event_id));
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      // Cycle through schedule if more events than rounds
-      const round = schedule[i % schedule.length];
+      // Skip events that already have matchups (live/completed — preserve as-is)
+      if (eventsWithMatchups.has(event.event_id)) continue;
 
+      const round = schedule[roundSequence[i]];
       for (const [homeId, awayId] of round) {
         await client.query(`
           INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id)
           VALUES ($1, $2, $3, $4)
-          ON CONFLICT DO NOTHING
         `, [leagueId, event.event_id, homeId, awayId]);
       }
     }
@@ -98,6 +133,20 @@ export async function generateMatchupsForLeague(leagueId: string) {
   } finally {
     client.release();
   }
+
+  // For staking leagues, initialize new matchup scores to weekly_budget
+  await db.query(`
+    UPDATE matchups m
+    SET home_score = l.weekly_budget,
+        away_score = l.weekly_budget
+    FROM leagues l
+    WHERE m.league_id = l.id
+      AND m.league_id = $1
+      AND l.league_format = 'staking'
+      AND m.home_score = 0
+      AND m.away_score = 0
+      AND m.winner_id IS NULL
+  `, [leagueId]);
 
   return { events: events.length, rounds: schedule.length, teams: teamIds.length };
 }

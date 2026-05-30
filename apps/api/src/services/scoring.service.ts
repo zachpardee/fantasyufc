@@ -34,7 +34,9 @@ export async function refreshStakingMatchupScores(leagueId: string, eventId: str
   }
 }
 
-export async function processStakingFightResult(fightId: string, winnerId: string | null) {
+export async function processStakingFightResult(fightId: string, winnerId: string | null, outcome: string) {
+  const isVoid = outcome === 'no_contest' || outcome === 'draw';
+
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -55,22 +57,31 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
     );
 
     for (const s of singles) {
-      const won = winnerId && s.fighter_id === winnerId;
-      const decOdds = toDecimalOdds(s.odds);
-      const actualPayout = won ? Math.round(parseFloat(s.stake) * decOdds * 100) / 100 : 0;
-      const profitLoss = actualPayout - parseFloat(s.stake);
+      if (isVoid) {
+        // Void: refund stake, no balance change
+        await client.query(`
+          UPDATE staking_singles
+          SET status = 'void', actual_payout = stake, profit_loss = 0, updated_at = now()
+          WHERE id = $1
+        `, [s.id]);
+      } else {
+        const won = winnerId && s.fighter_id === winnerId;
+        const decOdds = toDecimalOdds(s.odds);
+        const actualPayout = won ? Math.round(parseFloat(s.stake) * decOdds * 100) / 100 : 0;
+        const profitLoss = actualPayout - parseFloat(s.stake);
 
-      await client.query(`
-        UPDATE staking_singles
-        SET status = $1, actual_payout = $2, profit_loss = $3, updated_at = now()
-        WHERE id = $4
-      `, [won ? 'won' : 'lost', actualPayout, profitLoss, s.id]);
+        await client.query(`
+          UPDATE staking_singles
+          SET status = $1, actual_payout = $2, profit_loss = $3, updated_at = now()
+          WHERE id = $4
+        `, [won ? 'won' : 'lost', actualPayout, profitLoss, s.id]);
 
-      // Credit net P&L to season bankroll (stake never deducted on placement)
-      await client.query(
-        `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
-        [profitLoss, s.member_id],
-      );
+        // Credit net P&L to season bankroll (stake never deducted on placement)
+        await client.query(
+          `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
+          [profitLoss, s.member_id],
+        );
+      }
     }
 
     // Settle parlay legs for this fight
@@ -82,31 +93,41 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
     );
 
     for (const leg of legs) {
-      const result = winnerId
-        ? (leg.fighter_id === winnerId ? 'won' : 'lost')
-        : 'lost';
-      await client.query(
-        `UPDATE staking_parlay_legs SET result = $1 WHERE id = $2`,
-        [result, leg.id],
-      );
-
-      // If any leg lost, immediately mark parlay as lost and deduct stake from bankroll
-      if (result === 'lost') {
-        const { rows: [lostParlay] } = await client.query(
-          `UPDATE staking_parlays SET status = 'lost', actual_payout = 0, profit_loss = -stake, updated_at = now()
-           WHERE id = $1 AND status = 'pending' RETURNING member_id, stake`,
-          [leg.parlay_id],
+      if (isVoid) {
+        // Void leg: remove it from the parlay without busting it
+        await client.query(
+          `UPDATE staking_parlay_legs SET result = 'void' WHERE id = $1`,
+          [leg.id],
         );
-        if (lostParlay) {
-          await client.query(
-            `UPDATE league_members SET staking_balance = staking_balance - $1 WHERE id = $2`,
-            [parseFloat(lostParlay.stake), lostParlay.member_id],
+      } else {
+        const result = winnerId
+          ? (leg.fighter_id === winnerId ? 'won' : 'lost')
+          : 'lost';
+        await client.query(
+          `UPDATE staking_parlay_legs SET result = $1 WHERE id = $2`,
+          [result, leg.id],
+        );
+
+        // If any leg lost, immediately mark parlay as lost and deduct stake from bankroll
+        if (result === 'lost') {
+          const { rows: [lostParlay] } = await client.query(
+            `UPDATE staking_parlays SET status = 'lost', actual_payout = 0, profit_loss = -stake, updated_at = now()
+             WHERE id = $1 AND status = 'pending' RETURNING member_id, stake`,
+            [leg.parlay_id],
           );
+          if (lostParlay) {
+            await client.query(
+              `UPDATE league_members SET staking_balance = staking_balance - $1 WHERE id = $2`,
+              [parseFloat(lostParlay.stake), lostParlay.member_id],
+            );
+          }
         }
       }
     }
 
     // Check parlays that may now be fully settled (all legs resolved, none lost)
+    // Void legs count as settled — a parlay with only void + won legs settles as a win
+    // using only the won legs' odds. All-void legs → full refund.
     const { rows: pendingParlays } = await client.query(`
       SELECT sp.*
       FROM staking_parlays sp
@@ -122,15 +143,30 @@ export async function processStakingFightResult(fightId: string, winnerId: strin
     `);
 
     for (const parlay of pendingParlays) {
-      const actualPayout = Math.round(parseFloat(parlay.stake) * parseFloat(parlay.decimal_odds) * 100) / 100;
-      const profitLoss = actualPayout - parseFloat(parlay.stake);
-      await client.query(`
-        UPDATE staking_parlays SET status = 'won', actual_payout = $1, profit_loss = $2, updated_at = now() WHERE id = $3
-      `, [actualPayout, profitLoss, parlay.id]);
-      await client.query(
-        `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
-        [profitLoss, parlay.member_id],
+      // Recalculate odds from only the won legs (void legs are excluded)
+      const { rows: wonLegs } = await client.query(
+        `SELECT decimal_odds FROM staking_parlay_legs WHERE parlay_id = $1 AND result = 'won'`,
+        [parlay.id],
       );
+
+      if (wonLegs.length === 0) {
+        // All legs voided — full refund
+        await client.query(`
+          UPDATE staking_parlays SET status = 'void', actual_payout = stake, profit_loss = 0, updated_at = now()
+          WHERE id = $1
+        `, [parlay.id]);
+      } else {
+        const effectiveOdds = wonLegs.reduce((acc: number, leg: any) => acc * parseFloat(leg.decimal_odds), 1);
+        const actualPayout = Math.round(parseFloat(parlay.stake) * effectiveOdds * 100) / 100;
+        const profitLoss = actualPayout - parseFloat(parlay.stake);
+        await client.query(`
+          UPDATE staking_parlays SET status = 'won', actual_payout = $1, profit_loss = $2, updated_at = now() WHERE id = $3
+        `, [actualPayout, profitLoss, parlay.id]);
+        await client.query(
+          `UPDATE league_members SET staking_balance = staking_balance + $1 WHERE id = $2`,
+          [profitLoss, parlay.member_id],
+        );
+      }
     }
 
     // Recalculate staking matchup scores (sum of P&L for the event)
@@ -248,16 +284,12 @@ export async function processFightResult(fightResultId: string) {
         `, [fightResult.winner_id, fightResult.fight_id, lc.league_id]);
 
       } else {
-        // Draw / NC — zero points, mark picks as incorrect
+        // Draw / NC — void picks (not scored, not wrong; don't affect sweep bonus)
         await client.query(`
-          UPDATE event_picks SET is_correct = false, points_earned = 0
+          UPDATE event_picks SET is_correct = NULL, points_earned = 0
           WHERE fight_id = $1 AND league_id = $2
         `, [fightResult.fight_id, lc.league_id]);
-
-        await client.query(`
-          UPDATE event_champion_picks SET points_earned = 0
-          WHERE fight_id = $1 AND league_id = $2
-        `, [fightResult.fight_id, lc.league_id]);
+        // Leave champion picks unchanged (null points, fight never happened)
       }
     }
 
@@ -316,7 +348,7 @@ export async function processFightResult(fightResultId: string) {
   // Also process staking bets for this fight (runs in its own transaction)
   // Re-fetch fight/winner since fightResult is scoped to the try block above
   const { rows: [fr] } = await db.query(
-    `SELECT fr.fight_id, fr.winner_id FROM fight_results fr WHERE fr.id = $1`, [fightResultId],
+    `SELECT fr.fight_id, fr.winner_id, fr.outcome FROM fight_results fr WHERE fr.id = $1`, [fightResultId],
   );
-  if (fr) await processStakingFightResult(fr.fight_id, fr.winner_id);
+  if (fr) await processStakingFightResult(fr.fight_id, fr.winner_id, fr.outcome);
 }

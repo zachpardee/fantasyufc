@@ -25,6 +25,7 @@ export function MatchupPage() {
   const isMobile = useIsMobile();
   const location = useLocation();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(null);
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -33,6 +34,7 @@ export function MatchupPage() {
   // Reset to current matchup whenever the user navigates to this page
   useEffect(() => {
     setSelectedMatchupId(null);
+    setSelectedEventId(null);
     setBrowsingMatchupId(null);
     setShowMatchupPicker(false);
   }, [location.key]);
@@ -92,11 +94,13 @@ export function MatchupPage() {
 
   const effectiveMatchupId = browsingMatchupId ?? selectedMatchupId;
   const { data: matchup, refetch } = useQuery<any>({
-    queryKey: ['matchup-detail', leagueId, effectiveMatchupId],
+    queryKey: ['matchup-detail', leagueId, effectiveMatchupId, selectedEventId],
     queryFn: async () => {
       if (effectiveMatchupId) {
         return apiClient.get(`/leagues/${leagueId}/matchups/${effectiveMatchupId}`);
       }
+      // If the user selected an event that has no matchup yet, return null so we show a preview stub
+      if (selectedEventId) return null;
       const current = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!current) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${current.id}`);
@@ -161,8 +165,6 @@ export function MatchupPage() {
     const settledPnl = allBets.filter((b: any) => b.status !== 'pending').reduce((s: number, b: any) => s + (parseFloat(b.profitLoss) || 0), 0);
     return budget - pendingStake + settledPnl;
   }
-  const homeStakingScore = homeStaking ? calcStakingScore(homeStaking) : +matchup?.homeScore;
-  const awayStakingScore = awayStaking ? calcStakingScore(awayStaking) : +matchup?.awayScore;
 
   // Orient so the current user's bets are always on the left
   const isMeHome = !!myMember && myMember.id === matchup?.homeTeamId;
@@ -171,6 +173,20 @@ export function MatchupPage() {
   const oppStaking = isMeHome ? awayStaking : isMeAway ? homeStaking : awayStaking;
   const myStakingTeamName = isMeHome ? matchup?.homeTeamName : isMeAway ? matchup?.awayTeamName : matchup?.homeTeamName;
   const oppStakingTeamName = isMeHome ? matchup?.awayTeamName : isMeAway ? matchup?.homeTeamName : matchup?.awayTeamName;
+
+  // Compute scores directly from each side's staking data.
+  // The API hides opponent bets pre-event (returns empty arrays), so we check whether bets
+  // actually exist before computing — otherwise fall back to the DB matchup score.
+  // For my own side, also use myStaking as a secondary fallback in case the direct query
+  // came back empty for some reason.
+  const homeHasBets = (homeStaking?.singles?.length ?? 0) + (homeStaking?.parlays?.length ?? 0) > 0;
+  const awayHasBets = (awayStaking?.singles?.length ?? 0) + (awayStaking?.parlays?.length ?? 0) > 0;
+  const homeStakingScore = homeHasBets
+    ? calcStakingScore(homeStaking)
+    : (isMeHome && myStaking ? calcStakingScore(myStaking) : +matchup?.homeScore);
+  const awayStakingScore = awayHasBets
+    ? calcStakingScore(awayStaking)
+    : (isMeAway && myStaking ? calcStakingScore(myStaking) : +matchup?.awayScore);
   const fights: any[] = homePicks?.fights ?? [];
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
@@ -182,14 +198,13 @@ export function MatchupPage() {
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.navTitle}>Matchup</span>
-        {isLive && !effectiveMatchupId && <span style={styles.liveBadge}>LIVE</span>}
         {browsingMatchupId && (
           <button style={styles.currentBtn} onClick={() => setBrowsingMatchupId(null)}>
             ← My matchup
           </button>
         )}
-        {isViewingHistory && !browsingMatchupId && (
-          <button style={styles.currentBtn} onClick={() => setSelectedMatchupId(null)}>
+        {(isViewingHistory || selectedEventId) && !browsingMatchupId && (
+          <button style={styles.currentBtn} onClick={() => { setSelectedMatchupId(null); setSelectedEventId(null); }}>
             ← Current
           </button>
         )}
@@ -199,14 +214,31 @@ export function MatchupPage() {
         <div ref={stripRef} style={styles.historyStrip}>
           {seasonEvents.map((ev) => {
             const myM = myMatchupByEvent.get(ev.eventId);
-            const isMeHome = myM?.homeTeamId === myMember?.id;
-            const myScore = myM ? +(isMeHome ? myM.homeScore : myM.awayScore) : null;
-            const oppScore = myM ? +(isMeHome ? myM.awayScore : myM.homeScore) : null;
-            const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
-            const isWin = myM?.winnerId && myM.winnerId === myMember?.id;
-            const isLoss = myM?.winnerId && myM.winnerId !== myMember?.id;
-            const hasScore = myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
-            const isActive = !!selectedMatchupId && myM?.id === selectedMatchupId;
+            const chipIsMeHome = myM?.homeTeamId === myMember?.id;
+            const isEventCompleted = ev.eventStatus === 'completed';
+            const isLiveEvent = ev.eventStatus === 'live';
+
+            // For the currently shown matchup use live-computed staking scores;
+            // for all other chips fall back to the DB matchup scores.
+            const isThisMatchup = isStaking && myM?.id === matchup?.id;
+            const rawMyScore = myM ? +(chipIsMeHome ? myM.homeScore : myM.awayScore) : null;
+            const rawOppScore = myM ? +(chipIsMeHome ? myM.awayScore : myM.homeScore) : null;
+            const myScore = isThisMatchup
+              ? (chipIsMeHome ? homeStakingScore : awayStakingScore)
+              : rawMyScore;
+            const oppScore = isThisMatchup
+              ? (chipIsMeHome ? awayStakingScore : homeStakingScore)
+              : rawOppScore;
+
+            const oppName = myM ? (chipIsMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
+            // Only show W/L once the event is fully completed
+            const isWin = isEventCompleted && !!(myM?.winnerId) && myM.winnerId === myMember?.id;
+            const isLoss = isEventCompleted && !!(myM?.winnerId) && myM.winnerId !== myMember?.id;
+            const hasScore = myM && (isEventCompleted || isLiveEvent || (myScore ?? 0) !== 0);
+            const eventMatchups = allMatchups.filter((m) => m.eventId === ev.eventId);
+            const isBrowsingThisEvent = !myM && eventMatchups.some((m) => m.id === browsingMatchupId);
+            const isActive = (!!selectedMatchupId && myM?.id === selectedMatchupId) || selectedEventId === ev.eventId || isBrowsingThisEvent;
+            const hasAnyMatchups = eventMatchups.length > 0;
             const eventShort = ev.eventName
               ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
               .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
@@ -215,7 +247,6 @@ export function MatchupPage() {
               : null;
 
             const isCurrentEvent = ev.eventId === currentUpcomingEventId;
-            const isLiveEvent = ev.eventStatus === 'live';
             const isSemis = ev.eventId === league?.playoffSemisEventId;
             const isFinals = ev.eventId === league?.playoffFinalsEventId;
 
@@ -223,9 +254,28 @@ export function MatchupPage() {
               <button
                 key={ev.eventId}
                 ref={isCurrentEvent ? currentChipRef : undefined}
-                style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : isCurrentEvent ? styles.historyChipCurrent : {}), ...(!myM ? styles.historyChipNoMatchup : {}) }}
-                onClick={() => { setBrowsingMatchupId(null); setShowMatchupPicker(false); myM && setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id); }}
-                disabled={!myM}
+                style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : isCurrentEvent ? styles.historyChipCurrent : {}), ...(!myM && !hasAnyMatchups && !isActive ? styles.historyChipNoMatchup : {}) }}
+                onClick={() => {
+                  setShowMatchupPicker(false);
+                  if (myM) {
+                    setBrowsingMatchupId(null);
+                    setSelectedEventId(null);
+                    setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id);
+                  } else if (hasAnyMatchups) {
+                    // No personal matchup but other matchups exist — browse the first one
+                    if (isBrowsingThisEvent) {
+                      setBrowsingMatchupId(null);
+                    } else {
+                      setSelectedMatchupId(null);
+                      setSelectedEventId(null);
+                      setBrowsingMatchupId(eventMatchups[0].id);
+                    }
+                  } else {
+                    setBrowsingMatchupId(null);
+                    setSelectedMatchupId(null);
+                    setSelectedEventId(ev.eventId === selectedEventId ? null : ev.eventId);
+                  }
+                }}
               >
                 {isLiveEvent
                   ? <span style={styles.chipLiveBadge}>LIVE</span>
@@ -241,9 +291,11 @@ export function MatchupPage() {
                     <>
                       <span style={styles.chipOpp}>vs {oppName}</span>
                       <span style={styles.chipScore}>{isStaking ? fmtChipScore(myScore!) : myScore!.toFixed(0)}–{isStaking ? fmtChipScore(oppScore!) : oppScore!.toFixed(0)}</span>
-                      <span style={{ ...styles.chipResult, color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700' }}>
-                        {isWin ? 'W' : isLoss ? 'L' : 'T'}
-                      </span>
+                      {(isWin || isLoss) && (
+                        <span style={{ ...styles.chipResult, color: isWin ? '#4caf50' : '#ff5252' }}>
+                          {isWin ? 'W' : 'L'}
+                        </span>
+                      )}
                     </>
                   ) : (
                     <>
@@ -252,7 +304,7 @@ export function MatchupPage() {
                     </>
                   )
                 ) : (
-                  <span style={styles.chipPending}>No matchup</span>
+                  <span style={styles.chipPending}>TBD</span>
                 )}
               </button>
             );
@@ -260,7 +312,26 @@ export function MatchupPage() {
         </div>
       )}
 
-      {!matchup ? (
+      {!matchup && selectedEventId ? (() => {
+        const ev = seasonEvents.find((e) => e.eventId === selectedEventId);
+        const isPlayoff = ev?.eventId === league?.playoffSemisEventId || ev?.eventId === league?.playoffFinalsEventId;
+        return (
+          <div style={styles.empty}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>{isPlayoff ? '🏆' : '📅'}</div>
+            <div style={{ color: '#ccc', fontWeight: 700, marginBottom: 4 }}>
+              {ev?.eventName ?? 'Upcoming Event'}
+            </div>
+            {ev?.scheduledAt && (
+              <div style={{ color: '#666', fontSize: 13, marginBottom: 10 }}>
+                {new Date(ev.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+            <div style={{ color: '#444', fontSize: 13 }}>
+              {isPlayoff ? 'Playoff matchup will be set once the regular season ends.' : 'Matchup not yet assigned for this event.'}
+            </div>
+          </div>
+        );
+      })() : !matchup ? (
         <div style={styles.empty}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⚔️</div>
           <div style={{ color: '#ccc', fontWeight: 700, marginBottom: 6 }}>No matchup yet</div>
@@ -269,7 +340,10 @@ export function MatchupPage() {
       ) : (
         <>
           <div style={styles.eventHeader}>
-            <div style={styles.eventName}>{matchup.eventName}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div style={styles.eventName}>{matchup.eventName}</div>
+              {isLive && <span style={styles.liveBadge}>LIVE</span>}
+            </div>
             {(matchup.venue || matchup.location) && (
               <div style={styles.eventLocation}>
                 {[matchup.venue, matchup.location].filter(Boolean).join(' · ')}
@@ -312,7 +386,7 @@ export function MatchupPage() {
             </div>
 
             <div style={{ ...styles.vsBlock, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
-              {matchup.winnerId ? (
+              {matchup.winnerId && !isLive ? (
                 <div style={styles.resultBadge}>
                   {matchup.winnerId === matchup.homeTeamId
                     ? `${matchup.homeTeamName} wins`
@@ -376,16 +450,17 @@ export function MatchupPage() {
             </div>
           )}
 
-          {/* Staking bets */}
+          {/* Staking bets — home on left, away on right, matching the scoreboard */}
           {isStaking && (
             <StakingBetsSection
-              fights={myStaking?.fights ?? oppStaking?.fights ?? []}
-              myStaking={myStaking}
-              oppStaking={oppStaking}
-              myTeamName={myStakingTeamName ?? matchup.homeTeamName}
-              oppTeamName={oppStakingTeamName ?? matchup.awayTeamName}
+              fights={homeStaking?.fights ?? awayStaking?.fights ?? []}
+              homeStaking={homeStaking}
+              awayStaking={awayStaking}
+              homeTeamName={matchup.homeTeamName}
+              awayTeamName={matchup.awayTeamName}
+              isMeHome={isMeHome}
+              isMeAway={isMeAway}
               isEventLive={eventIsLive}
-              amInMatchup={isMeHome || isMeAway}
               leagueId={leagueId}
               onPhotoClick={openPhoto}
             />
@@ -481,7 +556,9 @@ export function MatchupPage() {
 }
 
 const PICK_METHOD_LABEL: Record<string, string> = {
-  ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ',
+  ko_tko: 'KO/TKO', submission: 'SUB',
+  decision: 'DEC', decision_unanimous: 'DEC', decision_split: 'DEC', decision_majority: 'DEC',
+  disqualification: 'DQ',
 };
 
 type SeasonRow = {
@@ -494,6 +571,7 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
   allMatchups: any[]; homeTeamId: string; awayTeamId: string;
   homeTeamName: string; awayTeamName: string; currentEventId: string; isStaking?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const seenEventIds = new Set<string>();
   const relevantEvents: any[] = [];
   for (const m of allMatchups) {
@@ -531,10 +609,13 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
 
   return (
     <div style={styles.seasonSection}>
-      <div style={styles.sectionHeader}>
-        <span style={styles.sectionTitle}>SEASON BREAKDOWN</span>
-      </div>
-      <div style={styles.seasonTable}>
+      <button
+        style={styles.sectionHeaderBtn}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span style={styles.sectionTitle}>SEASON BREAKDOWN <span style={styles.collapseChevron}>{open ? '▲' : '▼'}</span></span>
+      </button>
+      {open && <div style={styles.seasonTable}>
         <div style={styles.seasonHeaderRow}>
           <div style={styles.seasonTeamCell}>{homeTeamName}</div>
           <div style={{ ...styles.seasonEventCell, textAlign: 'center' as const }}>EVENT</div>
@@ -572,7 +653,7 @@ function SeasonTable({ allMatchups, homeTeamId, awayTeamId, homeTeamName, awayTe
             </span>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -702,13 +783,14 @@ function MatchupParlayRow({ parlay }: { parlay: any }) {
   const potentialPayout = parseFloat(parlay.potentialPayout) || 0;
   const decimalOdds = parseFloat(parlay.decimalOdds) || 0;
   const legs: any[] = parlay.legs ?? [];
-  const rowBg = !isPending ? (parlay.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
+  const isVoidParlay = parlay.status === 'void';
+  const rowBg = !isPending && !isVoidParlay ? (parlay.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
 
   return (
     <div style={{ ...mb.betRow, flexDirection: 'column', gap: 6, background: rowBg }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={mb.betLeft}>
-          <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : parlay.status === 'won' ? '#4caf50' : '#ff5252' }}>
+          <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : isVoidParlay ? '#555' : parlay.status === 'won' ? '#4caf50' : '#ff5252' }}>
             Parlay <span style={{ color: '#555', fontWeight: 400 }}>({legs.length} legs)</span>
           </div>
           {decimalOdds > 0 && (
@@ -719,16 +801,23 @@ function MatchupParlayRow({ parlay }: { parlay: any }) {
           <div style={mb.betStake}>{fmtMoney(stake)}</div>
           {isPending
             ? <div style={mb.betPotential}>Win {fmtMoney(potentialPayout)}</div>
-            : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
-                {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-              </div>
+            : isVoidParlay
+              ? <div style={{ ...mb.betPnl, color: '#555' }}>VOID</div>
+              : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+                  {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+                </div>
           }
         </div>
       </div>
       {legs.map((leg: any, i: number) => (
-        <div key={i} style={mb.parlayLeg}>
-          <span style={mb.parlayLegName}>{leg.fighterFirstName} {leg.fighterLastName}</span>
-          <span style={mb.parlayLegOdds}>{decimalToAmerican(parseFloat(leg.decimalOdds) || 0)}</span>
+        <div key={i} style={{ ...mb.parlayLeg, opacity: leg.result === 'void' ? 0.4 : 1 }}>
+          <span style={{ ...mb.parlayLegName, textDecoration: leg.result === 'void' ? 'line-through' : 'none' }}>
+            {leg.fighterFirstName} {leg.fighterLastName}
+          </span>
+          {leg.result === 'void'
+            ? <span style={{ ...mb.parlayLegOdds, color: '#555' }}>VOID</span>
+            : <span style={mb.parlayLegOdds}>{decimalToAmerican(parseFloat(leg.decimalOdds) || 0)}</span>
+          }
         </div>
       ))}
     </div>
@@ -739,15 +828,16 @@ function MatchupBetRow({ bet }: { bet: any }) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds != null ? +bet.odds : null;
   const isPending = bet.status === 'pending';
+  const isVoid = bet.status === 'void';
   const pl = parseFloat(bet.profitLoss);
   const potentialPayout = parseFloat(bet.potentialPayout) || 0;
 
-  const rowBg = !isPending ? (bet.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
+  const rowBg = !isPending && !isVoid ? (bet.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
 
   return (
     <div style={{ ...mb.betRow, background: rowBg }}>
       <div style={mb.betLeft}>
-        <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : bet.status === 'won' ? '#4caf50' : '#ff5252' }}>
+        <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : isVoid ? '#555' : bet.status === 'won' ? '#4caf50' : '#ff5252' }}>
           {bet.fighterFirstName} {bet.fighterLastName}
         </div>
         {odds != null && (
@@ -758,9 +848,11 @@ function MatchupBetRow({ bet }: { bet: any }) {
         <div style={mb.betStake}>{fmtMoney(stake)}</div>
         {isPending
           ? <div style={mb.betPotential}>Win {fmtMoney(potentialPayout)}</div>
-          : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
-              {bet.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-            </div>
+          : isVoid
+            ? <div style={{ ...mb.betPnl, color: '#555' }}>VOID</div>
+            : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+                {bet.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+              </div>
         }
       </div>
     </div>
@@ -787,7 +879,7 @@ function MatchupBetPanel({ teamName, singles, parlays, isLocked, isOwn, leagueId
   return (
     <div style={mb.panel}>
       <div style={mb.header}>
-        <span style={mb.headerTitle}>{teamName}</span>
+        <span style={mb.headerTitle}>{teamName} Betslip</span>
         {totalBets > 0 && <span style={mb.badge}>{totalBets}</span>}
         {isOwn && leagueId && !isEventLive && (
           <Link to={`/league/${leagueId}/staking`} style={mb.editLink}>Edit Bets</Link>
@@ -855,7 +947,7 @@ function MatchupPickPanel({ teamName, fights, champion, isLocked, isOwn, leagueI
   return (
     <div style={mb.panel}>
       <div style={mb.header}>
-        <span style={mb.headerTitle}>{teamName}</span>
+        <span style={mb.headerTitle}>{teamName} Betslip</span>
         {pickedCount > 0 && <span style={mb.badge}>{pickedCount}</span>}
         {isOwn && leagueId && !locked && (
           <Link to={`/league/${leagueId}/picks`} style={mb.editLink}>Edit Picks</Link>
@@ -960,6 +1052,7 @@ function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClic
               >
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
+                  <div style={{ ...mb.fighterName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName}</div>
                   <div style={{ ...mb.fighterName, color: redWon ? '#fff' : '#ccc' }}>{fight.redLastName}</div>
                   {fight.redFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.redFighterOdds)}</div>}
                 </div>
@@ -971,6 +1064,7 @@ function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClic
               >
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName}</div>
                   <div style={{ ...mb.fighterName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueLastName}</div>
                   {fight.blueFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.blueFighterOdds)}</div>}
                 </div>
@@ -983,10 +1077,11 @@ function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClic
   );
 }
 
-function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeamName, isEventLive, amInMatchup, leagueId, onPhotoClick }: {
-  fights: any[]; myStaking: any; oppStaking: any;
-  myTeamName: string; oppTeamName: string;
-  isEventLive: boolean; amInMatchup: boolean; leagueId?: string; onPhotoClick?: PhotoClickHandler;
+function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, awayTeamName, isMeHome, isMeAway, isEventLive, leagueId, onPhotoClick }: {
+  fights: any[]; homeStaking: any; awayStaking: any;
+  homeTeamName: string; awayTeamName: string;
+  isMeHome: boolean; isMeAway: boolean;
+  isEventLive: boolean; leagueId?: string; onPhotoClick?: PhotoClickHandler;
 }) {
   return (
     <div style={styles.section}>
@@ -994,9 +1089,25 @@ function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeam
         <span style={styles.sectionTitle}>BETS</span>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} parlays={myStaking?.parlays ?? []} isLocked={!amInMatchup && !isEventLive} isOwn={amInMatchup} leagueId={leagueId} isEventLive={isEventLive} />
+        <MatchupBetPanel
+          teamName={homeTeamName}
+          singles={homeStaking?.singles ?? []}
+          parlays={homeStaking?.parlays ?? []}
+          isLocked={!isMeHome && !isEventLive}
+          isOwn={isMeHome}
+          leagueId={leagueId}
+          isEventLive={isEventLive}
+        />
         <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
-        <MatchupBetPanel teamName={oppTeamName} singles={oppStaking?.singles ?? []} parlays={oppStaking?.parlays ?? []} isLocked={!isEventLive} />
+        <MatchupBetPanel
+          teamName={awayTeamName}
+          singles={awayStaking?.singles ?? []}
+          parlays={awayStaking?.parlays ?? []}
+          isLocked={!isMeAway && !isEventLive}
+          isOwn={isMeAway}
+          leagueId={leagueId}
+          isEventLive={isEventLive}
+        />
       </div>
     </div>
   );
@@ -1060,7 +1171,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   historyChipActive: { border: '1px solid #c8102e', background: '#1a0808' },
   historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
-  historyChipNoMatchup: { opacity: 0.4, cursor: 'default' },
+  historyChipNoMatchup: { opacity: 0.5, cursor: 'pointer' },
   chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipFinalsBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
@@ -1102,7 +1213,9 @@ const styles: Record<string, React.CSSProperties> = {
 
   section: { padding: '0 24px 8px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px' },
+  sectionHeaderBtn: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
   sectionTitle: { color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 },
+  collapseChevron: { color: '#444', fontSize: 10, marginLeft: 6 },
   lockedTag: { background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 },
 
   picksHeaderRow: { display: 'flex', alignItems: 'center', borderBottom: '1px solid #1a1a1a', paddingBottom: 6, marginBottom: 4 },

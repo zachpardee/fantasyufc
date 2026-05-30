@@ -40,6 +40,7 @@ export function LeagueHomePage() {
   const { data: members = [] } = useQuery<(LeagueMember & { username: string; displayName?: string })[]>({
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+    refetchInterval: 30_000,
   });
 
   const { data: unreadCount, refetch: refetchUnread } = useQuery<{ count: number }>({
@@ -69,15 +70,29 @@ export function LeagueHomePage() {
     enabled: showFightCard && !!currentEvent,
   });
 
-  const { data: matchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
+  const { data: matchup, refetch: refetchMatchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
     queryKey: ['matchup-current', leagueId],
     queryFn: async () => {
       try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
       catch { return null; }
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
-    refetchInterval: (query) => (query.state.data as any)?.eventStatus === 'live' ? 30_000 : false,
+    refetchInterval: (query) => {
+      const status = (query.state.data as any)?.eventStatus;
+      if (status === 'live') return 30_000;
+      if (status === 'scheduled') return 60_000;
+      return false;
+    },
   });
+
+  // Real-time score sync: subscribe to matchup DB updates just like the Matchup page does
+  useEffect(() => {
+    if (!matchup?.id) return;
+    const channel = supabase.channel(`home-matchup:${matchup.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchups', filter: `id=eq.${matchup.id}` }, () => refetchMatchup())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [matchup?.id, refetchMatchup]);
 
   const markAllReadMutation = useMutation({
     mutationFn: () => apiClient.post('/notifications/read-all', {}),

@@ -18,14 +18,38 @@ matchupsRouter.get('/season-events', requireAuth, async (req: AuthRequest, res, 
     const { rows } = await db.query(`
       SELECT DISTINCT e.id as event_id, e.name as event_name, e.scheduled_at, e.status as event_status
       FROM ufc_events e
-      LEFT JOIN league_events le ON le.event_id = e.id AND le.league_id = $1
-      LEFT JOIN leagues l ON l.id = $1
-      WHERE le.league_id IS NOT NULL
-         OR (
-           l.status IN ('active', 'playoffs')
-           AND e.status IN ('scheduled', 'live')
-           AND e.scheduled_at <= COALESCE(l.season_ends_at + INTERVAL '90 days', NOW() + INTERVAL '1 year')
-         )
+      JOIN leagues l ON l.id = $1
+      WHERE e.status != 'cancelled'
+        AND (
+          -- Events explicitly in this league's schedule
+          EXISTS (SELECT 1 FROM league_events le WHERE le.event_id = e.id AND le.league_id = $1)
+          -- Always include playoff events even if not yet in league_events
+          OR e.id = l.playoff_semis_event_id
+          OR e.id = l.playoff_finals_event_id
+          OR (
+            -- New regular-season events within the season window not yet enrolled (sync gap)
+            l.status IN ('active', 'playoffs')
+            AND e.scheduled_at < COALESCE(
+              (SELECT e2.scheduled_at FROM ufc_events e2 WHERE e2.id = l.playoff_semis_event_id),
+              l.season_ends_at
+            )
+            AND e.scheduled_at >= (
+              -- Season start: 6 months before semis target for 6-month leagues,
+              -- otherwise the earliest event already in league_events
+              CASE WHEN l.season_length_months = 6 AND l.playoff_semis_event_id IS NOT NULL
+                THEN (SELECT e2.scheduled_at FROM ufc_events e2 WHERE e2.id = l.playoff_semis_event_id)
+                       - INTERVAL '6 months'
+                WHEN l.season_length_months = 6 AND l.season_ends_at IS NOT NULL
+                THEN l.season_ends_at - INTERVAL '6 months'
+                ELSE (
+                  SELECT MIN(e2.scheduled_at) FROM ufc_events e2
+                  JOIN league_events le ON le.event_id = e2.id AND le.league_id = $1
+                  WHERE e2.id != l.playoff_semis_event_id AND e2.id != l.playoff_finals_event_id
+                )
+              END
+            )
+          )
+        )
       ORDER BY e.scheduled_at DESC
     `, [req.params.leagueId]);
     res.json(rows);
@@ -66,7 +90,7 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    // Prefer an active (scheduled/live) matchup; fall back to most recent completed
+    // Priority: 1) live event, 2) most recently completed, 3) next scheduled
     let { rows: [matchup] } = await db.query(`
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
@@ -77,12 +101,13 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
       JOIN league_members at2 ON at2.id = m.away_team_id
       WHERE m.league_id = $1
         AND (m.home_team_id = $2 OR m.away_team_id = $2)
-        AND e.status IN ('scheduled', 'live')
+        AND e.status = 'live'
       ORDER BY e.scheduled_at ASC
       LIMIT 1
     `, [req.params.leagueId, member.id]);
 
     if (!matchup) {
+      // Most recently completed matchup
       const { rows: [recent] } = await db.query(`
         SELECT m.*,
           e.name as event_name, e.scheduled_at, e.status as event_status,
@@ -93,10 +118,31 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
         JOIN league_members at2 ON at2.id = m.away_team_id
         WHERE m.league_id = $1
           AND (m.home_team_id = $2 OR m.away_team_id = $2)
+          AND e.status = 'completed'
+          AND (m.winner_id IS NOT NULL OR m.home_score != m.away_score)
         ORDER BY e.scheduled_at DESC
         LIMIT 1
       `, [req.params.leagueId, member.id]);
       matchup = recent ?? null;
+    }
+
+    if (!matchup) {
+      // Next scheduled matchup (no completed events yet)
+      const { rows: [upcoming] } = await db.query(`
+        SELECT m.*,
+          e.name as event_name, e.scheduled_at, e.status as event_status,
+          ht.team_name as home_team_name, at2.team_name as away_team_name
+        FROM matchups m
+        JOIN ufc_events e ON e.id = m.event_id
+        JOIN league_members ht ON ht.id = m.home_team_id
+        JOIN league_members at2 ON at2.id = m.away_team_id
+        WHERE m.league_id = $1
+          AND (m.home_team_id = $2 OR m.away_team_id = $2)
+          AND e.status = 'scheduled'
+        ORDER BY e.scheduled_at ASC
+        LIMIT 1
+      `, [req.params.leagueId, member.id]);
+      matchup = upcoming ?? null;
     }
 
     if (!matchup) { res.json(null); return; }
