@@ -327,6 +327,9 @@ export function MatchupPage() {
                     fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
                     champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
                     isLocked={!(isMeHome || isMeAway) && !eventIsLive}
+                    isOwn={isMeHome || isMeAway}
+                    leagueId={leagueId}
+                    locked={homePicks?.locked}
                   />
                   <MatchupFightList fights={fights} onPhotoClick={openPhoto} />
                   <MatchupPickPanel
@@ -748,8 +751,9 @@ function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; si
   );
 }
 
-function MatchupPickPanel({ teamName, fights, champion, isLocked }: {
+function MatchupPickPanel({ teamName, fights, champion, isLocked, isOwn, leagueId, locked }: {
   teamName: string; fights: any[]; champion: any; isLocked: boolean;
+  isOwn?: boolean; leagueId?: string; locked?: boolean;
 }) {
   const pickedCount = fights.filter((f) => f.pickedFighterId).length;
 
@@ -758,6 +762,9 @@ function MatchupPickPanel({ teamName, fights, champion, isLocked }: {
       <div style={mb.header}>
         <span style={mb.headerTitle}>{teamName}</span>
         {pickedCount > 0 && <span style={mb.badge}>{pickedCount}</span>}
+        {isOwn && leagueId && !locked && (
+          <Link to={`/league/${leagueId}/picks`} style={mb.editLink}>Edit Picks</Link>
+        )}
       </div>
 
       {isLocked ? (
@@ -914,6 +921,7 @@ const mb: Record<string, React.CSSProperties> = {
   betStake: { color: '#fff', fontSize: 13, fontWeight: 700 },
   betPotential: { color: '#555', fontSize: 11, marginTop: 2 },
   betPnl: { fontSize: 12, fontWeight: 700, marginTop: 2 },
+  editLink: { color: '#c8102e', fontSize: 11, fontWeight: 700, textDecoration: 'none', marginLeft: 4 },
   locked: { padding: '28px 14px', textAlign: 'center' },
   empty: { padding: '28px 14px', textAlign: 'center', color: '#333', fontSize: 12 },
   totalsRow: { display: 'flex', gap: 0, borderTop: '1px solid #1e1e1e', background: '#0d0d0d' },
