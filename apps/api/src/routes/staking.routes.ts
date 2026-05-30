@@ -7,6 +7,12 @@ import { z } from 'zod';
 
 export const stakingRouter = Router({ mergeParams: true });
 
+function isEventLocked(event: { status: string; prelims_at: string | null; scheduled_at: string }): boolean {
+  if (event.status === 'live' || event.status === 'completed') return true;
+  const startMs = new Date(event.prelims_at ?? event.scheduled_at).getTime();
+  return Date.now() >= startMs - 10 * 60 * 1000;
+}
+
 function toDecimalOdds(american: number): number {
   return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
 }
@@ -143,10 +149,10 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
     const { rows: [event] } = await db.query(
-      `SELECT status FROM ufc_events WHERE id = $1`, [eventId],
+      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [eventId],
     );
     if (!event) throw new AppError(404, 'Event not found');
-    if (event.status !== 'scheduled') throw new AppError(400, 'Betting is closed for this event');
+    if (isEventLocked(event)) throw new AppError(400, 'Betting is closed for this event');
 
     const client = await db.connect();
     try {
@@ -240,9 +246,10 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
     const { rows: [event] } = await db.query(
-      `SELECT status FROM ufc_events WHERE id = $1`, [eventId],
+      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [eventId],
     );
-    if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed for this event');
+    if (!event) throw new AppError(404, 'Event not found');
+    if (isEventLocked(event)) throw new AppError(400, 'Betting is closed for this event');
 
     const client = await db.connect();
     try {

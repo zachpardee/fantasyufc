@@ -6,6 +6,12 @@ import { z } from 'zod';
 
 export const picksRouter = Router({ mergeParams: true });
 
+function isEventLocked(event: { status: string; prelims_at: string | null; scheduled_at: string }): boolean {
+  if (event.status === 'live' || event.status === 'completed') return true;
+  const startMs = new Date(event.prelims_at ?? event.scheduled_at).getTime();
+  return Date.now() >= startMs - 10 * 60 * 1000;
+}
+
 // The next/current scoring event for this league
 picksRouter.get('/current-event', requireAuth, async (req: AuthRequest, res, next) => {
   try {
@@ -74,9 +80,9 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
     `, [req.params.leagueId, targetMemberId, req.params.eventId]);
 
     const { rows: [event] } = await db.query(
-      `SELECT status, name, scheduled_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
+      `SELECT status, name, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
     );
-    const locked = event?.status === 'live' || event?.status === 'completed';
+    const locked = event ? isEventLocked(event) : false;
 
     res.json({ fights, locked, eventStatus: event?.status, eventName: event?.name, scheduledAt: event?.scheduled_at });
   } catch (err) { next(err); }
@@ -100,12 +106,10 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     const { rows: [event] } = await db.query(
-      `SELECT status FROM ufc_events WHERE id = $1`, [req.params.eventId],
+      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
     );
     if (!event) throw new AppError(404, 'Event not found');
-    if (event.status === 'live' || event.status === 'completed') {
-      throw new AppError(400, 'Picks are locked — event has already started');
-    }
+    if (isEventLocked(event)) throw new AppError(400, 'Picks are locked — event starts soon');
 
     // Only the top-10 fights are pickable
     const { rows: eligibleFights } = await db.query(`
@@ -179,12 +183,10 @@ picksRouter.put('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     const { rows: [event] } = await db.query(
-      `SELECT status FROM ufc_events WHERE id = $1`, [req.params.eventId],
+      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
     );
     if (!event) throw new AppError(404, 'Event not found');
-    if (event.status === 'live' || event.status === 'completed') {
-      throw new AppError(400, 'Champion pick is locked — event has already started');
-    }
+    if (isEventLocked(event)) throw new AppError(400, 'Champion pick is locked — event starts soon');
 
     // Fighter must be in one of the top-10 fights for this event
     const { rows: [fight] } = await db.query(`
