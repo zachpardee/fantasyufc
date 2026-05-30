@@ -152,6 +152,18 @@ export function MatchupPage() {
   const isLive = matchup?.eventStatus === 'live';
   const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
 
+  // Compute live staking score: unbet budget + settled P&L
+  function calcStakingScore(staking: any): number {
+    if (!staking) return 0;
+    const budget = parseFloat(staking.weeklyBudget) || 100;
+    const allBets = [...(staking.singles ?? []), ...(staking.parlays ?? [])];
+    const pendingStake = allBets.filter((b: any) => b.status === 'pending').reduce((s: number, b: any) => s + (parseFloat(b.stake) || 0), 0);
+    const settledPnl = allBets.filter((b: any) => b.status !== 'pending').reduce((s: number, b: any) => s + (parseFloat(b.profitLoss) || 0), 0);
+    return budget - pendingStake + settledPnl;
+  }
+  const homeStakingScore = homeStaking ? calcStakingScore(homeStaking) : +matchup?.homeScore;
+  const awayStakingScore = awayStaking ? calcStakingScore(awayStaking) : +matchup?.awayScore;
+
   // Orient so the current user's bets are always on the left
   const isMeHome = !!myMember && myMember.id === matchup?.homeTeamId;
   const isMeAway = !!myMember && myMember.id === matchup?.awayTeamId;
@@ -295,7 +307,7 @@ export function MatchupPage() {
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.homeTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(+matchup.homeScore) : (+matchup.homeScore).toFixed(0)}</div>
+              }}>{isStaking ? fmtStakeScore(homeStakingScore) : (+matchup.homeScore).toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
@@ -325,7 +337,7 @@ export function MatchupPage() {
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.awayTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(+matchup.awayScore) : (+matchup.awayScore).toFixed(0)}</div>
+              }}>{isStaking ? fmtStakeScore(awayStakingScore) : (+matchup.awayScore).toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
           </div>
