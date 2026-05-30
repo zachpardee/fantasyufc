@@ -106,22 +106,21 @@ export function StakingPicksPage() {
     setParlayTouched(true);
   }
 
+  function clearSlip() {
+    setSingles([]);
+    setParlayLegs({});
+    setParlayStake('');
+    setSinglesTouched(false);
+    setParlayTouched(false);
+    setSaveError('');
+  }
+
   const saveSinglesMutation = useMutation({
     mutationFn: () => {
       const bets = singles
         .map((b) => ({ fightId: b.fightId, fighterId: b.fighterId, stake: parseFloat(b.stake) }))
         .filter((b) => b.fighterId && !isNaN(b.stake) && b.stake > 0);
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent!.id}/singles`, { bets });
-    },
-    onSuccess: () => {
-      setSingles([]);
-      setParlayLegs({});
-      setParlayStake('');
-      setSinglesTouched(false);
-      setParlayTouched(false);
-      setSaveError('');
-      refetchBets();
-      qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
     },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save bets'),
   });
@@ -132,16 +131,6 @@ export function StakingPicksPage() {
         .filter(([, fighterId]) => !!fighterId)
         .map(([fightId, fighterId]) => ({ fightId, fighterId }));
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent!.id}/parlay`, { stake: parseFloat(parlayStake), legs });
-    },
-    onSuccess: () => {
-      setSingles([]);
-      setParlayLegs({});
-      setParlayStake('');
-      setSinglesTouched(false);
-      setParlayTouched(false);
-      setSaveError('');
-      refetchBets();
-      qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
     },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save parlay'),
   });
@@ -165,13 +154,20 @@ export function StakingPicksPage() {
 
   async function saveAll() {
     setSaveError('');
+    const parlayLegSnapshot = parlayLegs;
+    const parlayStakeSnapshot = parlayStake;
+    const parlayTouchedSnapshot = parlayTouched;
     try {
       if (singlesTouched) await saveSinglesMutation.mutateAsync();
-      const validLegCount = Object.values(parlayLegs).filter(Boolean).length;
-      if (parlayTouched && validLegCount >= 2 && parlayStake) {
+      const validLegCount = Object.values(parlayLegSnapshot).filter(Boolean).length;
+      if (parlayTouchedSnapshot && validLegCount >= 2 && parlayStakeSnapshot) {
         await saveParlayMutation.mutateAsync();
       }
-    } catch { /* errors handled in mutations */ }
+      // Clear the slip after all saves succeed
+      clearSlip();
+      refetchBets();
+      qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
+    } catch { /* errors handled in onError */ }
   }
 
   const mainCard: any[] = betsData?.fights ?? [];
