@@ -101,7 +101,7 @@ export function LeagueRulesPage() {
           <Section title="How It Works">
             <Row label="Weekly budget" value={`$${weeklyBudget} per event`} />
             <Row label="Unused budget" value="Added to your event payout total" />
-            <Row label="Bet deadline" value="Event start time" />
+            <Row label="Bet deadline" value="10 min before prelims begin" />
             <Row label="Fights available" value="Top 6 fights (main card + top prelims)" />
           </Section>
 
@@ -138,7 +138,7 @@ export function LeagueRulesPage() {
           <Section title="How It Works">
             <Row label="Format" value="Pick 'em — no rosters or drafts" />
             <Row label="Picks per event" value="Top 6 fights (main card + top prelims)" />
-            <Row label="Pick deadline" value="Event start time" />
+            <Row label="Pick deadline" value="10 min before prelims begin" />
             <Row label="Scoring" value="Points for correct winner + method" />
             <Row label="Prelims scoring" value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'} />
             <Row label="Early prelims" value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'} />
