@@ -320,22 +320,22 @@ export function MatchupPage() {
               </div>
               {homePicksLoading || awayPicksLoading ? (
                 [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
-              ) : fights.length === 0 ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '24px 0', fontSize: 13 }}>No fights scheduled yet</div>
               ) : (
-                <>
-                  <div style={styles.picksHeaderRow}>
-                    <div style={styles.pickTeamHeader}>{matchup.homeTeamName}</div>
-                    <div style={styles.fightInfoHeader}>FIGHT</div>
-                    <div style={{ ...styles.pickTeamHeader, textAlign: 'right' }}>{matchup.awayTeamName}</div>
-                  </div>
-                  {fights.map((fight) => (
-                    <PickRow key={fight.id} fight={fight} homePick={fight} awayPick={awayPickMap[fight.id]} onPhotoClick={openPhoto} />
-                  ))}
-                </>
-              )}
-              {(homeChampion || awayChampion) && (
-                <ChampionPickRow homeChampion={homeChampion} awayChampion={awayChampion} locked={homePicks?.locked} onPhotoClick={openPhoto} />
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <MatchupPickPanel
+                    teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
+                    fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
+                    champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
+                    isLocked={!(isMeHome || isMeAway) && !eventIsLive}
+                  />
+                  <MatchupFightList fights={fights} onPhotoClick={openPhoto} />
+                  <MatchupPickPanel
+                    teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
+                    fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
+                    champion={isMeHome ? awayChampion : isMeAway ? homeChampion : awayChampion}
+                    isLocked={!eventIsLive}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -443,136 +443,9 @@ export function MatchupPage() {
   );
 }
 
-function ChampionPickRow({ homeChampion, awayChampion, locked, onPhotoClick }: {
-  homeChampion: any; awayChampion: any; locked?: boolean; onPhotoClick?: PhotoClickHandler;
-}) {
-  const renderSide = (champ: any, align: 'left' | 'right') => {
-    if (!champ) return <span style={styles.noPick}>—</span>;
-    const scored = locked && champ.resultWinnerId !== null;
-    const won = scored && champ.pointsEarned > 0;
-    const name = `${champ.firstName} ${champ.lastName}`;
-    return (
-      <div style={{ display: 'flex', flexDirection: align === 'right' ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-        {champ.imageUrl && (
-          <div
-            style={{ width: 36, height: 40, borderRadius: 4, overflow: 'hidden', flexShrink: 0, background: '#222', opacity: scored && !won ? 0.4 : 1, cursor: 'zoom-in' }}
-            onClick={() => onPhotoClick?.(champ.imageUrl, name)}
-          >
-            <img src={champ.imageUrl} alt={name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
-          <div style={{ color: '#ddd', fontSize: 14, fontWeight: 600 }}>{champ.firstName} {champ.lastName}</div>
-          {scored
-            ? <div style={{ color: won ? '#4caf50' : '#444', fontSize: 12, fontWeight: 700 }}>{won ? '+30 pts' : '✗'}</div>
-            : <div style={{ color: '#888', fontSize: 12 }}>Pending</div>
-          }
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div style={{ ...styles.pickRow, background: '#0d0d00', borderTop: '2px solid #1e1e00' }}>
-      <div style={styles.pickCell}>{renderSide(homeChampion, 'left')}</div>
-      <div style={styles.fightInfo}>
-        <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>★ EVENT CHAMPION</div>
-        <div style={styles.fightWeight}>+30 pts if correct</div>
-      </div>
-      <div style={{ ...styles.pickCell, alignItems: 'flex-end' }}>{renderSide(awayChampion, 'right')}</div>
-    </div>
-  );
-}
-
 const PICK_METHOD_LABEL: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ',
 };
-
-function PickBadge({ pick, fight, align }: { pick: any; fight: any; align: 'left' | 'right' }) {
-  if (!pick?.pickedFighterId) return <span style={styles.noPick}>—</span>;
-  const isRed = pick.pickedFighterId === fight.redFighterId;
-  const lastName = isRed ? fight.redLastName : fight.blueLastName;
-  const scored = pick.isCorrect !== null;
-  const correct = pick.isCorrect === true;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: align === 'right' ? 'flex-end' : 'flex-start', gap: 2 }}>
-      <span style={{ color: scored ? (correct ? '#4caf50' : '#444') : '#ccc', fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
-        {lastName}
-      </span>
-      {pick.pickedMethod && (
-        <span style={{ color: '#444', fontSize: 10 }}>{PICK_METHOD_LABEL[pick.pickedMethod] ?? pick.pickedMethod}</span>
-      )}
-      {scored && (
-        <span style={{ color: correct ? '#4caf50' : '#333', fontSize: 12, fontWeight: 700 }}>
-          {correct ? `+${(+(pick.pointsEarned ?? 0)).toFixed(0)}` : '✗'}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PickRow({ fight, homePick, awayPick, onPhotoClick }: { fight: any; homePick: any; awayPick: any; onPhotoClick?: PhotoClickHandler }) {
-  const resultWinner = fight.resultWinnerId;
-  const resultOutcome = fight.resultOutcome;
-  const redWon = resultWinner === fight.redFighterId;
-  const blueWon = resultWinner === fight.blueFighterId;
-  const fmtOdds = (n: number) => n >= 0 ? `+${n}` : `${n}`;
-
-  return (
-    <div style={styles.pickRow}>
-      {/* Home pick */}
-      <div style={styles.pickBadgeCol}>
-        <PickBadge pick={homePick} fight={fight} align="left" />
-      </div>
-
-      {/* Fight card — sheet style */}
-      <div style={styles.fightCardCenter}>
-        {/* Red fighter */}
-        <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: resultWinner && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
-          onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
-        >
-          <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={styles.fightCardPhoto} />
-          <div style={styles.fightCardFighterInfo}>
-            <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
-            {fight.redFighterOdds != null && (
-              <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>
-            )}
-          </div>
-        </div>
-
-        {/* VS + weight + result */}
-        <div style={styles.fightCardVs}>
-          <span style={styles.vsText2}>VS</span>
-          <span style={styles.fightCardWeight}>{fight.weightClassName}</span>
-          {resultWinner && (
-            <span style={styles.fightCardResult}>{METHOD_LABELS[resultOutcome] ?? resultOutcome}</span>
-          )}
-        </div>
-
-        {/* Blue fighter */}
-        <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: resultWinner && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
-          onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
-        >
-          <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={styles.fightCardPhoto} />
-          <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
-            <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
-            {fight.blueFighterOdds != null && (
-              <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Away pick */}
-      <div style={{ ...styles.pickBadgeCol, alignItems: 'flex-end' }}>
-        <PickBadge pick={awayPick} fight={fight} align="right" />
-      </div>
-    </div>
-  );
-}
 
 type SeasonRow = {
   eventId: string; eventName: string; scheduledAt: string;
@@ -784,10 +657,12 @@ function MatchupBetRow({ bet }: { bet: any }) {
   const pl = parseFloat(bet.profitLoss);
   const potentialPayout = parseFloat(bet.potentialPayout) || 0;
 
+  const rowBg = !isPending ? (bet.status === 'won' ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
+
   return (
-    <div style={mb.betRow}>
+    <div style={{ ...mb.betRow, background: rowBg }}>
       <div style={mb.betLeft}>
-        <div style={{ ...mb.betFighter, color: !isPending && bet.status === 'won' ? '#4caf50' : '#ddd' }}>
+        <div style={{ ...mb.betFighter, color: isPending ? '#ddd' : bet.status === 'won' ? '#4caf50' : '#ff5252' }}>
           {bet.fighterFirstName} {bet.fighterLastName}
         </div>
         {odds != null && (
@@ -810,6 +685,11 @@ function MatchupBetRow({ bet }: { bet: any }) {
 function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; singles: any[]; isLocked: boolean }) {
   const pending = singles.filter((s: any) => s.status === 'pending');
   const settled = singles.filter((s: any) => s.status !== 'pending');
+
+  const totalStaked = singles.reduce((sum, s) => sum + (parseFloat(s.stake) || 0), 0);
+  const totalPotential = pending.reduce((sum, s) => sum + (parseFloat(s.potentialPayout) || 0), 0);
+  const totalPnl = settled.reduce((sum, s) => sum + (parseFloat(s.profitLoss) || 0), 0);
+  const showTotals = !isLocked && singles.length > 0;
 
   return (
     <div style={mb.panel}>
@@ -839,6 +719,115 @@ function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; si
               {settled.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
             </>
           )}
+        </>
+      )}
+
+      {showTotals && (
+        <div style={mb.totalsRow}>
+          <div style={mb.totalItem}>
+            <span style={mb.totalLabel}>Staked</span>
+            <span style={mb.totalVal}>{fmtMoney(totalStaked)}</span>
+          </div>
+          {pending.length > 0 && totalPotential > 0 && (
+            <div style={mb.totalItem}>
+              <span style={mb.totalLabel}>To win</span>
+              <span style={{ ...mb.totalVal, color: '#4caf50' }}>{fmtMoney(totalPotential)}</span>
+            </div>
+          )}
+          {settled.length > 0 && (
+            <div style={mb.totalItem}>
+              <span style={mb.totalLabel}>P&L</span>
+              <span style={{ ...mb.totalVal, color: totalPnl >= 0 ? '#4caf50' : '#ff5252' }}>
+                {totalPnl >= 0 ? '+' : ''}{fmtMoney(totalPnl)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MatchupPickPanel({ teamName, fights, champion, isLocked }: {
+  teamName: string; fights: any[]; champion: any; isLocked: boolean;
+}) {
+  const pickedCount = fights.filter((f) => f.pickedFighterId).length;
+
+  return (
+    <div style={mb.panel}>
+      <div style={mb.header}>
+        <span style={mb.headerTitle}>{teamName}</span>
+        {pickedCount > 0 && <span style={mb.badge}>{pickedCount}</span>}
+      </div>
+
+      {isLocked ? (
+        <div style={mb.locked}>
+          <div style={{ fontSize: 20, marginBottom: 6 }}>🔒</div>
+          <div style={{ color: '#333', fontSize: 11, fontStyle: 'italic' }}>Revealed at event start</div>
+        </div>
+      ) : pickedCount === 0 && !champion ? (
+        <div style={mb.empty}>No picks placed</div>
+      ) : (
+        <>
+          {fights.map((fight) => {
+            if (!fight.pickedFighterId) return (
+              <div key={fight.id} style={mb.betRow}>
+                <span style={{ color: '#2a2a2a', fontSize: 12 }}>—</span>
+              </div>
+            );
+            const isRed = fight.pickedFighterId === fight.redFighterId;
+            const firstName = isRed ? fight.redFirstName : fight.blueFirstName;
+            const lastName = isRed ? fight.redLastName : fight.blueLastName;
+            const scored = fight.isCorrect !== null && fight.isCorrect !== undefined;
+            const correct = fight.isCorrect === true;
+            const rowBg = scored ? (correct ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : undefined;
+            return (
+              <div key={fight.id} style={{ ...mb.betRow, background: rowBg }}>
+                <div style={mb.betLeft}>
+                  <div style={{ ...mb.betFighter, color: scored ? (correct ? '#4caf50' : '#ff5252') : '#ddd' }}>
+                    {firstName} {lastName}
+                  </div>
+                  {fight.pickedMethod && (
+                    <div style={mb.betOdds}>{PICK_METHOD_LABEL[fight.pickedMethod] ?? fight.pickedMethod}</div>
+                  )}
+                </div>
+                <div style={mb.betRight}>
+                  {scored ? (
+                    <span style={{ color: correct ? '#4caf50' : '#333', fontSize: 12, fontWeight: 700 }}>
+                      {correct ? `+${(+(fight.pointsEarned ?? 0)).toFixed(0)}` : '✗'}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#333', fontSize: 11 }}>–</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {champion && (() => {
+            const champScored = champion.resultWinnerId !== null;
+            const champWon = champScored && champion.pointsEarned > 0;
+            const champBg = champScored ? (champWon ? 'rgba(76,175,80,0.08)' : 'rgba(255,82,82,0.08)') : 'rgba(255,215,0,0.04)';
+            return (
+              <div style={{ ...mb.betRow, background: champBg, borderTop: '1px solid #1e1e00' }}>
+                <div style={mb.betLeft}>
+                  <div style={{ color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.5, marginBottom: 2 }}>★ CHAMPION</div>
+                  <div style={{ ...mb.betFighter, color: champScored ? (champWon ? '#4caf50' : '#ff5252') : '#ddd' }}>
+                    {champion.firstName} {champion.lastName}
+                  </div>
+                </div>
+                <div style={mb.betRight}>
+                  {champScored ? (
+                    <span style={{ color: champWon ? '#4caf50' : '#333', fontSize: 12, fontWeight: 700 }}>
+                      {champWon ? `+${(+champion.pointsEarned).toFixed(0)}` : '✗'}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#333', fontSize: 11 }}>–</span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
     </div>
@@ -927,6 +916,10 @@ const mb: Record<string, React.CSSProperties> = {
   betPnl: { fontSize: 12, fontWeight: 700, marginTop: 2 },
   locked: { padding: '28px 14px', textAlign: 'center' },
   empty: { padding: '28px 14px', textAlign: 'center', color: '#333', fontSize: 12 },
+  totalsRow: { display: 'flex', gap: 0, borderTop: '1px solid #1e1e1e', background: '#0d0d0d' },
+  totalItem: { flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: '8px 6px', gap: 2 },
+  totalLabel: { color: '#444', fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
+  totalVal: { color: '#fff', fontSize: 13, fontWeight: 700 },
 
   fightCard: { background: '#141414', border: '1px solid #1e1e1e', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' },
   fightCardMeta: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 },
