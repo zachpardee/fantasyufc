@@ -165,6 +165,18 @@ export function StakingPicksPage() {
     onSuccess: () => { setParlayLegs({}); setParlayStake(''); setParlayTouched(false); refetchBets(); },
   });
 
+  const deleteSavedSingleMutation = useMutation({
+    mutationFn: (betId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent!.id}/singles/${betId}`),
+    onSuccess: () => refetchBets(),
+    onError: (err: any) => setSaveError(err?.message ?? 'Failed to delete bet'),
+  });
+
+  const deleteSavedParlayMutation = useMutation({
+    mutationFn: (parlayId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent!.id}/parlays/${parlayId}`),
+    onSuccess: () => refetchBets(),
+    onError: (err: any) => setSaveError(err?.message ?? 'Failed to delete parlay'),
+  });
+
   async function saveAll() {
     setSaveError('');
     try {
@@ -359,7 +371,12 @@ export function StakingPicksPage() {
         {/* ── Col 3: Saved Bets ─────────────────────────────── */}
         <div style={s.col}>
           <div style={s.stickyCol}>
-            <SavedBetsPanel betsData={betsData} />
+            <SavedBetsPanel
+              betsData={betsData}
+              locked={locked}
+              onDeleteSingle={(id) => deleteSavedSingleMutation.mutate(id)}
+              onDeleteParlay={(id) => deleteSavedParlayMutation.mutate(id)}
+            />
           </div>
         </div>
       </div>
@@ -669,7 +686,12 @@ function BetSlip({
 
 // ── Saved Bets Panel ─────────────────────────────────────────────────────────
 
-function SavedBetsPanel({ betsData }: { betsData: any }) {
+function SavedBetsPanel({ betsData, locked, onDeleteSingle, onDeleteParlay }: {
+  betsData: any;
+  locked: boolean;
+  onDeleteSingle: (id: string) => void;
+  onDeleteParlay: (id: string) => void;
+}) {
   const allSingles: any[] = betsData?.singles ?? [];
   const allParlays: any[] = betsData?.parlays ?? [];
   const pendingSingles = allSingles.filter((s: any) => s.status === 'pending');
@@ -696,16 +718,24 @@ function SavedBetsPanel({ betsData }: { betsData: any }) {
       {(pendingSingles.length > 0 || pendingParlays.length > 0) && (
         <>
           <div style={sv.sectionLabel}>PENDING</div>
-          {pendingSingles.map((s: any) => <SavedSingleRow key={s.id} bet={s} />)}
-          {pendingParlays.map((p: any) => <SavedParlayRow key={p.id} parlay={p} />)}
+          {pendingSingles.map((s: any) => (
+            <SavedSingleRow key={s.id} bet={s} canDelete={!locked} onDelete={() => onDeleteSingle(s.id)} />
+          ))}
+          {pendingParlays.map((p: any) => (
+            <SavedParlayRow key={p.id} parlay={p} canDelete={!locked} onDelete={() => onDeleteParlay(p.id)} />
+          ))}
         </>
       )}
 
       {(settledSingles.length > 0 || settledParlays.length > 0) && (
         <>
           <div style={sv.sectionLabel}>SETTLED</div>
-          {settledSingles.map((s: any) => <SavedSingleRow key={s.id} bet={s} />)}
-          {settledParlays.map((p: any) => <SavedParlayRow key={p.id} parlay={p} />)}
+          {settledSingles.map((s: any) => (
+            <SavedSingleRow key={s.id} bet={s} canDelete={false} onDelete={() => {}} />
+          ))}
+          {settledParlays.map((p: any) => (
+            <SavedParlayRow key={p.id} parlay={p} canDelete={false} onDelete={() => {}} />
+          ))}
         </>
       )}
     </div>
@@ -718,7 +748,7 @@ function fmtTs(iso: string | null | undefined): string {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function SavedSingleRow({ bet }: { bet: any }) {
+function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boolean; onDelete: () => void }) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds ?? null;
   const pl = parseFloat(bet.profitLoss);
@@ -743,11 +773,14 @@ function SavedSingleRow({ bet }: { bet: any }) {
             </div>
         }
       </div>
+      {canDelete && (
+        <button style={sv.deleteBtn} onClick={onDelete} title="Delete bet">✕</button>
+      )}
     </div>
   );
 }
 
-function SavedParlayRow({ parlay }: { parlay: any }) {
+function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelete: boolean; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const legs: any[] = parlay.legs ?? [];
   const stake = parseFloat(parlay.stake) || 0;
@@ -766,14 +799,19 @@ function SavedParlayRow({ parlay }: { parlay: any }) {
             <div style={{ ...sv.betOdds, color: '#ffd700' }}>{fmtOdds(americanOdds)}</div>
           )}
         </div>
-        <div style={sv.betRight}>
-          <div style={sv.betStake}>{fmtMoney(stake)}</div>
-          {isPending
-            ? potentialPayout > 0 && <div style={sv.betPotential}>Win {fmtMoney(potentialPayout)}</div>
-            : <div style={{ ...sv.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
-                {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-              </div>
-          }
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <div style={sv.betRight}>
+            <div style={sv.betStake}>{fmtMoney(stake)}</div>
+            {isPending
+              ? potentialPayout > 0 && <div style={sv.betPotential}>Win {fmtMoney(potentialPayout)}</div>
+              : <div style={{ ...sv.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+                  {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+                </div>
+            }
+          </div>
+          {canDelete && (
+            <button style={sv.deleteBtn} onClick={onDelete} title="Delete parlay">✕</button>
+          )}
         </div>
       </div>
       <div style={sv.betTs}>{fmtTs(parlay.createdAt)}</div>
@@ -954,6 +992,7 @@ const sv: Record<string, React.CSSProperties> = {
   betPotential: { color: '#555', fontSize: 11, marginTop: 2 },
   betPnl: { fontSize: 13, fontWeight: 700, marginTop: 2 },
   betTs: { color: '#333', fontSize: 10, marginTop: 3 },
+  deleteBtn: { background: 'none', border: 'none', color: '#444', fontSize: 13, cursor: 'pointer', padding: '2px 4px', flexShrink: 0, lineHeight: 1 },
   toggleLegsBtn: { background: 'none', border: 'none', color: '#c8102e', fontSize: 11, cursor: 'pointer', padding: '5px 0 2px', display: 'block' },
   legItem: { display: 'flex', alignItems: 'center', gap: 6, paddingTop: 4, paddingLeft: 2 },
   legDot: { fontSize: 11, fontWeight: 700, flexShrink: 0, width: 12 },

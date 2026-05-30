@@ -355,10 +355,10 @@ stakingRouter.delete('/:eventId/parlay', requireAuth, async (req: AuthRequest, r
   } catch (err) { next(err); }
 });
 
-// DELETE /leagues/:leagueId/staking/:eventId/singles/:fightId
-stakingRouter.delete('/:eventId/singles/:fightId', requireAuth, async (req: AuthRequest, res, next) => {
+// DELETE /leagues/:leagueId/staking/:eventId/singles/:betId
+stakingRouter.delete('/:eventId/singles/:betId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { leagueId, eventId, fightId } = req.params;
+    const { leagueId, eventId, betId } = req.params;
 
     const { rows: [member] } = await db.query(
       `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
@@ -370,12 +370,38 @@ stakingRouter.delete('/:eventId/singles/:fightId', requireAuth, async (req: Auth
     if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
 
     const { rows: [single] } = await db.query(
-      `SELECT id FROM staking_singles WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND fight_id=$4 AND status='pending'`,
-      [leagueId, eventId, member.id, fightId],
+      `SELECT id FROM staking_singles WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
+      [betId, leagueId, eventId, member.id],
     );
     if (!single) throw new AppError(404, 'Bet not found');
 
     await db.query(`DELETE FROM staking_singles WHERE id = $1`, [single.id]);
+    res.json({ ok: true });
+    refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
+  } catch (err) { next(err); }
+});
+
+// DELETE /leagues/:leagueId/staking/:eventId/parlays/:parlayId
+stakingRouter.delete('/:eventId/parlays/:parlayId', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { leagueId, eventId, parlayId } = req.params;
+
+    const { rows: [member] } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [leagueId, req.user!.id],
+    );
+    if (!member) throw new AppError(403, 'Not a member of this league');
+
+    const { rows: [event] } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
+    if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
+
+    const { rows: [parlay] } = await db.query(
+      `SELECT id FROM staking_parlays WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
+      [parlayId, leagueId, eventId, member.id],
+    );
+    if (!parlay) throw new AppError(404, 'Parlay not found');
+
+    await db.query(`DELETE FROM staking_parlays WHERE id = $1`, [parlay.id]);
     res.json({ ok: true });
     refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
   } catch (err) { next(err); }
