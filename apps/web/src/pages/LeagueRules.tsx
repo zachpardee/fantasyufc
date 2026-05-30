@@ -123,14 +123,19 @@ export function LeagueRulesPage() {
           <Section title="Event Payout (Your Score)">
             <Row label="Formula" value="Unbet budget + winnings from settled bets" />
             <Row label="Example" value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130" />
-            <Row label="Matchup winner" value="Higher event payout wins the week" />
+          </Section>
+
+          <Section title="Matchups">
+            <Row label="Format" value="Head-to-head per event" />
+            <Row label="Winner" value="Higher event payout wins the week" />
+            <Row label="Standings / seeding" value="Win-loss record, then season bankroll" />
           </Section>
 
           <Section title="Season Bankroll">
             <Row label="What it tracks" value="Running total of profit / loss across all events" />
-            <Row label="Win" value="+ (payout − stake)" />
-            <Row label="Loss" value="− stake" />
-            <Row label="Standings" value="Total season bankroll" />
+            <Row label="Bet win" value="+ (payout − stake)" />
+            <Row label="Bet loss" value="− stake" />
+            <Row label="Tiebreaker only" value="Breaks ties in win-loss record for seeding" />
           </Section>
         </>
       ) : (

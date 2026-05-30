@@ -30,6 +30,7 @@ export function CommissionerToolsPage() {
       {league && (
         <div style={styles.body}>
           <SettingsSection league={league} leagueId={leagueId!} qc={qc} />
+          <ScheduleSection league={league} leagueId={leagueId!} qc={qc} />
           <PlayoffsSection league={league} leagueId={leagueId!} qc={qc} />
           <DangerSection leagueId={leagueId!} qc={qc} navigate={navigate} />
         </div>
@@ -73,6 +74,140 @@ function SettingsSection({ league, leagueId, qc }: { league: any; leagueId: stri
           {mutation.isPending ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
+    </section>
+  );
+}
+
+function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: string; qc: any }) {
+  const isStaking = league.leagueFormat === 'staking';
+
+  // Current standings for playoff seeding preview
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+    enabled: league.status === 'active',
+  });
+
+  const seeded = [...members]
+    .filter((m) => m.isActive !== false)
+    .sort((a, b) =>
+      isStaking
+        ? b.wins - a.wins || b.stakingBalance - a.stakingBalance
+        : b.totalPoints - a.totalPoints || b.wins - a.wins,
+    )
+    .slice(0, 4);
+
+  const [regenDone, setRegenDone] = useState(false);
+  const regenMutation = useMutation({
+    mutationFn: () => apiClient.post(`/leagues/${leagueId}/schedule/regenerate-matchups`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['matchups-all', leagueId] });
+      qc.invalidateQueries({ queryKey: ['season-events', leagueId] });
+      setRegenDone(true);
+      setTimeout(() => setRegenDone(false), 3000);
+    },
+  });
+
+  const { data: semisEvent } = useQuery<any>({
+    queryKey: ['event', league.playoffSemisEventId],
+    queryFn: () => apiClient.get(`/events/${league.playoffSemisEventId}`),
+    enabled: !!league.playoffSemisEventId,
+  });
+
+  const [confirmStart, setConfirmStart] = useState(false);
+  const startPlayoffsMutation = useMutation({
+    mutationFn: () => apiClient.post(`/leagues/${leagueId}/playoffs/start`, {
+      semisEventId: league.playoffSemisEventId,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['league', leagueId] });
+      qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
+      setConfirmStart(false);
+    },
+  });
+
+  const canStartPlayoffs = league.status === 'active' && !!league.playoffSemisEventId && seeded.length >= 2;
+
+  return (
+    <section style={styles.section}>
+      <h2 style={styles.sectionTitle}>Matchup Schedule</h2>
+
+      <div style={styles.actionRow}>
+        <div>
+          <div style={styles.actionLabel}>Regenerate Schedule</div>
+          <div style={styles.actionHint}>
+            Rebuilds all future matchups using a balanced round-robin. Completed matchups are preserved.
+          </div>
+        </div>
+        <button
+          style={{ ...styles.saveBtn, opacity: regenMutation.isPending ? 0.6 : 1 }}
+          onClick={() => regenMutation.mutate()}
+          disabled={regenMutation.isPending || league.status === 'completed'}
+        >
+          {regenMutation.isPending ? 'Regenerating...' : regenDone ? 'Done!' : 'Regenerate'}
+        </button>
+      </div>
+      {regenMutation.isError && <p style={styles.errMsg}>{(regenMutation.error as any)?.error ?? 'Failed'}</p>}
+
+      {canStartPlayoffs && (
+        <div style={{ marginTop: 20 }}>
+          <div style={styles.actionLabel}>Start Playoffs</div>
+          <div style={styles.actionHint}>
+            Semifinals: {semisEvent ? `${semisEvent.name}` : '—'}
+          </div>
+
+          <div style={{ ...styles.seedTable, marginTop: 10 }}>
+            <div style={styles.seedHeader}>
+              <span style={styles.seedCol}>#</span>
+              <span style={{ flex: 1, color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Team</span>
+              <span style={styles.seedStat}>{isStaking ? 'W' : 'PTS'}</span>
+              <span style={styles.seedStat}>{isStaking ? 'Bankroll' : 'W'}</span>
+            </div>
+            {seeded.map((m, i) => (
+              <div key={m.id} style={{ ...styles.seedRow, ...(i === 3 ? { borderBottom: 'none' } : {}) }}>
+                <span style={styles.seedNum}>{i + 1}</span>
+                <span style={styles.seedName}>{m.teamName}</span>
+                <span style={{ ...styles.seedStat, color: '#ccc' }}>
+                  {isStaking ? m.wins : (+m.totalPoints).toFixed(0)}
+                </span>
+                <span style={{ ...styles.seedStat, color: '#888' }}>
+                  {isStaking ? (m.stakingBalance >= 0 ? `+$${(+m.stakingBalance).toFixed(0)}` : `-$${Math.abs(+m.stakingBalance).toFixed(0)}`) : m.wins}
+                </span>
+              </div>
+            ))}
+            {seeded.length > 2 && (
+              <div style={styles.seedCutline}>
+                <span style={styles.cutlineLabel}>— playoff cutline —</span>
+              </div>
+            )}
+          </div>
+
+          {!confirmStart ? (
+            <button style={{ ...styles.saveBtn, marginTop: 12 }} onClick={() => setConfirmStart(true)}>
+              Start Playoffs →
+            </button>
+          ) : (
+            <div style={{ ...styles.confirmBox, marginTop: 12 }}>
+              <p style={styles.confirmText}>
+                Start playoffs with seeds 1–{seeded.length} above? This sets the league to playoff mode.
+              </p>
+              <div style={styles.confirmRow}>
+                <button style={styles.cancelBtn} onClick={() => setConfirmStart(false)}>Cancel</button>
+                <button
+                  style={{ ...styles.saveBtn, opacity: startPlayoffsMutation.isPending ? 0.6 : 1 }}
+                  onClick={() => startPlayoffsMutation.mutate()}
+                  disabled={startPlayoffsMutation.isPending}
+                >
+                  {startPlayoffsMutation.isPending ? 'Starting...' : 'Confirm Start'}
+                </button>
+              </div>
+              {startPlayoffsMutation.isError && (
+                <p style={styles.errMsg}>{(startPlayoffsMutation.error as any)?.error ?? 'Failed'}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -204,7 +204,7 @@ export function PicksPage() {
                 const pickedImageUrl = pickedId ? (pickedRed ? fight.redImageUrl : fight.blueImageUrl) : null;
                 const isCorrect = fight.isCorrect;
                 const isWrong = isCorrect === false;
-                const methodLabel: Record<string, string> = { ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ' };
+                const methodLabel: Record<string, string> = { ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', decision_unanimous: 'DEC', decision_split: 'DEC', decision_majority: 'DEC', disqualification: 'DQ' };
                 return (
                   <tr key={fight.id} style={i % 2 === 0 ? styles.summaryRowEven : styles.summaryRowOdd}>
                     <td style={styles.summaryTd}>

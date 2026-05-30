@@ -4,6 +4,7 @@ import { fetchUpcomingEvents, fetchEventsByDate, type EspnFight } from '../servi
 import { redis } from '../config/redis';
 import { sendNotification } from '../services/notification.service';
 import { nextHolidayTarget } from '../utils/playoffs';
+import { generateMatchupsForLeague } from '../services/matchup.service';
 
 // Runs daily at 6am UTC — syncs upcoming UFC events and their fight cards
 export function startEventSyncJob() {
@@ -61,8 +62,55 @@ export async function syncEvents() {
 
     await redis.del('events:upcoming');
     await refreshLeaguePlayoffs();
+    await enrollNewSeasonEvents();
   } catch (err) {
     console.error('[EventSync] Error:', err);
+  }
+}
+
+// For each active league, find any new UFC events that fall within the regular season
+// window and add them to league_events + regenerate matchups so everyone gets a matchup.
+async function enrollNewSeasonEvents() {
+  const { rows: leagues } = await db.query(`
+    SELECT l.id, l.playoff_semis_event_id,
+           e_semis.scheduled_at AS semis_at
+    FROM leagues l
+    JOIN ufc_events e_semis ON e_semis.id = l.playoff_semis_event_id
+    WHERE l.status = 'active'
+      AND l.playoff_semis_event_id IS NOT NULL
+  `);
+
+  for (const league of leagues) {
+    // Season start = 6 months before semis (covers the full Jan–Jul / Jul–Jan window)
+    const seasonStart = new Date(league.semis_at);
+    seasonStart.setMonth(seasonStart.getMonth() - 6);
+
+    // Events within the regular season window not yet in league_events
+    const { rows: newEvents } = await db.query(`
+      SELECT e.id FROM ufc_events e
+      WHERE e.status != 'cancelled'
+        AND e.scheduled_at >= $1
+        AND e.scheduled_at < $2
+        AND NOT EXISTS (
+          SELECT 1 FROM league_events le WHERE le.league_id = $3 AND le.event_id = e.id
+        )
+    `, [seasonStart.toISOString(), league.semis_at, league.id]);
+
+    if (newEvents.length === 0) continue;
+
+    for (const ev of newEvents) {
+      await db.query(
+        `INSERT INTO league_events (league_id, event_id, is_scoring) VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+        [league.id, ev.id],
+      );
+    }
+
+    // Regenerate matchups so every member gets a matchup for the new event
+    await generateMatchupsForLeague(league.id).catch((err: Error) => {
+      console.error(`[EventSync] Failed to regenerate matchups for league ${league.id}:`, err.message);
+    });
+
+    console.log(`[EventSync] Enrolled ${newEvents.length} new event(s) into league ${league.id} and regenerated schedule`);
   }
 }
 
@@ -135,6 +183,16 @@ async function refreshLeaguePlayoffs() {
       `, [semisId, finalsId, league.id]);
       console.log(`[EventSync] Auto-set playoffs for league ${league.id}: semis=${semisId} finals=${finalsId}`);
     }
+
+    // Ensure both playoff events are in league_events so they appear in the chip strip
+    for (const eventId of [semisId, finalsId]) {
+      if (eventId) {
+        await db.query(
+          `INSERT INTO league_events (league_id, event_id, is_scoring) VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+          [league.id, eventId],
+        );
+      }
+    }
   }
 }
 
@@ -160,7 +218,9 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
       return;
     }
 
-    // Upsert the event
+    // Upsert the event. mapStatus only returns 'live' or 'scheduled' — never 'completed'.
+    // 'completed' is determined after syncing fights (see below).
+    // Don't revert an in-progress event back to 'scheduled' if ESPN briefly drops the 'in' flag.
     const { rows: [dbEvent] } = await client.query(`
       INSERT INTO ufc_events (
         ufc_event_id, name, short_name, event_type, venue, location,
@@ -168,7 +228,11 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (ufc_event_id) DO UPDATE SET
         name = EXCLUDED.name,
-        status = EXCLUDED.status,
+        status = CASE
+          WHEN EXCLUDED.status = 'live' THEN 'live'
+          WHEN ufc_events.status IN ('live', 'completed') AND EXCLUDED.status = 'scheduled' THEN ufc_events.status
+          ELSE EXCLUDED.status
+        END,
         scheduled_at = EXCLUDED.scheduled_at
       RETURNING id, status, scheduled_at
     `, [
@@ -191,6 +255,25 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
     }
 
     await client.query('COMMIT');
+
+    // After fights are synced, resolve the true event status from fight completion.
+    // Only mark 'completed' when every fight has a result; revert to 'live' if not all done.
+    const { rows: [fightStats] } = await db.query(`
+      SELECT COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status = 'completed')::int AS done
+      FROM fights WHERE event_id = $1
+    `, [dbEvent.id]);
+
+    if (fightStats.total > 0) {
+      const allDone = fightStats.done === fightStats.total;
+      const resolvedStatus = allDone ? 'completed'
+        : dbEvent.status === 'completed' ? 'live'
+        : dbEvent.status;
+      if (resolvedStatus !== dbEvent.status) {
+        await db.query(`UPDATE ufc_events SET status = $1 WHERE id = $2`, [resolvedStatus, dbEvent.id]);
+        dbEvent.status = resolvedStatus;
+      }
+    }
 
     // Notify if fights changed and the event is still open for picks (not locked)
     const lockAt = new Date(dbEvent.scheduled_at).getTime() - 10 * 60 * 1000;
@@ -364,8 +447,9 @@ async function resolveOrCreateFighter(
   return newFighter?.id ?? null;
 }
 
+// ESPN's event-level "completed" flag fires after the prelims, before the main card ends.
+// We determine 'completed' from fight-level data instead; here we only signal 'live' vs 'scheduled'.
 function mapStatus(state: string, completed: boolean): string {
-  if (completed) return 'completed';
-  if (state === 'in') return 'live';
+  if (state === 'in' || completed) return 'live';
   return 'scheduled';
 }

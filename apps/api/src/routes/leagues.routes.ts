@@ -278,67 +278,86 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
     if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
     if (league.status !== 'setup') throw new AppError(400, 'League must be in setup to activate');
 
+    const { rows: activeMembers } = await db.query(
+      `SELECT id FROM league_members WHERE league_id = $1 AND is_active = true`,
+      [req.params.leagueId],
+    );
+    if (activeMembers.length < 2) throw new AppError(400, 'Need at least 2 members to start the season');
+    if (activeMembers.length % 2 !== 0) throw new AppError(400, `Need an even number of members for head-to-head scheduling (currently ${activeMembers.length})`);
+
     // Calculate season window
     const now = new Date();
-    const seasonEndsAt = new Date(now);
-    seasonEndsAt.setMonth(seasonEndsAt.getMonth() + league.season_length_months);
-
-    // Regular season events: from now to season end
-    const { rows: regularEvents } = await db.query(`
-      SELECT id FROM ufc_events
-      WHERE scheduled_at >= $1 AND scheduled_at <= $2 AND status != 'cancelled'
-      ORDER BY scheduled_at ASC
-    `, [now.toISOString(), seasonEndsAt.toISOString()]);
-
-    if (regularEvents.length === 0) {
-      throw new AppError(400, 'No events found in the season window. Check that UFC events are loaded.');
-    }
-
-    // Pick playoff events
+    let seasonEndsAt: Date;
     let semisEventId: string;
     let finalsEventId: string;
+    let regularEvents: { id: string }[];
 
     if (league.season_length_months === 6) {
-      // For 6-month seasons, target the UFC event nearest July 4th or Jan 1st after the season ends.
-      // No hard window — pick whatever event is closest to the target holiday.
-      const finalsTarget = nextHolidayTarget(seasonEndsAt);
+      // Semis: event nearest to the next upcoming Jul 4 or Jan 1.
+      // Finals: the very next event after semis.
+      // Season start: 6 months before the semis target (so Jan leagues cover Jan–Jul).
+      const semisTarget = nextHolidayTarget(now);
+      const seasonStart = new Date(semisTarget);
+      seasonStart.setMonth(seasonStart.getMonth() - 6);
 
-      const { rows: [targetEvent] } = await db.query(`
-        SELECT id FROM ufc_events
+      const { rows: [semisCandidate] } = await db.query(`
+        SELECT id, scheduled_at FROM ufc_events
         WHERE scheduled_at > $1 AND status != 'cancelled'
         ORDER BY ABS(EXTRACT(EPOCH FROM (scheduled_at - $2::timestamptz))) ASC
         LIMIT 1
-      `, [seasonEndsAt.toISOString(), finalsTarget.toISOString()]);
+      `, [now.toISOString(), semisTarget.toISOString()]);
 
-      if (targetEvent) {
-        // Semis = most recent event after season end and before the finals
-        const { rows: [semisCandidate] } = await db.query(`
-          SELECT id FROM ufc_events
-          WHERE scheduled_at > $1 AND scheduled_at < (SELECT scheduled_at FROM ufc_events WHERE id = $2)
-            AND status != 'cancelled'
-          ORDER BY scheduled_at DESC
-          LIMIT 1
-        `, [seasonEndsAt.toISOString(), targetEvent.id]);
+      if (!semisCandidate) throw new AppError(400, 'No upcoming events found for playoffs. Check that UFC events are loaded.');
 
-        if (semisCandidate) {
-          semisEventId = semisCandidate.id;
-          finalsEventId = targetEvent.id;
-        }
-      }
-    }
+      const { rows: [finalsCandidate] } = await db.query(`
+        SELECT id FROM ufc_events
+        WHERE scheduled_at > $1 AND status != 'cancelled'
+        ORDER BY scheduled_at ASC
+        LIMIT 1
+      `, [new Date(semisCandidate.scheduled_at).toISOString()]);
 
-    // Fallback (4-month seasons or no holiday event found): next 2 events after season end
-    if (!semisEventId! || !finalsEventId!) {
+      if (!finalsCandidate) throw new AppError(400, 'No upcoming events found for finals. Check that UFC events are loaded.');
+
+      semisEventId = semisCandidate.id;
+      finalsEventId = finalsCandidate.id;
+      seasonEndsAt = new Date(semisCandidate.scheduled_at);
+
+      // Regular season: all events from 6 months before semis target to semis event
+      const { rows: regEvents } = await db.query(`
+        SELECT id FROM ufc_events
+        WHERE scheduled_at >= $1 AND scheduled_at < $2 AND status != 'cancelled'
+        ORDER BY scheduled_at ASC
+      `, [seasonStart.toISOString(), seasonEndsAt.toISOString()]);
+
+      regularEvents = regEvents;
+    } else {
+      // 4-month leagues: regular season runs from now to now+4months,
+      // playoffs are the next 2 events after the season ends.
+      seasonEndsAt = new Date(now);
+      seasonEndsAt.setMonth(seasonEndsAt.getMonth() + league.season_length_months);
+
+      const { rows: regEvents } = await db.query(`
+        SELECT id FROM ufc_events
+        WHERE scheduled_at >= $1 AND scheduled_at <= $2 AND status != 'cancelled'
+        ORDER BY scheduled_at ASC
+      `, [now.toISOString(), seasonEndsAt.toISOString()]);
+
+      regularEvents = regEvents;
+
       const { rows: fallback } = await db.query(`
         SELECT id FROM ufc_events
         WHERE scheduled_at > $1 AND status != 'cancelled'
         ORDER BY scheduled_at ASC LIMIT 2
       `, [seasonEndsAt.toISOString()]);
-      if (fallback.length < 2) {
-        throw new AppError(400, 'Not enough upcoming events after the season end date for playoffs. Try a shorter season length.');
-      }
+
+      if (fallback.length < 2) throw new AppError(400, 'Not enough upcoming events after the season end date for playoffs. Try a shorter season length.');
+
       semisEventId = fallback[0].id;
       finalsEventId = fallback[1].id;
+    }
+
+    if (regularEvents.length === 0) {
+      throw new AppError(400, 'No events found in the season window. Check that UFC events are loaded.');
     }
 
     // Add all events to league schedule (regular season + both playoff events)

@@ -9,6 +9,7 @@ import { FighterPhoto } from '../components/FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
+import { MatchupFightList, MatchupPickPanel, StakingBetsSection, type PhotoClickHandler } from '../components/MatchupComponents';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -83,6 +84,55 @@ export function LeagueHomePage() {
       if (status === 'scheduled') return 60_000;
       return false;
     },
+  });
+
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string } | null>(null);
+  const openPhoto: PhotoClickHandler = (url, name) => setEnlargedPhoto({ url, name });
+
+  const matchupEventId = matchup?.eventId;
+  const matchupHomeId = matchup?.homeTeamId;
+  const matchupAwayId = matchup?.awayTeamId;
+  const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
+
+  const leagueIsStaking = (league as any)?.leagueFormat === 'staking';
+
+  const liveRefetchInterval = matchup?.eventStatus === 'live' ? 30_000 : false;
+
+  const { data: homePicks } = useQuery<any>({
+    queryKey: ['home-picks', leagueId, matchupEventId, matchupHomeId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupHomeId}`),
+    enabled: !!matchupEventId && !!matchupHomeId && !leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
+  });
+  const { data: awayPicks } = useQuery<any>({
+    queryKey: ['away-picks', leagueId, matchupEventId, matchupAwayId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupAwayId}`),
+    enabled: !!matchupEventId && !!matchupAwayId && !leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
+  });
+  const { data: homeChampion } = useQuery<any>({
+    queryKey: ['home-champion', leagueId, matchupEventId, matchupHomeId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupHomeId}`),
+    enabled: !!matchupEventId && !!matchupHomeId && !leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
+  });
+  const { data: awayChampion } = useQuery<any>({
+    queryKey: ['away-champion', leagueId, matchupEventId, matchupAwayId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupAwayId}`),
+    enabled: !!matchupEventId && !!matchupAwayId && !leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
+  });
+  const { data: homeStaking } = useQuery<any>({
+    queryKey: ['home-staking', leagueId, matchupEventId, matchupHomeId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupHomeId}`),
+    enabled: !!matchupEventId && !!matchupHomeId && leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
+  });
+  const { data: awayStaking } = useQuery<any>({
+    queryKey: ['away-staking', leagueId, matchupEventId, matchupAwayId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupAwayId}`),
+    enabled: !!matchupEventId && !!matchupAwayId && leagueIsStaking,
+    refetchInterval: liveRefetchInterval,
   });
 
   // Real-time score sync: subscribe to matchup DB updates just like the Matchup page does
@@ -660,6 +710,56 @@ export function LeagueHomePage() {
         </div>
       )}
 
+      {/* Picks / bets section above nav */}
+      {matchup && (league.status === 'active' || league.status === 'playoffs') && (() => {
+        const isMeHome = !!myMember && myMember.id === matchup.homeTeamId;
+        const isMeAway = !!myMember && myMember.id === matchup.awayTeamId;
+        const fights: any[] = homePicks?.fights ?? homeStaking?.fights ?? awayStaking?.fights ?? [];
+        return (
+          <div style={{ padding: '0 24px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px' }}>
+              <span style={{ color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1 }}>
+                {isStaking ? 'BETS' : 'PICKS'}
+              </span>
+              {homePicks?.locked && <span style={{ background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 }}>LOCKED</span>}
+            </div>
+            {isStaking ? (
+              <StakingBetsSection
+                fights={fights}
+                homeStaking={homeStaking}
+                awayStaking={awayStaking}
+                homeTeamName={matchup.homeTeamName}
+                awayTeamName={matchup.awayTeamName}
+                isMeHome={isMeHome}
+                isMeAway={isMeAway}
+                isEventLive={eventIsLive}
+                leagueId={leagueId}
+                onPhotoClick={openPhoto}
+              />
+            ) : (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <MatchupPickPanel
+                  teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
+                  fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
+                  champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
+                  isLocked={!(isMeHome || isMeAway) && !eventIsLive}
+                  isOwn={isMeHome || isMeAway}
+                  leagueId={leagueId}
+                  locked={homePicks?.locked}
+                />
+                <MatchupFightList fights={fights} onPhotoClick={openPhoto} />
+                <MatchupPickPanel
+                  teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
+                  fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
+                  champion={isMeHome ? awayChampion : isMeAway ? homeChampion : awayChampion}
+                  isLocked={!eventIsLive}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Nav grid (shown when past setup) */}
       {league.status !== 'setup' && (
         <div style={{ ...styles.navGrid, ...(isMobile ? styles.navGridMobile : {}) }}>
@@ -929,6 +1029,16 @@ export function LeagueHomePage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {enlargedPhoto && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+          onClick={() => setEnlargedPhoto(null)}
+        >
+          <img src={enlargedPhoto.url} alt={enlargedPhoto.name} style={{ maxWidth: '80vw', maxHeight: '75vh', objectFit: 'contain', objectPosition: 'top center', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }} />
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginTop: 16 }}>{enlargedPhoto.name}</div>
         </div>
       )}
 

@@ -58,14 +58,35 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
   for (const espnFight of espnEvent.fights) {
     if (!espnFight.completed) continue;
 
-    // Check if we already have a result for this fight
-    const { rows: [existingFight] } = await db.query(
+    // Primary lookup by ESPN fight ID
+    let { rows: [existingFight] } = await db.query(
       `SELECT f.id, fr.id as result_id
        FROM fights f
        LEFT JOIN fight_results fr ON fr.fight_id = f.id
        WHERE f.ufc_fight_id = $1`,
       [espnFight.espnFightId],
     );
+
+    // Fallback: ESPN ID may not match if an opponent was swapped after scheduling.
+    // Search by fighter last name within this event.
+    if (!existingFight) {
+      const redLast = espnFight.redCorner.displayName.split(' ').pop()?.toLowerCase() ?? '';
+      const blueLast = espnFight.blueCorner.displayName.split(' ').pop()?.toLowerCase() ?? '';
+      const { rows: [nameFight] } = await db.query(`
+        SELECT f.id, fr.id as result_id
+        FROM fights f
+        JOIN fighters rf ON rf.id = f.red_fighter_id
+        JOIN fighters bf ON bf.id = f.blue_fighter_id
+        LEFT JOIN fight_results fr ON fr.fight_id = f.id
+        WHERE f.event_id = $1
+          AND (LOWER(rf.last_name) IN ($2, $3) OR LOWER(bf.last_name) IN ($2, $3))
+      `, [event.id, redLast, blueLast]);
+      if (nameFight) {
+        console.log(`[LivePoller] Name-matched fight ${espnFight.espnFightId} (${espnFight.redCorner.displayName} vs ${espnFight.blueCorner.displayName}) — updating ufc_fight_id`);
+        await db.query(`UPDATE fights SET ufc_fight_id = $1 WHERE id = $2`, [espnFight.espnFightId, nameFight.id]);
+        existingFight = nameFight;
+      }
+    }
 
     if (!existingFight || existingFight.result_id) continue; // Already processed
 

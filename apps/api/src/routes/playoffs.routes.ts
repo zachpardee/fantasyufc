@@ -94,9 +94,10 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
       `SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId],
     );
     const isStartStaking = startLeague?.league_format === 'staking';
-    const startSortCol = isStartStaking ? 'staking_balance' : 'total_points';
 
-    // Seed top 4 by total_points (or staking_balance) DESC, tiebreak by wins — or use custom order from commissioner
+    // Seed top 4: staking leagues sort by wins first, then bankroll; pick'em by total_points then wins
+    const startOrderBy = isStartStaking ? 'wins DESC, staking_balance DESC' : 'total_points DESC, wins DESC';
+
     let topTeams: any[];
     if (Array.isArray(memberIds) && memberIds.length >= 2) {
       const { rows: allMembers } = await db.query(
@@ -111,7 +112,7 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
         SELECT id, team_name, wins, losses, total_points, staking_balance
         FROM league_members
         WHERE league_id = $1 AND is_active = true
-        ORDER BY ${startSortCol} DESC, wins DESC
+        ORDER BY ${startOrderBy}
         LIMIT 4
       `, [req.params.leagueId]);
       topTeams = rows;
