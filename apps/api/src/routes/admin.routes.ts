@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
-import { syncEvents } from '../jobs/eventSync.job';
+import { syncEvents, syncEventsByDate } from '../jobs/eventSync.job';
 import { syncAllFighters } from '../jobs/fighterSync.job';
 import { autoScheduleNextEvents } from '../jobs/autoSchedule.job';
 import { AppError } from '../middleware/error.middleware';
@@ -25,6 +25,17 @@ adminRouter.post('/sync/events', requireAuth, requireAdmin, async (_req, res, ne
   } catch (err) { next(err); }
 });
 
+// Sync ESPN events for a specific date — useful for pulling in events ESPN's default
+// scoreboard doesn't return yet (e.g. events announced far in advance)
+adminRouter.post('/sync/events/date/:yyyymmdd', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const { yyyymmdd } = req.params;
+    if (!/^\d{8}$/.test(yyyymmdd)) throw new AppError(400, 'Date must be YYYYMMDD (e.g. 20260614)');
+    const count = await syncEventsByDate(yyyymmdd);
+    res.json({ ok: true, message: `Synced ${count} event(s) for ${yyyymmdd}` });
+  } catch (err) { next(err); }
+});
+
 adminRouter.post('/sync/fighters', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     syncAllFighters().catch(console.error); // Fire and forget
@@ -42,9 +53,33 @@ adminRouter.post('/schedule/auto', requireAuth, requireAdmin, async (_req, res, 
 adminRouter.get('/events', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     const { rows } = await db.query(
-      `SELECT id, name, status, scheduled_at FROM ufc_events ORDER BY scheduled_at DESC LIMIT 20`,
+      `SELECT id, ufc_event_id, name, status, scheduled_at FROM ufc_events ORDER BY scheduled_at DESC LIMIT 50`,
     );
     res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// Remove duplicate ufc_events rows that share the same calendar date — keeps the row
+// with the earliest created_at (or lowest id) and deletes the rest
+adminRouter.post('/events/deduplicate', requireAuth, requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows: deleted } = await db.query(`
+      DELETE FROM ufc_events
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id,
+            ROW_NUMBER() OVER (
+              PARTITION BY DATE(scheduled_at AT TIME ZONE 'UTC')
+              ORDER BY id ASC
+            ) AS rn
+          FROM ufc_events
+          WHERE status != 'cancelled'
+        ) ranked
+        WHERE rn > 1
+      )
+      RETURNING id, name, scheduled_at
+    `);
+    res.json({ ok: true, deleted: deleted.length, events: deleted });
   } catch (err) { next(err); }
 });
 

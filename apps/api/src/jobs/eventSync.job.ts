@@ -11,6 +11,18 @@ export function startEventSyncJob() {
   syncEvents().catch(console.error);
 }
 
+export async function syncEventsByDate(yyyymmdd: string): Promise<number> {
+  const events = await fetchEventsByDate(yyyymmdd);
+  let count = 0;
+  for (const event of events) {
+    await upsertEvent(event);
+    count++;
+  }
+  await redis.del('events:upcoming');
+  console.log(`[EventSync] syncEventsByDate(${yyyymmdd}): processed ${count} event(s)`);
+  return count;
+}
+
 export async function syncEvents() {
   console.log('[EventSync] Starting event sync...');
   try {
@@ -56,6 +68,23 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
+    // ESPN sometimes returns different event IDs for the same real event depending on the
+    // query date. Guard against duplicates by checking if another non-cancelled event
+    // already exists on the same calendar date before inserting.
+    const scheduledDate = event.scheduledAt.slice(0, 10); // YYYY-MM-DD
+    const { rows: [existingByDate] } = await client.query(`
+      SELECT id FROM ufc_events
+      WHERE DATE(scheduled_at AT TIME ZONE 'UTC') = $1::date
+        AND ufc_event_id != $2
+        AND status != 'cancelled'
+      LIMIT 1
+    `, [scheduledDate, event.espnEventId]);
+
+    if (existingByDate) {
+      await client.query('COMMIT');
+      return;
+    }
 
     // Upsert the event
     const { rows: [dbEvent] } = await client.query(`
