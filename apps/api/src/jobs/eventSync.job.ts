@@ -18,15 +18,33 @@ export async function syncEvents() {
     for (const event of events) {
       await upsertEvent(event);
     }
-    console.log(`[EventSync] Synced ${events.length} events`);
+    console.log(`[EventSync] Synced ${events.length} events from scoreboard`);
 
-    // Also sync the last 30 days in case we missed recent results
+    // Sync the last 30 days in case we missed recent results
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const yyyymmdd = thirtyDaysAgo.toISOString().slice(0, 10).replace(/-/g, '');
-    const recentEvents = await fetchEventsByDate(yyyymmdd);
+    const pastYyyymmdd = thirtyDaysAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    const recentEvents = await fetchEventsByDate(pastYyyymmdd);
     for (const event of recentEvents) {
       await upsertEvent(event);
     }
+
+    // Scan the next 90 days in 2-week increments so far-future events aren't missed
+    // ESPN's default scoreboard only returns a short window of upcoming events
+    const seenEventIds = new Set(events.map((e) => e.espnEventId));
+    let totalFuture = 0;
+    for (let weeksAhead = 1; weeksAhead <= 13; weeksAhead += 2) {
+      const futureDate = new Date(Date.now() + weeksAhead * 7 * 24 * 60 * 60 * 1000);
+      const yyyymmdd = futureDate.toISOString().slice(0, 10).replace(/-/g, '');
+      const futureEvents = await fetchEventsByDate(yyyymmdd);
+      for (const event of futureEvents) {
+        if (!seenEventIds.has(event.espnEventId)) {
+          seenEventIds.add(event.espnEventId);
+          await upsertEvent(event);
+          totalFuture++;
+        }
+      }
+    }
+    if (totalFuture > 0) console.log(`[EventSync] Synced ${totalFuture} additional future events`);
 
     await redis.del('events:upcoming');
   } catch (err) {
