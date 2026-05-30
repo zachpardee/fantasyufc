@@ -54,25 +54,11 @@ export function StakingPicksPage() {
     enabled: !!currentEvent?.id,
   });
 
+  // Slip is for new bets only — never pre-populate from existing DB bets.
+  // Saved bets are shown in the SavedBetsPanel, not the slip.
   useEffect(() => {
     if (!betsData || initialized.current) return;
     initialized.current = true;
-    const initSingles: SingleBet[] = (betsData.singles ?? [])
-      .filter((s: any) => s.status === 'pending')
-      .map((s: any) => ({
-        clientId: s.id,
-        fightId: s.fightId,
-        fighterId: s.fighterId,
-        stake: typeof s.stake === 'number' ? s.stake.toFixed(2) : String(s.stake),
-      }));
-    setSingles(initSingles);
-    if (betsData.parlay?.status === 'pending') {
-      const ps = betsData.parlay.stake;
-      setParlayStake(typeof ps === 'number' ? ps.toFixed(2) : String(ps));
-      const initLegs: ParlayLegs = {};
-      for (const leg of betsData.parlayLegs ?? []) initLegs[leg.fightId] = leg.fighterId;
-      setParlayLegs(initLegs);
-    }
   }, [betsData]);
 
   useEffect(() => {
@@ -757,6 +743,9 @@ function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boo
 
   return (
     <div style={sv.betRow}>
+      {canDelete && (
+        <button style={sv.deleteBtn} onClick={onDelete} title="Delete bet">✕</button>
+      )}
       <div style={sv.betLeft}>
         <div style={sv.betFighter}>{bet.fighterFirstName} {bet.fighterLastName}</div>
         {odds != null && (
@@ -773,9 +762,6 @@ function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boo
             </div>
         }
       </div>
-      {canDelete && (
-        <button style={sv.deleteBtn} onClick={onDelete} title="Delete bet">✕</button>
-      )}
     </div>
   );
 }
@@ -793,25 +779,23 @@ function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelet
   return (
     <div style={sv.parlayRow}>
       <div style={sv.parlayTop}>
+        {canDelete && (
+          <button style={sv.deleteBtn} onClick={onDelete} title="Delete parlay">✕</button>
+        )}
         <div style={sv.betLeft}>
           <div style={sv.betFighter}>{legs.length}-leg parlay</div>
           {americanOdds != null && (
             <div style={{ ...sv.betOdds, color: '#ffd700' }}>{fmtOdds(americanOdds)}</div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <div style={sv.betRight}>
-            <div style={sv.betStake}>{fmtMoney(stake)}</div>
-            {isPending
-              ? potentialPayout > 0 && <div style={sv.betPotential}>Win {fmtMoney(potentialPayout)}</div>
-              : <div style={{ ...sv.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
-                  {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-                </div>
-            }
-          </div>
-          {canDelete && (
-            <button style={sv.deleteBtn} onClick={onDelete} title="Delete parlay">✕</button>
-          )}
+        <div style={sv.betRight}>
+          <div style={sv.betStake}>{fmtMoney(stake)}</div>
+          {isPending
+            ? potentialPayout > 0 && <div style={sv.betPotential}>Win {fmtMoney(potentialPayout)}</div>
+            : <div style={{ ...sv.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+                {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+              </div>
+          }
         </div>
       </div>
       <div style={sv.betTs}>{fmtTs(parlay.createdAt)}</div>

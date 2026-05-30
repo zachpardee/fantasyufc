@@ -192,24 +192,21 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
         throw new AppError(400, `Exceeds weekly budget. $${remaining.toFixed(2)} remaining.`);
       }
 
-      // Append new singles — never delete existing ones
-      const newRows: any[] = [];
+      // Always insert as a new row — duplicates are allowed
       for (const bet of body.bets) {
         const fight = fightMap.get(bet.fightId)!;
         const isRed = fight.red_fighter_id === bet.fighterId;
         const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
         const decOdds = toDecimalOdds(odds);
         const potentialPayout = calcPotentialPayout(bet.stake, decOdds);
-
-        const { rows: [row] } = await client.query(`
+        await client.query(`
           INSERT INTO staking_singles (league_id, event_id, member_id, fight_id, fighter_id, odds, stake, potential_payout)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         `, [leagueId, eventId, member.id, bet.fightId, bet.fighterId, odds, bet.stake, potentialPayout]);
-        newRows.push(row);
       }
 
       await client.query('COMMIT');
-      res.json(newRows);
+      res.json({ ok: true });
       refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
     } catch (err) {
       await client.query('ROLLBACK');
