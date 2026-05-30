@@ -77,9 +77,9 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
               >
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
-                  <div style={{ ...mb.fighterName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: redWon ? '#fff' : '#ccc' }}>{fight.redLastName}</div>
-                  {fight.redFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.redFighterOdds)}</div>}
+                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redFirstName}</div>
+                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redLastName}</div>
+                  {fight.redFighterOdds != null && <div style={{ ...mb.fighterOdds, color: redWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.redFighterOdds)}</div>}
                 </div>
               </div>
               {isVoidResult
@@ -92,9 +92,9 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
               >
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ ...mb.fighterName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueLastName}</div>
-                  {fight.blueFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.blueFighterOdds)}</div>}
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueFirstName}</div>
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueLastName}</div>
+                  {fight.blueFighterOdds != null && <div style={{ ...mb.fighterOdds, color: blueWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.blueFighterOdds)}</div>}
                 </div>
               </div>
             </div>
