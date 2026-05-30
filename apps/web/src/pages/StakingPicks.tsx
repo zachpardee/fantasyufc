@@ -38,6 +38,8 @@ export function StakingPicksPage() {
   const [saveError, setSaveError] = useState('');
   const [showSlip, setShowSlip] = useState(false);
   const initialized = useRef(false);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const currentChipRef = useRef<HTMLDivElement>(null);
 
   const { data: currentEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
@@ -99,6 +101,13 @@ export function StakingPicksPage() {
     setSinglesTouched(false);
     setParlayTouched(false);
     setSaveError('');
+  }, [currentEvent?.id]);
+
+  useEffect(() => {
+    if (!currentEvent?.id || !stripRef.current || !currentChipRef.current) return;
+    const strip = stripRef.current;
+    const chip = currentChipRef.current;
+    strip.scrollLeft = chip.offsetLeft - strip.offsetWidth / 2 + chip.offsetWidth / 2;
   }, [currentEvent?.id]);
 
   function addSingle(fightId: string, fighterId: string) {
@@ -291,7 +300,7 @@ export function StakingPicksPage() {
       </nav>
 
       {allSeasonEvents.length > 0 && (
-        <div style={s.historyStrip}>
+        <div ref={stripRef} style={s.historyStrip}>
           {allSeasonEvents.map((ev) => {
             const myM = myMatchupByEvent.get(ev.eventId);
             const isMeHome = myM?.homeTeamId === myMember?.id;
@@ -319,7 +328,7 @@ export function StakingPicksPage() {
             }
 
             return (
-              <div key={ev.eventId} style={{ ...s.historyChip, ...(isCurrentEvent ? s.historyChipCurrent : {}), ...(isLiveEvent ? s.historyChipLive : {}), ...(!myM ? s.historyChipNoMatchup : {}) }}>
+              <div key={ev.eventId} ref={isCurrentEvent ? currentChipRef : undefined} style={{ ...s.historyChip, ...(isCurrentEvent ? s.historyChipCurrent : {}), ...(isLiveEvent ? s.historyChipLive : {}), ...(!myM ? s.historyChipNoMatchup : {}) }}>
                 {isLiveEvent
                   ? <span style={s.chipLiveBadge}>LIVE</span>
                   : isCurrentEvent

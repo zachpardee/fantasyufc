@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -27,6 +27,8 @@ export function MatchupPage() {
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
   const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(null);
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const currentChipRef = useRef<HTMLButtonElement>(null);
 
   // Reset to current matchup whenever the user navigates to this page
   useEffect(() => {
@@ -79,6 +81,14 @@ export function MatchupPage() {
   // The current/next event (earliest scheduled or live)
   const currentUpcomingEventId = [...seasonEvents].reverse()
     .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
+
+  // Scroll the chip strip to center the current event chip once data is ready
+  useEffect(() => {
+    if (!currentUpcomingEventId || !stripRef.current || !currentChipRef.current) return;
+    const strip = stripRef.current;
+    const chip = currentChipRef.current;
+    strip.scrollLeft = chip.offsetLeft - strip.offsetWidth / 2 + chip.offsetWidth / 2;
+  }, [currentUpcomingEventId]);
 
   const effectiveMatchupId = browsingMatchupId ?? selectedMatchupId;
   const { data: matchup, refetch } = useQuery<any>({
@@ -174,7 +184,7 @@ export function MatchupPage() {
       </nav>
 
       {seasonEvents.length > 0 && (
-        <div style={styles.historyStrip}>
+        <div ref={stripRef} style={styles.historyStrip}>
           {seasonEvents.map((ev) => {
             const myM = myMatchupByEvent.get(ev.eventId);
             const isMeHome = myM?.homeTeamId === myMember?.id;
@@ -200,6 +210,7 @@ export function MatchupPage() {
             return (
               <button
                 key={ev.eventId}
+                ref={isCurrentEvent ? currentChipRef : undefined}
                 style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : isCurrentEvent ? styles.historyChipCurrent : {}), ...(!myM ? styles.historyChipNoMatchup : {}) }}
                 onClick={() => { setBrowsingMatchupId(null); setShowMatchupPicker(false); myM && setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id); }}
                 disabled={!myM}
