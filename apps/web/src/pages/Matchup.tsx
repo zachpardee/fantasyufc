@@ -655,6 +655,14 @@ function fmtOddsAmerican(american: number): string {
   return american >= 0 ? `+${american}` : `${american}`;
 }
 
+function decimalToAmerican(decimal: number): string {
+  if (decimal <= 1) return '—';
+  const american = decimal >= 2
+    ? Math.round((decimal - 1) * 100)
+    : Math.round(-100 / (decimal - 1));
+  return fmtOddsAmerican(american);
+}
+
 function fmtMoney(n: number): string {
   const abs = Math.abs(n);
   const s = abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2);
@@ -692,7 +700,7 @@ function MatchupParlayRow({ parlay }: { parlay: any }) {
             Parlay <span style={{ color: '#555', fontWeight: 400 }}>({legs.length} legs)</span>
           </div>
           {decimalOdds > 0 && (
-            <div style={{ ...mb.betOdds, color: '#4caf50' }}>×{decimalOdds.toFixed(2)}</div>
+            <div style={{ ...mb.betOdds, color: '#4caf50' }}>{decimalToAmerican(decimalOdds)}</div>
           )}
         </div>
         <div style={mb.betRight}>
@@ -708,7 +716,7 @@ function MatchupParlayRow({ parlay }: { parlay: any }) {
       {legs.map((leg: any, i: number) => (
         <div key={i} style={mb.parlayLeg}>
           <span style={mb.parlayLegName}>{leg.fighterFirstName} {leg.fighterLastName}</span>
-          <span style={mb.parlayLegOdds}>×{(parseFloat(leg.decimalOdds) || 0).toFixed(2)}</span>
+          <span style={mb.parlayLegOdds}>{decimalToAmerican(parseFloat(leg.decimalOdds) || 0)}</span>
         </div>
       ))}
     </div>
