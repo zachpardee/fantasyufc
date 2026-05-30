@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/auth.store';
 
 function toDecimalOdds(american: number): number {
   return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
@@ -26,6 +27,7 @@ type ParlayLegs = Record<string, string>; // fightId → fighterId
 
 export function StakingPicksPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
   const qc = useQueryClient();
 
   const [singles, setSingles] = useState<SingleBet[]>([]);
@@ -53,6 +55,29 @@ export function StakingPicksPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${currentEvent!.id}`),
     enabled: !!currentEvent?.id,
   });
+
+  const { data: allSeasonEvents = [] } = useQuery<any[]>({
+    queryKey: ['season-events', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/season-events`),
+  });
+
+  const { data: allMatchups = [] } = useQuery<any[]>({
+    queryKey: ['matchups-all', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
+  });
+
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+
+  const myMember = members.find((m: any) => m.userId === session?.user.id);
+  const myMatchupByEvent = new Map<string, any>();
+  for (const m of allMatchups) {
+    if (m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id) {
+      myMatchupByEvent.set(m.eventId, m);
+    }
+  }
 
   // Slip is for new bets only — never pre-populate from existing DB bets.
   // Saved bets are shown in the SavedBetsPanel, not the slip.
@@ -259,6 +284,65 @@ export function StakingPicksPage() {
         <span style={s.navTitle}>Bets</span>
         {locked && <span style={s.lockedBadge}>LOCKED</span>}
       </nav>
+
+      {allSeasonEvents.length > 0 && (
+        <div style={s.historyStrip}>
+          {allSeasonEvents.map((ev) => {
+            const myM = myMatchupByEvent.get(ev.eventId);
+            const isMeHome = myM?.homeTeamId === myMember?.id;
+            const myScore = myM ? +(isMeHome ? myM.homeScore : myM.awayScore) : null;
+            const oppScore = myM ? +(isMeHome ? myM.awayScore : myM.homeScore) : null;
+            const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
+            const isWin = myM?.winnerId && myM.winnerId === myMember?.id;
+            const isLoss = myM?.winnerId && myM.winnerId !== myMember?.id;
+            const hasScore = myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
+            const isCurrentEvent = ev.eventId === currentEvent?.id;
+            const isLiveEvent = ev.eventStatus === 'live';
+            const eventShort = ev.eventName
+              ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
+              .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
+            const dateStr = ev.scheduledAt
+              ? new Date(ev.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null;
+
+            function fmtChipScore(n: number): string {
+              const abs = Math.abs(n);
+              const str = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+              return n < 0 ? `(${str})` : str;
+            }
+
+            return (
+              <div key={ev.eventId} style={{ ...s.historyChip, ...(isCurrentEvent ? s.historyChipCurrent : {}), ...(isLiveEvent ? s.historyChipLive : {}), ...(!myM ? s.historyChipNoMatchup : {}) }}>
+                {isLiveEvent
+                  ? <span style={s.chipLiveBadge}>LIVE</span>
+                  : isCurrentEvent
+                    ? <span style={s.chipNextBadge}>NEXT</span>
+                    : null}
+                <span style={s.chipEvent}>{eventShort}</span>
+                {dateStr && <span style={s.chipDate}>{dateStr}</span>}
+                {myM ? (
+                  hasScore ? (
+                    <>
+                      <span style={s.chipOpp}>vs {oppName}</span>
+                      <span style={s.chipScore}>{fmtChipScore(myScore!)}–{fmtChipScore(oppScore!)}</span>
+                      <span style={{ ...s.chipResult, color: isWin ? '#4caf50' : isLoss ? '#ff5252' : '#ffd700' }}>
+                        {isWin ? 'W' : isLoss ? 'L' : 'T'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={s.chipOpp}>vs {oppName}</span>
+                      <span style={s.chipPending}>Upcoming</span>
+                    </>
+                  )
+                ) : (
+                  <span style={s.chipPending}>No matchup</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div style={s.eventHeader}>
         <div style={s.eventName}>{currentEvent.name}</div>
@@ -862,6 +946,28 @@ const s: Record<string, React.CSSProperties> = {
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
   lockedBadge: { background: '#222', color: '#555', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   empty: { color: '#555', padding: 48, textAlign: 'center' },
+
+  historyStrip: {
+    display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 24px',
+    background: '#0d0d0d', borderBottom: '1px solid #1a1a1a',
+    scrollbarWidth: 'thin', scrollbarColor: '#2a2a2a transparent',
+  },
+  historyChip: {
+    flexShrink: 0, background: '#141414', border: '1px solid #242424',
+    borderRadius: 8, padding: '8px 12px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 90,
+  },
+  historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
+  historyChipLive: { border: '1px solid #c8102e', background: '#1a0808' },
+  historyChipNoMatchup: { opacity: 0.4 },
+  chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
+  chipEvent: { color: '#888', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
+  chipDate: { color: '#444', fontSize: 10, textAlign: 'center' },
+  chipOpp: { color: '#555', fontSize: 10, textAlign: 'center', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  chipScore: { color: '#fff', fontSize: 14, fontWeight: 700 },
+  chipResult: { fontSize: 12, fontWeight: 700 },
+  chipPending: { color: '#444', fontSize: 10 },
 
   eventHeader: { padding: '16px 24px 12px', borderBottom: '1px solid #1a1a1a' },
   eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
