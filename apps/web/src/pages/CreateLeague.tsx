@@ -86,7 +86,7 @@ export function CreateLeaguePage() {
           <div style={styles.row}>
             <Field label="Max Teams">
               <select style={styles.input} value={form.maxTeams} onChange={(e) => set('maxTeams', e.target.value)}>
-                {[4,6,8,10,12,14,16].map((n) => <option key={n} value={n}>{n} teams</option>)}
+                {[4,6,8,10,12].map((n) => <option key={n} value={n}>{n} teams</option>)}
               </select>
             </Field>
             <Field label="Season Length">

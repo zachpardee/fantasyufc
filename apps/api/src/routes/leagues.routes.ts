@@ -28,7 +28,7 @@ leaguesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
       name: z.string().min(3).max(100),
       teamName: z.string().min(1).max(100).default('My Team'),
       description: z.string().max(500).optional(),
-      maxTeams: z.number().int().min(2).max(20).default(10),
+      maxTeams: z.number().int().min(2).max(12).default(10),
       isPublic: z.boolean().default(false),
       seasonLengthMonths: z.union([z.literal(4), z.literal(6)]).default(4),
       leagueFormat: z.enum(['pickem', 'staking']).default('pickem'),
@@ -236,7 +236,7 @@ leaguesRouter.patch('/:leagueId', requireAuth, async (req: AuthRequest, res, nex
   try {
     const body = z.object({
       name: z.string().min(1).max(100).optional(),
-      maxTeams: z.number().int().min(2).max(20).optional(),
+      maxTeams: z.number().int().min(2).max(12).optional(),
       rosterSize: z.number().int().min(5).max(20).optional(),
       starterSlots: z.number().int().min(1).max(10).optional(),
       draftPickTimeSeconds: z.number().int().min(30).max(300).optional(),
