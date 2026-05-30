@@ -72,7 +72,7 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
             </div>
             <div style={mb.fightCardFighters}>
               <div
-                style={{ ...mb.fighterSide, opacity: hasResult && !redWon && !isVoidResult ? 0.3 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+                style={{ ...mb.fighterSide, opacity: hasResult && !redWon ? 0.3 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
                 onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
               >
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
@@ -87,7 +87,7 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 : <div style={mb.vsLabel}>VS</div>
               }
               <div
-                style={{ ...mb.fighterSide, flexDirection: 'row-reverse', opacity: hasResult && !blueWon && !isVoidResult ? 0.3 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+                style={{ ...mb.fighterSide, flexDirection: 'row-reverse', opacity: hasResult && !blueWon ? 0.3 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
                 onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
               >
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
