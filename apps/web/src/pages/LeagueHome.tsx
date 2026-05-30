@@ -54,7 +54,7 @@ export function LeagueHomePage() {
     enabled: showNotifs,
   });
 
-  const { data: currentEvent } = useQuery<{ id: string; name: string; venue: string; location: string; scheduledAt: string; status: string } | null>({
+  const { data: currentEvent } = useQuery<{ id: string; name: string; venue: string; location: string; scheduledAt: string; prelimsAt?: string; status: string } | null>({
     queryKey: ['current-event', leagueId],
     queryFn: async () => {
       try { return await apiClient.get(`/leagues/${leagueId}/picks/current-event`) as any; }
@@ -477,9 +477,12 @@ export function LeagueHomePage() {
                               {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
                             </span>
                           )}
-                          {currentEvent.scheduledAt && (
+                          {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
                             <span style={styles.eventDate}>
-                              {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                              {(() => {
+                                const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
+                                return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                              })()}
                             </span>
                           )}
                         </div>
@@ -840,8 +843,11 @@ export function LeagueHomePage() {
             {currentEvent && (
               <div style={styles.sheetSubtitle}>
                 {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-                {currentEvent.scheduledAt && (
-                  <> · {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</>
+                {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
+                  <> · {(() => {
+                    const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt!);
+                    return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                  })()}</>
                 )}
               </div>
             )}

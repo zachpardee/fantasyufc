@@ -246,9 +246,12 @@ export function StakingPicksPage() {
 
       <div style={s.eventHeader}>
         <div style={s.eventName}>{currentEvent.name}</div>
-        {currentEvent.scheduledAt && (
+        {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
           <div style={s.eventDate}>
-            {new Date(currentEvent.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {(() => {
+              const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
+              return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+            })()}
           </div>
         )}
       </div>
