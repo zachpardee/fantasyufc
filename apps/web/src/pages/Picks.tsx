@@ -107,7 +107,24 @@ export function PicksPage() {
   if (league?.leagueFormat === 'staking') return <StakingPicksPage />;
 
   const fights: any[] = picksData?.fights ?? [];
-  const locked: boolean = picksData?.locked ?? false;
+  // locked = can't save (10 min before prelims); isLive = event actually started (ESPN live)
+  const serverLocked: boolean = picksData?.locked ?? false;
+  const eventStatus: string = picksData?.eventStatus ?? 'scheduled';
+  const isLive = eventStatus === 'live' || eventStatus === 'completed';
+  const [timeLocked, setTimeLocked] = useState(() => {
+    const startTime = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
+    return !!startTime && Date.now() >= new Date(startTime).getTime() - 10 * 60 * 1000;
+  });
+  useEffect(() => {
+    const startTime = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
+    if (!startTime) return;
+    const lockAt = new Date(startTime).getTime() - 10 * 60 * 1000;
+    const remaining = lockAt - Date.now();
+    if (remaining <= 0) { setTimeLocked(true); return; }
+    const t = setTimeout(() => setTimeLocked(true), remaining);
+    return () => clearTimeout(t);
+  }, [currentEvent?.prelimsAt, currentEvent?.scheduledAt]);
+  const locked = serverLocked || timeLocked;
 
   // Fights with no segment data default to main card
   const earlyPrelims = fights.filter((f) => f.cardSegment === 'early_prelims');
@@ -155,9 +172,14 @@ export function PicksPage() {
         </div>
       </div>
 
-      {locked && (
+      {locked && !isLive && (
         <div style={styles.lockedBanner}>
-          Picks are locked — the event is {picksData?.eventStatus}. Results will update as fights finish.
+          Picks are locked — the event starts soon.
+        </div>
+      )}
+      {isLive && (
+        <div style={styles.lockedBanner}>
+          Picks are locked — results will update as fights finish.
         </div>
       )}
 
@@ -166,7 +188,7 @@ export function PicksPage() {
           <table style={styles.summaryTable}>
             <thead>
               <tr>
-                {['Fight', 'Your Pick', 'Method', ...(locked ? ['Result'] : [])].map((h) => (
+                {['Fight', 'Your Pick', 'Method', ...(isLive ? ['Result'] : [])].map((h) => (
                   <th key={h} style={styles.summaryTh}>{h}</th>
                 ))}
               </tr>
@@ -208,7 +230,7 @@ export function PicksPage() {
                     <td style={styles.summaryTd}>
                       {method ? <span style={styles.methodBadge}>{methodLabel[method] ?? method}</span> : <span style={{ color: '#333' }}>—</span>}
                     </td>
-                    {locked && (
+                    {isLive && (
                       <td style={styles.summaryTd}>
                         {isCorrect === true && <span style={styles.correctBadge}>✓ +{(+fight.pointsEarned).toFixed(0)} pts</span>}
                         {isWrong && <span style={styles.wrongBadge}>✗ 0 pts</span>}
@@ -240,7 +262,7 @@ export function PicksPage() {
                       </div>
                     )}
                     <span style={styles.champSummaryName}>{name}</span>
-                    {locked && (
+                    {isLive && (
                       isWon
                         ? <span style={styles.champCorrectBadge}>✓ +30 pts</span>
                         : isPending

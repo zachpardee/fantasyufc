@@ -171,7 +171,21 @@ export function StakingPicksPage() {
   }
 
   const mainCard: any[] = betsData?.fights ?? [];
-  const locked: boolean = picksData?.locked ?? false;
+  const serverLocked: boolean = picksData?.locked ?? false;
+  const [timeLocked, setTimeLocked] = useState(() => {
+    const startTime = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
+    return !!startTime && Date.now() >= new Date(startTime).getTime() - 10 * 60 * 1000;
+  });
+  useEffect(() => {
+    const startTime = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
+    if (!startTime) return;
+    const lockAt = new Date(startTime).getTime() - 10 * 60 * 1000;
+    const remaining = lockAt - Date.now();
+    if (remaining <= 0) { setTimeLocked(true); return; }
+    const t = setTimeout(() => setTimeLocked(true), remaining);
+    return () => clearTimeout(t);
+  }, [currentEvent?.prelimsAt, currentEvent?.scheduledAt]);
+  const locked = serverLocked || timeLocked;
   const weeklyBudget: number = betsData?.weeklyBudget ?? 100;
   const seasonBankroll: number = betsData?.seasonBankroll ?? 0;
 
