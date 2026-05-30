@@ -107,8 +107,10 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
              wc.name AS weight_class_name,
              rf.first_name AS red_first_name, rf.last_name AS red_last_name, rf.image_url AS red_image_url,
              rf.record_wins AS red_record_wins, rf.record_losses AS red_record_losses, rf.record_draws AS red_record_draws,
+             rf.nationality AS red_nationality,
              bf.first_name AS blue_first_name, bf.last_name AS blue_last_name, bf.image_url AS blue_image_url,
              bf.record_wins AS blue_record_wins, bf.record_losses AS blue_record_losses, bf.record_draws AS blue_record_draws,
+             bf.nationality AS blue_nationality,
              fres.winner_id AS result_winner_id, fres.outcome AS result_outcome
       FROM fights f
       JOIN weight_classes wc ON wc.id = f.weight_class_id

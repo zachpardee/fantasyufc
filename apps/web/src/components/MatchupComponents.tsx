@@ -17,6 +17,47 @@ export const PICK_METHOD_LABEL: Record<string, string> = {
   disqualification: 'DQ',
 };
 
+// ── Country flag ─────────────────────────────────────────────────────────────
+const COUNTRY_TO_CODE: Record<string, string> = {
+  'Afghanistan': 'AF', 'Albania': 'AL', 'Algeria': 'DZ', 'Argentina': 'AR',
+  'Armenia': 'AM', 'Australia': 'AU', 'Austria': 'AT', 'Azerbaijan': 'AZ',
+  'Bahrain': 'BH', 'Belarus': 'BY', 'Belgium': 'BE', 'Bolivia': 'BO',
+  'Bosnia and Herzegovina': 'BA', 'Brazil': 'BR', 'Bulgaria': 'BG',
+  'Cameroon': 'CM', 'Canada': 'CA', 'Chile': 'CL', 'China': 'CN',
+  'Colombia': 'CO', 'Congo': 'CG', 'Costa Rica': 'CR', 'Croatia': 'HR',
+  'Cuba': 'CU', 'Czech Republic': 'CZ', 'Czechia': 'CZ',
+  'Denmark': 'DK', 'Dominican Republic': 'DO', 'Ecuador': 'EC',
+  'Egypt': 'EG', 'England': 'GB', 'Estonia': 'EE', 'Ethiopia': 'ET',
+  'Finland': 'FI', 'France': 'FR', 'Georgia': 'GE', 'Germany': 'DE',
+  'Ghana': 'GH', 'Great Britain': 'GB', 'Greece': 'GR', 'Guatemala': 'GT',
+  'Honduras': 'HN', 'Hungary': 'HU', 'Iceland': 'IS', 'India': 'IN',
+  'Indonesia': 'ID', 'Iran': 'IR', 'Iraq': 'IQ', 'Ireland': 'IE',
+  'Israel': 'IL', 'Italy': 'IT', 'Jamaica': 'JM', 'Japan': 'JP',
+  'Jordan': 'JO', 'Kazakhstan': 'KZ', 'Kenya': 'KE', 'Kyrgyzstan': 'KG',
+  'Latvia': 'LV', 'Lithuania': 'LT', 'Malaysia': 'MY', 'Mexico': 'MX',
+  'Moldova': 'MD', 'Mongolia': 'MN', 'Montenegro': 'ME', 'Morocco': 'MA',
+  'Netherlands': 'NL', 'New Zealand': 'NZ', 'Nicaragua': 'NI',
+  'Nigeria': 'NG', 'North Macedonia': 'MK', 'Northern Ireland': 'GB',
+  'Norway': 'NO', 'Pakistan': 'PK', 'Panama': 'PA', 'Paraguay': 'PY',
+  'Peru': 'PE', 'Philippines': 'PH', 'Poland': 'PL', 'Portugal': 'PT',
+  'Puerto Rico': 'PR', 'Romania': 'RO', 'Russia': 'RU',
+  'Saudi Arabia': 'SA', 'Scotland': 'GB', 'Senegal': 'SN', 'Serbia': 'RS',
+  'Slovakia': 'SK', 'Slovenia': 'SI', 'South Africa': 'ZA',
+  'South Korea': 'KR', 'Korea': 'KR', 'Spain': 'ES', 'Sweden': 'SE',
+  'Switzerland': 'CH', 'Tajikistan': 'TJ', 'Tanzania': 'TZ',
+  'Thailand': 'TH', 'Turkey': 'TR', 'Turkmenistan': 'TM',
+  'Ukraine': 'UA', 'United Kingdom': 'GB', 'United States': 'US',
+  'USA': 'US', 'Uruguay': 'UY', 'Uzbekistan': 'UZ', 'Venezuela': 'VE',
+  'Vietnam': 'VN', 'Wales': 'GB',
+};
+
+function countryFlag(nationality: string | null | undefined): string {
+  if (!nationality) return '';
+  const code = COUNTRY_TO_CODE[nationality];
+  if (!code) return '';
+  return [...code].map((c) => String.fromCodePoint(0x1F1E0 - 65 + c.charCodeAt(0))).join('');
+}
+
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 export function fmtOddsAmerican(american: number): string {
@@ -78,7 +119,10 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
                   <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redLastName}</div>
+                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {fight.redLastName}
+                    {countryFlag(fight.redNationality) && <span style={{ fontSize: 9, lineHeight: 1 }}>{countryFlag(fight.redNationality)}</span>}
+                  </div>
                   {fight.redFighterOdds != null && <div style={{ ...mb.fighterOdds, color: redWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.redFighterOdds)}</div>}
                 </div>
               </div>
@@ -93,7 +137,10 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueLastName}</div>
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc', display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 3 }}>
+                    {fight.blueLastName}
+                    {countryFlag(fight.blueNationality) && <span style={{ fontSize: 9, lineHeight: 1 }}>{countryFlag(fight.blueNationality)}</span>}
+                  </div>
                   {fight.blueFighterOdds != null && <div style={{ ...mb.fighterOdds, color: blueWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.blueFighterOdds)}</div>}
                 </div>
               </div>
