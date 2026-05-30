@@ -3,6 +3,7 @@ import { db } from '../config/database';
 import { fetchUpcomingEvents, fetchEventsByDate, type EspnFight } from '../services/espn.adapter';
 import { redis } from '../config/redis';
 import { sendNotification } from '../services/notification.service';
+import { nextHolidayTarget } from '../utils/playoffs';
 
 // Runs daily at 6am UTC — syncs upcoming UFC events and their fight cards
 export function startEventSyncJob() {
@@ -59,8 +60,81 @@ export async function syncEvents() {
     if (totalFuture > 0) console.log(`[EventSync] Synced ${totalFuture} additional future events`);
 
     await redis.del('events:upcoming');
+    await refreshLeaguePlayoffs();
   } catch (err) {
     console.error('[EventSync] Error:', err);
+  }
+}
+
+// After each sync, fill in missing playoff event refs for active leagues.
+// Runs whenever events are synced so refs get set as soon as ESPN publishes the events.
+async function refreshLeaguePlayoffs() {
+  const { rows: leagues } = await db.query(`
+    SELECT id, season_ends_at, season_length_months,
+           playoff_semis_event_id, playoff_finals_event_id
+    FROM leagues
+    WHERE status IN ('active', 'playoffs')
+      AND season_ends_at IS NOT NULL
+      AND (
+        playoff_semis_event_id IS NULL
+        OR playoff_finals_event_id IS NULL
+        OR NOT EXISTS (SELECT 1 FROM ufc_events WHERE id = playoff_semis_event_id AND status != 'cancelled')
+        OR NOT EXISTS (SELECT 1 FROM ufc_events WHERE id = playoff_finals_event_id AND status != 'cancelled')
+      )
+  `);
+
+  if (!leagues.length) return;
+
+  for (const league of leagues) {
+    const seasonEndsAt = new Date(league.season_ends_at);
+    let semisId: string | null = league.playoff_semis_event_id ?? null;
+    let finalsId: string | null = league.playoff_finals_event_id ?? null;
+
+    // Determine finals event if missing
+    if (!finalsId) {
+      if (league.season_length_months === 6) {
+        const target = nextHolidayTarget(seasonEndsAt);
+        const { rows: [closest] } = await db.query(`
+          SELECT id FROM ufc_events
+          WHERE scheduled_at > $1 AND status != 'cancelled'
+          ORDER BY ABS(EXTRACT(EPOCH FROM (scheduled_at - $2::timestamptz))) ASC
+          LIMIT 1
+        `, [seasonEndsAt.toISOString(), target.toISOString()]);
+        finalsId = closest?.id ?? null;
+      } else {
+        const { rows: fallback } = await db.query(`
+          SELECT id FROM ufc_events
+          WHERE scheduled_at > $1 AND status != 'cancelled'
+          ORDER BY scheduled_at ASC LIMIT 2
+        `, [seasonEndsAt.toISOString()]);
+        if (fallback.length >= 2) {
+          semisId = semisId ?? fallback[0].id;
+          finalsId = fallback[1].id;
+        } else if (fallback.length === 1) {
+          finalsId = fallback[0].id;
+        }
+      }
+    }
+
+    // Determine semis event if missing: event between season end and finals
+    if (!semisId && finalsId) {
+      const { rows: [candidate] } = await db.query(`
+        SELECT id FROM ufc_events
+        WHERE scheduled_at > $1
+          AND scheduled_at < (SELECT scheduled_at FROM ufc_events WHERE id = $2)
+          AND status != 'cancelled'
+        ORDER BY scheduled_at DESC
+        LIMIT 1
+      `, [seasonEndsAt.toISOString(), finalsId]);
+      semisId = candidate?.id ?? null;
+    }
+
+    if (semisId !== league.playoff_semis_event_id || finalsId !== league.playoff_finals_event_id) {
+      await db.query(`
+        UPDATE leagues SET playoff_semis_event_id = $1, playoff_finals_event_id = $2 WHERE id = $3
+      `, [semisId, finalsId, league.id]);
+      console.log(`[EventSync] Auto-set playoffs for league ${league.id}: semis=${semisId} finals=${finalsId}`);
+    }
   }
 }
 
