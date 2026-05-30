@@ -325,53 +325,6 @@ export function StakingPicksPage() {
                       {fight.blueImageUrl && <img src={fight.blueImageUrl} alt="" style={s.fighterImg} />}
                     </button>
                   </div>
-
-                  {/* Inline bet entries on fight card */}
-                  {fightBets.length > 0 && (
-                    <div style={s.betEntries}>
-                      {fightBets.map((bet) => {
-                        const isRed = bet.fighterId === fight.redFighterId;
-                        const odds = isRed ? fight.redFighterOdds : fight.blueFighterOdds;
-                        const stake = parseFloat(bet.stake);
-                        const payout = odds != null && stake > 0 ? calcPayout(stake, toDecimalOdds(odds)) : null;
-                        return (
-                          <div key={bet.clientId} style={s.betEntry}>
-                            <div style={s.betEntryFighters}>
-                              <button
-                                style={{ ...s.betFighterBtn, ...(isRed ? s.betFighterBtnActive : {}) }}
-                                disabled={locked}
-                                onClick={() => updateSingle(bet.clientId, { fighterId: fight.redFighterId })}
-                              >
-                                {fight.redLastName}{fight.redFighterOdds != null ? ` ${fmtOdds(fight.redFighterOdds)}` : ''}
-                              </button>
-                              <button
-                                style={{ ...s.betFighterBtn, ...(!isRed ? s.betFighterBtnActive : {}) }}
-                                disabled={locked}
-                                onClick={() => updateSingle(bet.clientId, { fighterId: fight.blueFighterId })}
-                              >
-                                {fight.blueLastName}{fight.blueFighterOdds != null ? ` ${fmtOdds(fight.blueFighterOdds)}` : ''}
-                              </button>
-                            </div>
-                            <div style={s.betEntryRight}>
-                              <div style={s.stakeInputWrap}>
-                                <span style={s.stakeDollar}>$</span>
-                                <input
-                                  style={s.stakeInput}
-                                  type="number" min="1" step="1" placeholder="0"
-                                  value={bet.stake} disabled={locked}
-                                  onChange={(e) => updateSingle(bet.clientId, { stake: e.target.value })}
-                                />
-                              </div>
-                              {payout != null && <span style={s.betEntryPayout}>{fmtMoney(payout)}</span>}
-                            </div>
-                            {!locked && (
-                              <button style={s.betRemoveBtn} onClick={() => removeSingle(bet.clientId)}>✕</button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               );
             })}

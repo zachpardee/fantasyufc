@@ -14,7 +14,8 @@
     "db:migrate": "npm run migrate --workspace=apps/api",
     "db:seed": "npm run seed --workspace=apps/api",
     "setup": "npx tsx scripts/setup-supabase.ts",
-    "setup:seed": "npx tsx scripts/setup-supabase.ts --seed"
+    "setup:seed": "npx tsx scripts/setup-supabase.ts --seed",
+    "deploy": "vercel --prod && railway up --detach"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
