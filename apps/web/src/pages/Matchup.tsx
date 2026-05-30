@@ -907,8 +907,8 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
   const homeSinglesMap = new Map<string, any>((homeStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
   const awaySinglesMap = new Map<string, any>((awayStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
 
-  const homeParlay = homeStaking?.parlay ?? null;
-  const awayParlay = awayStaking?.parlay ?? null;
+  const homeParlays: any[] = homeStaking?.parlays ?? [];
+  const awayParlays: any[] = awayStaking?.parlays ?? [];
 
   return (
     <div style={styles.section}>
@@ -925,19 +925,31 @@ function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, aw
         onPhotoClick={onPhotoClick}
       />
 
-      {(homeParlay || awayParlay) && (
+      {(homeParlays.length > 0 || awayParlays.length > 0) && (
         <div style={{ background: '#0d0c00', border: '1px solid #2a2200', borderRadius: 8, padding: '14px', marginTop: 8 }}>
-          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, marginBottom: 12 }}>★ PARLAY</div>
+          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, marginBottom: 12 }}>
+            ★ PARLAY{(homeParlays.length + awayParlays.length) > 1 ? 'S' : ''}
+          </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              {homeParlay
-                ? <ParlayDisplay parlay={homeParlay} legs={homeStaking?.parlayLegs ?? []} align="left" />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {homeParlays.length > 0
+                ? homeParlays.map((p: any, i: number) => (
+                    <div key={p.id}>
+                      {i > 0 && <div style={{ height: 1, background: '#2a2200', margin: '0 0 10px' }} />}
+                      <ParlayDisplay parlay={p} legs={p.legs ?? []} align="left" />
+                    </div>
+                  ))
                 : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
             </div>
             <div style={{ width: 1, background: '#2a2200', alignSelf: 'stretch', flexShrink: 0 }} />
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-              {awayParlay
-                ? <ParlayDisplay parlay={awayParlay} legs={awayStaking?.parlayLegs ?? []} align="right" />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+              {awayParlays.length > 0
+                ? awayParlays.map((p: any, i: number) => (
+                    <div key={p.id} style={{ width: '100%' }}>
+                      {i > 0 && <div style={{ height: 1, background: '#2a2200', margin: '0 0 10px' }} />}
+                      <ParlayDisplay parlay={p} legs={p.legs ?? []} align="right" />
+                    </div>
+                  ))
                 : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
             </div>
           </div>

@@ -43,32 +43,48 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       ORDER BY f.is_main_event DESC, f.bout_order DESC
     `, [leagueId, eventId, targetMemberId]);
 
-    const { rows: [parlay] } = await db.query(`
+    // Fetch all parlays for this event/member (multiple allowed — e.g. settled + new pending)
+    const { rows: parlayRows } = await db.query(`
       SELECT sp.* FROM staking_parlays sp
       WHERE sp.league_id = $1 AND sp.event_id = $2 AND sp.member_id = $3
+      ORDER BY sp.created_at ASC
     `, [leagueId, eventId, targetMemberId]);
 
-    let parlayLegs: any[] = [];
-    if (parlay) {
+    // Fetch all legs for all parlays in one query
+    let allLegRows: any[] = [];
+    if (parlayRows.length > 0) {
       const { rows } = await db.query(`
-        SELECT spl.*,
+        SELECT spl.*, spl.parlay_id,
           f.red_fighter_id, f.blue_fighter_id, f.is_main_event, f.bout_order,
           rf.first_name as fighter_first_name, rf.last_name as fighter_last_name
         FROM staking_parlay_legs spl
         JOIN fights f ON f.id = spl.fight_id
         JOIN fighters rf ON rf.id = spl.fighter_id
-        WHERE spl.parlay_id = $1
+        WHERE spl.parlay_id = ANY($1::uuid[])
         ORDER BY f.is_main_event DESC, f.bout_order DESC
-      `, [parlay.id]);
-      parlayLegs = rows;
+      `, [parlayRows.map((p: any) => p.id)]);
+      allLegRows = rows;
     }
+
+    // Parlays with embedded legs (for matchup display)
+    const parlaysWithLegs = parlayRows.map((p: any) => ({
+      ...p,
+      legs: allLegRows.filter((l: any) => l.parlay_id === p.id),
+    }));
+
+    // Backward compat: parlay = pending parlay, parlayLegs = its legs
+    const parlay = parlayRows.find((p: any) => p.status === 'pending') ?? null;
+    const parlayLegs = parlay ? allLegRows.filter((l: any) => l.parlay_id === parlay.id) : [];
 
     const weeklyBudget = parseFloat(me.weekly_budget ?? 100);
 
     // How much of this week's budget has been committed
+    const pendingParlayStake = parlayRows
+      .filter((p: any) => p.status === 'pending')
+      .reduce((sum: number, p: any) => sum + parseFloat(p.stake), 0);
     const usedThisWeek =
       singles.filter((s: any) => s.status === 'pending').reduce((sum: number, s: any) => sum + parseFloat(s.stake), 0)
-      + (parlay?.status === 'pending' ? parseFloat(parlay.stake) : 0);
+      + pendingParlayStake;
 
     const { rows: fights } = await db.query(`
       SELECT f.id, f.red_fighter_id, f.blue_fighter_id,
@@ -95,6 +111,7 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       singles,
       parlay: parlay ?? null,
       parlayLegs,
+      parlays: parlaysWithLegs,
       weeklyBudget,
       usedThisWeek,
       availableThisWeek: Math.max(0, weeklyBudget - usedThisWeek),
