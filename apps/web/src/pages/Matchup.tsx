@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
@@ -23,9 +23,17 @@ export function MatchupPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const isMobile = useIsMobile();
+  const location = useLocation();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
   const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(null);
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
+
+  // Reset to current matchup whenever the user navigates to this page
+  useEffect(() => {
+    setSelectedMatchupId(null);
+    setBrowsingMatchupId(null);
+    setShowMatchupPicker(false);
+  }, [location.key]);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string } | null>(null);
   const openPhoto: PhotoClickHandler = (url, name) => setEnlargedPhoto({ url, name });
   const [selectedMember, setSelectedMember] = useState<any>(null);
