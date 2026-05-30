@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { db } from '../config/database';
 import { fetchUpcomingEvents, fetchEventsByDate, type EspnFight } from '../services/espn.adapter';
 import { redis } from '../config/redis';
+import { sendNotification } from '../services/notification.service';
 
 // Runs daily at 6am UTC — syncs upcoming UFC events and their fight cards
 export function startEventSyncJob() {
@@ -48,7 +49,7 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
         name = EXCLUDED.name,
         status = EXCLUDED.status,
         scheduled_at = EXCLUDED.scheduled_at
-      RETURNING id, status
+      RETURNING id, status, scheduled_at
     `, [
       event.espnEventId,
       event.name,
@@ -61,12 +62,22 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
       mapStatus(event.status, event.completed),
     ]);
 
-    // Sync fight card
+    // Sync fight card, tracking any fighter changes
+    const changedFights: string[] = [];
     for (const fight of event.fights) {
-      await upsertFight(client, dbEvent.id, fight);
+      const changed = await upsertFight(client, dbEvent.id, fight);
+      if (changed) changedFights.push(`${fight.redCorner.displayName} vs ${fight.blueCorner.displayName}`);
     }
 
     await client.query('COMMIT');
+
+    // Notify if fights changed and the event is still open for picks (not locked)
+    const lockAt = new Date(dbEvent.scheduled_at).getTime() - 10 * 60 * 1000;
+    if (changedFights.length > 0 && dbEvent.status === 'scheduled' && Date.now() < lockAt) {
+      await notifyCardChange(dbEvent.id, event.name, changedFights).catch((err) =>
+        console.error('[EventSync] Failed to send card change notifications:', err),
+      );
+    }
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[EventSync] Failed to upsert event:', event.name, err);
@@ -75,21 +86,54 @@ async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>
   }
 }
 
-async function upsertFight(client: import('pg').PoolClient, eventId: string, fight: EspnFight) {
+async function notifyCardChange(eventId: string, eventName: string, changedFights: string[]) {
+  const { rows: users } = await db.query(`
+    SELECT DISTINCT up.id as user_id
+    FROM league_events le
+    JOIN leagues l ON l.id = le.league_id
+    JOIN league_members lm ON lm.league_id = l.id
+    JOIN user_profiles up ON up.id = lm.user_id
+    WHERE le.event_id = $1 AND le.is_scoring = true
+  `, [eventId]);
+
+  if (!users.length) return;
+
+  const shortName = eventName.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ').replace(/^UFC\s+/i, 'UFC ');
+  const count = changedFights.length;
+  const body = count === 1
+    ? `${changedFights[0]} has changed — review your picks before the event starts.`
+    : `${count} fights updated — review your picks before the event starts.`;
+
+  console.log(`[EventSync] Notifying ${users.length} users of card changes for ${eventName}`);
+
+  await Promise.allSettled(
+    users.map((u) =>
+      sendNotification(u.user_id, 'card_change', `${shortName} card update`, body, { eventId }),
+    ),
+  );
+}
+
+async function upsertFight(client: import('pg').PoolClient, eventId: string, fight: EspnFight): Promise<boolean> {
   // Resolve fighters by ESPN athlete ID
   const [redFighter, blueFighter] = await Promise.all([
     resolveOrCreateFighter(client, fight.redCorner),
     resolveOrCreateFighter(client, fight.blueCorner),
   ]);
 
-  if (!redFighter || !blueFighter) return;
+  if (!redFighter || !blueFighter) return false;
 
   // If this ESPN fight ID doesn't exist yet, check whether either fighter is already
   // booked for this event under a different ESPN fight ID. This prevents stale ESPN
   // competition records (e.g. cancelled matchups) from creating duplicate DB rows.
   const { rows: [existingById] } = await client.query(
-    `SELECT id FROM fights WHERE ufc_fight_id = $1`, [fight.espnFightId],
+    `SELECT id, red_fighter_id, blue_fighter_id FROM fights WHERE ufc_fight_id = $1`, [fight.espnFightId],
   );
+
+  // Detect if fighters changed on an existing fight
+  const fightersChanged = !!existingById && (
+    existingById.red_fighter_id !== redFighter || existingById.blue_fighter_id !== blueFighter
+  );
+
   if (!existingById) {
     const { rows: [duplicate] } = await client.query(`
       SELECT id FROM fights
@@ -100,7 +144,7 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
     `, [eventId, fight.espnFightId, redFighter, blueFighter]);
     if (duplicate) {
       console.log(`[EventSync] Skipping duplicate fight ${fight.espnFightId} — fighter already booked for this event`);
-      return;
+      return false;
     }
   }
 
@@ -109,7 +153,7 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
     `SELECT id FROM weight_classes WHERE name ILIKE $1 OR slug ILIKE $2 LIMIT 1`,
     [fight.weightClassText, fight.weightClassText.toLowerCase().replace(/\s+/g, '-')],
   );
-  if (!weightClass) return;
+  if (!weightClass) return false;
 
   await client.query(`
     INSERT INTO fights (
@@ -144,6 +188,8 @@ async function upsertFight(client: import('pg').PoolClient, eventId: string, fig
     fight.isCoMain,
     fight.cardSegment,
   ]);
+
+  return fightersChanged;
 }
 
 async function resolveOrCreateFighter(

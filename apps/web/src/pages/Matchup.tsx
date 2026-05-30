@@ -24,6 +24,8 @@ export function MatchupPage() {
   const { session } = useAuthStore();
   const isMobile = useIsMobile();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+  const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(null);
+  const [showMatchupPicker, setShowMatchupPicker] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string } | null>(null);
   const openPhoto: PhotoClickHandler = (url, name) => setEnlargedPhoto({ url, name });
   const [selectedMember, setSelectedMember] = useState<any>(null);
@@ -70,11 +72,12 @@ export function MatchupPage() {
   const currentUpcomingEventId = [...seasonEvents].reverse()
     .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
 
+  const effectiveMatchupId = browsingMatchupId ?? selectedMatchupId;
   const { data: matchup, refetch } = useQuery<any>({
-    queryKey: ['matchup-detail', leagueId, selectedMatchupId],
+    queryKey: ['matchup-detail', leagueId, effectiveMatchupId],
     queryFn: async () => {
-      if (selectedMatchupId) {
-        return apiClient.get(`/leagues/${leagueId}/matchups/${selectedMatchupId}`);
+      if (effectiveMatchupId) {
+        return apiClient.get(`/leagues/${leagueId}/matchups/${effectiveMatchupId}`);
       }
       const current = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!current) return null;
@@ -129,6 +132,15 @@ export function MatchupPage() {
   });
 
   const isLive = matchup?.eventStatus === 'live';
+  const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
+
+  // Orient so the current user's bets are always on the left
+  const isMeHome = !!myMember && myMember.id === matchup?.homeTeamId;
+  const isMeAway = !!myMember && myMember.id === matchup?.awayTeamId;
+  const myStaking = isMeHome ? homeStaking : isMeAway ? awayStaking : homeStaking;
+  const oppStaking = isMeHome ? awayStaking : isMeAway ? homeStaking : awayStaking;
+  const myStakingTeamName = isMeHome ? matchup?.homeTeamName : isMeAway ? matchup?.awayTeamName : matchup?.homeTeamName;
+  const oppStakingTeamName = isMeHome ? matchup?.awayTeamName : isMeAway ? matchup?.homeTeamName : matchup?.awayTeamName;
   const fights: any[] = homePicks?.fights ?? [];
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
@@ -140,8 +152,13 @@ export function MatchupPage() {
       <nav style={styles.nav}>
         <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
         <span style={styles.navTitle}>Matchup</span>
-        {isLive && !selectedMatchupId && <span style={styles.liveBadge}>LIVE</span>}
-        {isViewingHistory && (
+        {isLive && !effectiveMatchupId && <span style={styles.liveBadge}>LIVE</span>}
+        {browsingMatchupId && (
+          <button style={styles.currentBtn} onClick={() => setBrowsingMatchupId(null)}>
+            ← My matchup
+          </button>
+        )}
+        {isViewingHistory && !browsingMatchupId && (
           <button style={styles.currentBtn} onClick={() => setSelectedMatchupId(null)}>
             ← Current
           </button>
@@ -176,7 +193,7 @@ export function MatchupPage() {
               <button
                 key={ev.eventId}
                 style={{ ...styles.historyChip, ...(isActive ? styles.historyChipActive : isCurrentEvent ? styles.historyChipCurrent : {}), ...(!myM ? styles.historyChipNoMatchup : {}) }}
-                onClick={() => myM && setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id)}
+                onClick={() => { setBrowsingMatchupId(null); setShowMatchupPicker(false); myM && setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id); }}
                 disabled={!myM}
               >
                 {isLiveEvent
@@ -261,7 +278,7 @@ export function MatchupPage() {
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
-            <div style={styles.vsBlock}>
+            <div style={{ ...styles.vsBlock, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
               {matchup.winnerId ? (
                 <div style={styles.resultBadge}>
                   {matchup.winnerId === matchup.homeTeamId
@@ -271,6 +288,7 @@ export function MatchupPage() {
               ) : (
                 <div style={styles.vsText}>VS</div>
               )}
+              <div style={styles.browseHint}>other matchups ▾</div>
             </div>
 
             <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
@@ -325,11 +343,13 @@ export function MatchupPage() {
           {/* Staking bets */}
           {isStaking && (
             <StakingBetsSection
-              fights={homeStaking?.fights ?? awayStaking?.fights ?? []}
-              homeStaking={homeStaking}
-              awayStaking={awayStaking}
-              homeTeamName={matchup.homeTeamName}
-              awayTeamName={matchup.awayTeamName}
+              fights={myStaking?.fights ?? oppStaking?.fights ?? []}
+              myStaking={myStaking}
+              oppStaking={oppStaking}
+              myTeamName={myStakingTeamName ?? matchup.homeTeamName}
+              oppTeamName={oppStakingTeamName ?? matchup.awayTeamName}
+              isEventLive={eventIsLive}
+              amInMatchup={isMeHome || isMeAway}
               onPhotoClick={openPhoto}
             />
           )}
@@ -374,6 +394,37 @@ export function MatchupPage() {
           onClose={() => setSelectedMember(null)}
         />
       )}
+
+      {showMatchupPicker && matchup && (() => {
+        const eventMatchups = allMatchups.filter((m) => m.eventId === matchup.eventId);
+        const myMatchupForEvent = myMatchupByEvent.get(matchup.eventId);
+        return (
+          <div style={styles.pickerOverlay} onClick={() => setShowMatchupPicker(false)}>
+            <div style={styles.pickerSheet} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.pickerTitle}>Matchups · {matchup.eventName?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ').replace(/^UFC\s+/i, 'UFC ')}</div>
+              {eventMatchups.map((m) => {
+                const isMyMatchup = m.id === myMatchupForEvent?.id;
+                const isActive = browsingMatchupId === m.id || (!browsingMatchupId && isMyMatchup);
+                return (
+                  <button
+                    key={m.id}
+                    style={{ ...styles.pickerRow, ...(isActive ? styles.pickerRowActive : {}) }}
+                    onClick={() => {
+                      setBrowsingMatchupId(isMyMatchup ? null : m.id);
+                      setShowMatchupPicker(false);
+                    }}
+                  >
+                    <span style={styles.pickerTeam}>{m.homeTeamName}</span>
+                    <span style={styles.pickerVs}>vs</span>
+                    <span style={styles.pickerTeam}>{m.awayTeamName}</span>
+                    {isMyMatchup && <span style={styles.pickerMine}>mine</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {enlargedPhoto && (
         <div
@@ -724,249 +775,169 @@ function fmtChipScore(n: number): string {
   return n < 0 ? `(${s})` : s;
 }
 
-function OddsBadge({ odds }: { odds: number }) {
-  const isUnderdog = odds > 0;
-  return (
-    <span style={{
-      background: isUnderdog ? '#162616' : '#1a1a1a',
-      color: isUnderdog ? '#5cb85c' : '#666',
-      fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
-      border: `1px solid ${isUnderdog ? '#2a4a2a' : '#2a2a2a'}`,
-      letterSpacing: 0.2, flexShrink: 0,
-    }}>
-      {fmtOddsAmerican(odds)}
-    </span>
-  );
-}
+// ── Staking matchup layout ────────────────────────────────────────────────────
 
-function PnlBadge({ value, isPending, potentialPayout }: { value: number; isPending: boolean; potentialPayout: number }) {
-  if (isPending) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
-        <span style={{ color: '#333', fontSize: 10 }}>→</span>
-        <span style={{ color: '#555', fontSize: 12, fontWeight: 600 }}>{fmtMoney(potentialPayout)}</span>
-      </div>
-    );
-  }
-  const isWon = value > 0;
-  return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center',
-      background: isWon ? '#0d2214' : '#1e0808',
-      color: isWon ? '#4caf50' : '#e05555',
-      fontSize: 12, fontWeight: 700,
-      padding: '3px 7px', borderRadius: 4, marginTop: 2,
-      border: `1px solid ${isWon ? '#1e4a28' : '#3a1414'}`,
-    }}>
-      {fmtStakeScore(value)}
-    </div>
-  );
-}
-
-
-function ParlayDisplay({ parlay, legs, align }: { parlay: any; legs: any[]; align: 'left' | 'right' }) {
-  const isLost = parlay.status === 'lost';
-  const isWon = parlay.status === 'won';
-  const isPending = parlay.status === 'pending';
-  const rev = align === 'right';
+function MatchupBetRow({ bet }: { bet: any }) {
+  const stake = parseFloat(bet.stake) || 0;
+  const odds: number | null = bet.odds != null ? +bet.odds : null;
+  const isPending = bet.status === 'pending';
+  const pl = parseFloat(bet.profitLoss);
+  const potentialPayout = parseFloat(bet.potentialPayout) || 0;
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: rev ? 'flex-end' : 'flex-start',
-      gap: 5, opacity: isLost ? 0.45 : 1,
-    }}>
-      {legs.map((l: any) => (
-        <div key={l.fightId} style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          flexDirection: rev ? 'row-reverse' : 'row',
-        }}>
-          <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700 }}>
-            {l.fighterFirstName} {l.fighterLastName}
-          </span>
-          <OddsBadge odds={+l.odds} />
+    <div style={mb.betRow}>
+      <div style={mb.betLeft}>
+        <div style={{ ...mb.betFighter, color: !isPending && bet.status === 'won' ? '#4caf50' : '#ddd' }}>
+          {bet.fighterFirstName} {bet.fighterLastName}
         </div>
-      ))}
-      <div style={{ color: '#444', fontSize: 10, marginTop: 1 }}>
-        {legs.length} legs · {(+parlay.decimalOdds).toFixed(2)}x · {fmtMoney(+parlay.stake)}
+        {odds != null && (
+          <div style={{ ...mb.betOdds, color: odds < 0 ? '#888' : '#4caf50' }}>{fmtOddsAmerican(odds)}</div>
+        )}
       </div>
-      <PnlBadge value={+parlay.profitLoss} isPending={isPending} potentialPayout={+parlay.potentialPayout} />
+      <div style={mb.betRight}>
+        <div style={mb.betStake}>{fmtMoney(stake)}</div>
+        {isPending
+          ? <div style={mb.betPotential}>Win {fmtMoney(potentialPayout)}</div>
+          : <div style={{ ...mb.betPnl, color: pl >= 0 ? '#4caf50' : '#ff5252' }}>
+              {bet.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
+            </div>
+        }
+      </div>
     </div>
   );
 }
 
-function InlineBetDisplay({ single, align }: { single: any; align: 'left' | 'right' }) {
-  const isLost = single.status === 'lost';
-  const isWon = single.status === 'won';
-  const isPending = single.status === 'pending';
-  const rev = align === 'right';
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: rev ? 'flex-end' : 'flex-start', gap: 4, opacity: isLost ? 0.4 : 1 }}>
-      <span style={{ color: isWon ? '#4caf50' : '#ddd', fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
-        {single.fighterFirstName} {single.fighterLastName}
-      </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexDirection: rev ? 'row-reverse' : 'row' }}>
-        <OddsBadge odds={+single.odds} />
-        <span style={{ color: '#555', fontSize: 10 }}>{fmtMoney(+single.stake)}</span>
-      </div>
-      <PnlBadge value={+single.profitLoss} isPending={isPending} potentialPayout={+single.potentialPayout} />
-    </div>
-  );
-}
-
-function FightCardRow({ fight, homeSingle, awaySingle, onPhotoClick }: { fight: any; homeSingle?: any; awaySingle?: any; onPhotoClick?: PhotoClickHandler }) {
-  const hasResult = !!fight.resultWinnerId;
-  const redWon = hasResult && fight.resultWinnerId === fight.redFighterId;
-  const blueWon = hasResult && fight.resultWinnerId === fight.blueFighterId;
-  const fmtOdds = (n: number) => n >= 0 ? `+${n}` : `${n}`;
+function MatchupBetPanel({ teamName, singles, isLocked }: { teamName: string; singles: any[]; isLocked: boolean }) {
+  const pending = singles.filter((s: any) => s.status === 'pending');
+  const settled = singles.filter((s: any) => s.status !== 'pending');
 
   return (
-    <div style={styles.pickRow}>
-      {/* Home bet column */}
-      <div style={styles.pickBadgeCol}>
-        {homeSingle
-          ? <InlineBetDisplay single={homeSingle} align="left" />
-          : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
+    <div style={mb.panel}>
+      <div style={mb.header}>
+        <span style={mb.headerTitle}>{teamName}</span>
+        {singles.length > 0 && <span style={mb.badge}>{singles.length}</span>}
       </div>
 
-      {/* Fight card center — sheet style */}
-      <div style={styles.fightCardCenter}>
-        <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: hasResult && !redWon ? 0.35 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
-          onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
-        >
-          <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={styles.fightCardPhoto} />
-          <div style={styles.fightCardFighterInfo}>
-            <span style={{ ...styles.fightCardName, color: redWon ? '#fff' : '#ccc' }}>{fight.redFirstName} {fight.redLastName}</span>
-            {fight.redFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.redFighterOdds)}</span>}
-          </div>
+      {isLocked ? (
+        <div style={mb.locked}>
+          <div style={{ fontSize: 20, marginBottom: 6 }}>🔒</div>
+          <div style={{ color: '#333', fontSize: 11, fontStyle: 'italic' }}>Revealed at event start</div>
         </div>
-
-        <div style={styles.fightCardVs}>
-          <span style={styles.vsText2}>VS</span>
-          <span style={styles.fightCardWeight}>{fight.weightClassName}</span>
-          {hasResult && fight.resultOutcome && (
-            <span style={styles.fightCardResult}>{METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}</span>
+      ) : singles.length === 0 ? (
+        <div style={mb.empty}>No bets placed</div>
+      ) : (
+        <>
+          {pending.length > 0 && (
+            <>
+              <div style={mb.sectionLabel}>PENDING</div>
+              {pending.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+            </>
           )}
-        </div>
-
-        <div
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'row-reverse', gap: 10, opacity: hasResult && !blueWon ? 0.35 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
-          onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
-        >
-          <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={styles.fightCardPhoto} />
-          <div style={{ ...styles.fightCardFighterInfo, alignItems: 'flex-end' }}>
-            <span style={{ ...styles.fightCardName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueFirstName} {fight.blueLastName}</span>
-            {fight.blueFighterOdds != null && <span style={styles.fightCardOdds}>{fmtOdds(fight.blueFighterOdds)}</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* Away bet column */}
-      <div style={{ ...styles.pickBadgeCol, alignItems: 'flex-end' }}>
-        {awaySingle
-          ? <InlineBetDisplay single={awaySingle} align="right" />
-          : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
-      </div>
-    </div>
-  );
-}
-
-function StakingFightCard({ fights, homeTeamName, awayTeamName, homeSinglesMap, awaySinglesMap, onPhotoClick }: {
-  fights: any[]; homeTeamName: string; awayTeamName: string;
-  homeSinglesMap: Map<string, any>; awaySinglesMap: Map<string, any>;
-  onPhotoClick?: PhotoClickHandler;
-}) {
-  if (fights.length === 0) return null;
-  return (
-    <div style={sk.card}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-        <span style={{ flex: 1, color: '#555', fontSize: 12, fontWeight: 700 }}>{homeTeamName}</span>
-        <span style={{ ...sk.cardHeaderText, width: 168, flexShrink: 0, textAlign: 'center' }}>FIGHT CARD</span>
-        <span style={{ flex: 1, color: '#555', fontSize: 12, fontWeight: 700, textAlign: 'right' }}>{awayTeamName}</span>
-      </div>
-      {fights.map((fight, i) => (
-        <div key={fight.id} style={i < fights.length - 1 ? { borderBottom: '1px solid #161616' } : {}}>
-          <FightCardRow
-            fight={fight}
-            homeSingle={homeSinglesMap.get(fight.id)}
-            awaySingle={awaySinglesMap.get(fight.id)}
-            onPhotoClick={onPhotoClick}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamName, awayTeamName, onPhotoClick }: {
-  fights: any[]; homeStaking: any; awayStaking: any;
-  homeTeamName: string; awayTeamName: string;
-  onPhotoClick?: PhotoClickHandler;
-}) {
-  const homeSinglesMap = new Map<string, any>((homeStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
-  const awaySinglesMap = new Map<string, any>((awayStaking?.singles ?? []).map((s: any) => [s.fightId, s]));
-
-  const homeParlays: any[] = homeStaking?.parlays ?? [];
-  const awayParlays: any[] = awayStaking?.parlays ?? [];
-
-  return (
-    <div style={styles.section}>
-      <div style={styles.sectionHeader}>
-        <span style={styles.sectionTitle}>BETS</span>
-      </div>
-
-      <StakingFightCard
-        fights={fights}
-        homeTeamName={homeTeamName}
-        awayTeamName={awayTeamName}
-        homeSinglesMap={homeSinglesMap}
-        awaySinglesMap={awaySinglesMap}
-        onPhotoClick={onPhotoClick}
-      />
-
-      {(homeParlays.length > 0 || awayParlays.length > 0) && (
-        <div style={{ background: '#0d0c00', border: '1px solid #2a2200', borderRadius: 8, padding: '14px', marginTop: 8 }}>
-          <div style={{ color: '#ffd700', fontSize: 10, fontWeight: 700, letterSpacing: 0.8, marginBottom: 12 }}>
-            ★ PARLAY{(homeParlays.length + awayParlays.length) > 1 ? 'S' : ''}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {homeParlays.length > 0
-                ? homeParlays.map((p: any, i: number) => (
-                    <div key={p.id}>
-                      {i > 0 && <div style={{ height: 1, background: '#2a2200', margin: '0 0 10px' }} />}
-                      <ParlayDisplay parlay={p} legs={p.legs ?? []} align="left" />
-                    </div>
-                  ))
-                : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
-            </div>
-            <div style={{ width: 1, background: '#2a2200', alignSelf: 'stretch', flexShrink: 0 }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-              {awayParlays.length > 0
-                ? awayParlays.map((p: any, i: number) => (
-                    <div key={p.id} style={{ width: '100%' }}>
-                      {i > 0 && <div style={{ height: 1, background: '#2a2200', margin: '0 0 10px' }} />}
-                      <ParlayDisplay parlay={p} legs={p.legs ?? []} align="right" />
-                    </div>
-                  ))
-                : <span style={{ color: '#2a2a2a', fontSize: 18 }}>—</span>}
-            </div>
-          </div>
-        </div>
+          {settled.length > 0 && (
+            <>
+              <div style={mb.sectionLabel}>SETTLED</div>
+              {settled.map((s: any) => <MatchupBetRow key={s.id} bet={s} />)}
+            </>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-const sk: Record<string, React.CSSProperties> = {
-  card: { background: '#141414', border: '1px solid #242424', borderRadius: 12, overflow: 'hidden', marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
-  cardHeader: { background: '#0d0d0d', borderBottom: '1px solid #1e1e1e', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 },
-  cardHeaderText: { color: '#444', fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' },
-  fightRow: { padding: '12px 14px 10px' },
-  fightMeta: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 },
-  mainBadge: { background: '#c8102e22', color: '#c8102e', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3, letterSpacing: 0.5 },
-  weightLabel: { color: '#333', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 },
+function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClick?: PhotoClickHandler }) {
+  if (fights.length === 0) return null;
+  return (
+    <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {fights.map((fight) => {
+        const hasResult = !!fight.resultWinnerId;
+        const redWon = hasResult && fight.resultWinnerId === fight.redFighterId;
+        const blueWon = hasResult && fight.resultWinnerId === fight.blueFighterId;
+        const fmtO = (n: number) => n >= 0 ? `+${n}` : `${n}`;
+        return (
+          <div key={fight.id} style={mb.fightCard}>
+            <div style={mb.fightCardMeta}>
+              <span style={mb.weightLabel}>{fight.weightClassName}</span>
+              {hasResult && fight.resultOutcome && (
+                <span style={mb.resultLabel}>{METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}</span>
+              )}
+            </div>
+            <div style={mb.fightCardFighters}>
+              <div
+                style={{ ...mb.fighterSide, opacity: hasResult && !redWon ? 0.3 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
+                onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
+              >
+                <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
+                <div>
+                  <div style={{ ...mb.fighterName, color: redWon ? '#fff' : '#ccc' }}>{fight.redLastName}</div>
+                  {fight.redFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.redFighterOdds)}</div>}
+                </div>
+              </div>
+              <div style={mb.vsLabel}>VS</div>
+              <div
+                style={{ ...mb.fighterSide, flexDirection: 'row-reverse', opacity: hasResult && !blueWon ? 0.3 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
+                onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
+              >
+                <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#fff' : '#ccc' }}>{fight.blueLastName}</div>
+                  {fight.blueFighterOdds != null && <div style={mb.fighterOdds}>{fmtO(fight.blueFighterOdds)}</div>}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StakingBetsSection({ fights, myStaking, oppStaking, myTeamName, oppTeamName, isEventLive, amInMatchup, onPhotoClick }: {
+  fights: any[]; myStaking: any; oppStaking: any;
+  myTeamName: string; oppTeamName: string;
+  isEventLive: boolean; amInMatchup: boolean; onPhotoClick?: PhotoClickHandler;
+}) {
+  return (
+    <div style={styles.section}>
+      <div style={styles.sectionHeader}>
+        <span style={styles.sectionTitle}>BETS</span>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <MatchupBetPanel teamName={myTeamName} singles={myStaking?.singles ?? []} isLocked={!amInMatchup && !isEventLive} />
+        <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
+        <MatchupBetPanel teamName={oppTeamName} singles={oppStaking?.singles ?? []} isLocked={!isEventLive} />
+      </div>
+    </div>
+  );
+}
+
+const mb: Record<string, React.CSSProperties> = {
+  panel: { flex: 1, background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' },
+  header: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#141414', borderBottom: '1px solid #1a1a1a' },
+  headerTitle: { color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, flex: 1 },
+  badge: { background: '#222', color: '#888', fontSize: 11, fontWeight: 700, borderRadius: 10, padding: '1px 7px', minWidth: 18, textAlign: 'center' },
+  sectionLabel: { padding: '5px 14px', color: '#333', fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase', background: '#0d0d0d', borderBottom: '1px solid #161616' },
+  betRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderBottom: '1px solid #161616' },
+  betLeft: { flex: 1, minWidth: 0 },
+  betRight: { textAlign: 'right' as const, flexShrink: 0 },
+  betFighter: { fontSize: 13, fontWeight: 600, lineHeight: 1.2 },
+  betOdds: { fontSize: 11, fontWeight: 700, marginTop: 2 },
+  betStake: { color: '#fff', fontSize: 13, fontWeight: 700 },
+  betPotential: { color: '#555', fontSize: 11, marginTop: 2 },
+  betPnl: { fontSize: 12, fontWeight: 700, marginTop: 2 },
+  locked: { padding: '28px 14px', textAlign: 'center' },
+  empty: { padding: '28px 14px', textAlign: 'center', color: '#333', fontSize: 12 },
+
+  fightCard: { background: '#141414', border: '1px solid #1e1e1e', borderRadius: 8, padding: '8px 10px', overflow: 'hidden' },
+  fightCardMeta: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 },
+  weightLabel: { color: '#333', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
+  resultLabel: { color: '#888', fontSize: 9, fontWeight: 700 },
+  fightCardFighters: { display: 'flex', alignItems: 'center', gap: 4 },
+  fighterSide: { flex: 1, display: 'flex', alignItems: 'center', gap: 5 },
+  photo: { width: 26, height: 32, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 3, background: '#111', flexShrink: 0 },
+  fighterName: { fontSize: 11, fontWeight: 700, lineHeight: 1.2 },
+  fighterOdds: { color: '#555', fontSize: 10 },
+  vsLabel: { color: '#333', fontSize: 9, fontWeight: 700, flexShrink: 0, padding: '0 2px' },
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -1017,6 +988,16 @@ const styles: Record<string, React.CSSProperties> = {
   vsBlock: { flex: 1, textAlign: 'center' as const, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   vsText: { color: '#333', fontWeight: 700, fontSize: 18 },
   resultBadge: { color: '#ffd700', fontSize: 12, fontWeight: 700, textAlign: 'center' },
+  browseHint: { color: '#333', fontSize: 10, letterSpacing: 0.3 },
+
+  pickerOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  pickerSheet: { background: '#141414', border: '1px solid #2a2a2a', borderRadius: 12, minWidth: 320, maxWidth: 440, width: '90vw', overflow: 'hidden' },
+  pickerTitle: { padding: '14px 16px 10px', color: '#555', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #1e1e1e' },
+  pickerRow: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '12px 16px', background: 'transparent', border: 'none', borderBottom: '1px solid #1a1a1a', cursor: 'pointer', textAlign: 'left' as const },
+  pickerRowActive: { background: '#1a0808' },
+  pickerTeam: { color: '#ddd', fontSize: 13, fontWeight: 600, flex: 1 },
+  pickerVs: { color: '#444', fontSize: 11, flexShrink: 0 },
+  pickerMine: { color: '#555', fontSize: 10, flexShrink: 0 },
 
   section: { padding: '0 24px 8px' },
   sectionHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0 10px' },

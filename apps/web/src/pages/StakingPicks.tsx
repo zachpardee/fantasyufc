@@ -189,9 +189,10 @@ export function StakingPicksPage() {
   const weeklyBudget: number = betsData?.weeklyBudget ?? 100;
   const seasonBankroll: number = betsData?.seasonBankroll ?? 0;
 
+  const serverUsedThisWeek: number = betsData?.usedThisWeek ?? 0;
   const localSinglesTotal = singles.reduce((sum, b) => sum + (parseFloat(b.stake) || 0), 0);
   const localParlayTotal = parseFloat(parlayStake) || 0;
-  const liveUsed = localSinglesTotal + localParlayTotal;
+  const liveUsed = serverUsedThisWeek + localSinglesTotal + localParlayTotal;
   const liveAvailable = weeklyBudget - liveUsed;
 
   const parlayDecOdds = Object.entries(parlayLegs)
@@ -238,9 +239,10 @@ export function StakingPicksPage() {
 
   const slipProps = {
     mainCard, singles, parlayLegs, parlayStake, parlayLegCount,
-    parlayAmericanOdds, parlayPotential, singlesPotential, liveUsed,
+    parlayAmericanOdds, parlayPotential, singlesPotential, liveUsed, liveAvailable,
     anyUnsaved, isSaving, locked, hasResults, settledSingles, settledParlay, betsData,
     onSaveAll: saveAll,
+    onClearAll: clearSlip,
     onStakeChange: (clientId: string, value: string) => updateSingle(clientId, { stake: value }),
     onRemoveSingle: removeSingle,
     onParlayLegChange: (fightId: string, fighterId: string) => { setParlayLegs(p => ({ ...p, [fightId]: fighterId })); setParlayTouched(true); },
@@ -273,7 +275,7 @@ export function StakingPicksPage() {
       <div style={s.balanceBar}>
         <div style={s.balanceStat}>
           <span style={s.balanceVal}>{fmtMoney(weeklyBudget)}</span>
-          <span style={s.balanceLabel}>Budget</span>
+          <span style={s.balanceLabel}>Weekly Budget</span>
         </div>
         <div style={s.balanceDivider} />
         <div style={s.balanceStat}>
@@ -299,7 +301,8 @@ export function StakingPicksPage() {
       <div style={s.body}>
         {/* ── Col 1: Fight cards ────────────────────────────── */}
         <div style={s.col}>
-          <div style={s.section}>
+          <div style={{ paddingTop: 24 }}>
+          <div style={{ ...s.section, marginTop: 0 }}>
             <div style={s.sectionHeader}>
               <span style={s.sectionTitle}>FIGHTS</span>
               <span style={s.sectionSub}>Click a fighter to add a bet</span>
@@ -358,6 +361,7 @@ export function StakingPicksPage() {
               );
             })}
           </div>
+          </div>
         </div>
 
         {/* ── Col 2: Bet Slip ───────────────────────────────── */}
@@ -375,6 +379,12 @@ export function StakingPicksPage() {
               locked={locked}
               onDeleteSingle={(id) => deleteSavedSingleMutation.mutate(id)}
               onDeleteParlay={(id) => deleteSavedParlayMutation.mutate(id)}
+              onClearAll={async () => {
+                const pending = (betsData?.singles ?? []).filter((s: any) => s.status === 'pending');
+                const parlays = (betsData?.parlays ?? []).filter((p: any) => p.status === 'pending');
+                for (const s of pending) await deleteSavedSingleMutation.mutateAsync(s.id);
+                for (const p of parlays) await deleteSavedParlayMutation.mutateAsync(p.id);
+              }}
             />
           </div>
         </div>
@@ -405,6 +415,7 @@ interface BetSlipProps {
   parlayPotential: number;
   singlesPotential: number;
   liveUsed: number;
+  liveAvailable: number;
   anyUnsaved: boolean;
   isSaving: boolean;
   locked: boolean;
@@ -413,6 +424,7 @@ interface BetSlipProps {
   settledParlay: any;
   betsData: any;
   onSaveAll: () => void;
+  onClearAll: () => void;
   onStakeChange: (clientId: string, value: string) => void;
   onRemoveSingle: (clientId: string) => void;
   onParlayLegChange: (fightId: string, fighterId: string) => void;
@@ -424,9 +436,9 @@ interface BetSlipProps {
 
 function BetSlip({
   mainCard, singles, parlayLegs, parlayStake, parlayLegCount,
-  parlayAmericanOdds, parlayPotential, singlesPotential, liveUsed,
+  parlayAmericanOdds, parlayPotential, singlesPotential, liveUsed, liveAvailable,
   anyUnsaved, isSaving, locked, hasResults, settledSingles, settledParlay, betsData,
-  onSaveAll, onStakeChange, onRemoveSingle,
+  onSaveAll, onClearAll, onStakeChange, onRemoveSingle,
   onParlayLegChange, onParlayStakeChange, onRemoveParlayLeg, onRemoveParlay,
   onAutoPopulateParlay,
 }: BetSlipProps) {
@@ -458,6 +470,9 @@ function BetSlip({
         <span style={sl.headerTitle}>BET SLIP</span>
         {activeSingles.length > 0 && <span style={sl.badge}>{activeSingles.length}</span>}
         {anyUnsaved && !locked && <span style={sl.unsavedDot} title="Unsaved changes" />}
+        {activeSingles.length > 0 && !locked && (
+          <button style={sl.clearBtn} onClick={onClearAll}>Clear all</button>
+        )}
       </div>
 
       {isEmpty && (
@@ -639,9 +654,12 @@ function BetSlip({
               )}
             </div>
           )}
+          {liveAvailable < 0 && (
+            <div style={sl.overBudgetWarning}>Exceeds budget by {fmtMoney(Math.abs(liveAvailable))}</div>
+          )}
           <button
-            style={{ ...sl.placeBtn, opacity: anyUnsaved ? 1 : 0.4 }}
-            disabled={!anyUnsaved || isSaving}
+            style={{ ...sl.placeBtn, opacity: anyUnsaved && liveAvailable >= 0 ? 1 : 0.4 }}
+            disabled={!anyUnsaved || isSaving || liveAvailable < 0}
             onClick={onSaveAll}
           >
             {isSaving ? 'Placing Bets…' : anyUnsaved ? 'Place Bets' : 'Bets Placed ✓'}
@@ -685,11 +703,12 @@ function BetSlip({
 
 // ── Saved Bets Panel ─────────────────────────────────────────────────────────
 
-function SavedBetsPanel({ betsData, locked, onDeleteSingle, onDeleteParlay }: {
+function SavedBetsPanel({ betsData, locked, onDeleteSingle, onDeleteParlay, onClearAll }: {
   betsData: any;
   locked: boolean;
   onDeleteSingle: (id: string) => void;
   onDeleteParlay: (id: string) => void;
+  onClearAll: () => void;
 }) {
   const allSingles: any[] = betsData?.singles ?? [];
   const allParlays: any[] = betsData?.parlays ?? [];
@@ -704,6 +723,9 @@ function SavedBetsPanel({ betsData, locked, onDeleteSingle, onDeleteParlay }: {
       <div style={sv.header}>
         <span style={sv.headerTitle}>SAVED BETS</span>
         {total > 0 && <span style={sv.badge}>{total}</span>}
+        {(pendingSingles.length > 0 || pendingParlays.length > 0) && !locked && (
+          <button style={sv.clearBtn} onClick={onClearAll}>Clear all</button>
+        )}
       </div>
 
       {total === 0 && (
@@ -855,7 +877,7 @@ const s: Record<string, React.CSSProperties> = {
 
   body: { display: 'flex', gap: 20, alignItems: 'flex-start', padding: '0 24px', maxWidth: 1400, margin: '0 auto' },
   col: { flex: 1, minWidth: 0 },
-  stickyCol: { position: 'sticky', top: 16, paddingTop: 24 },
+  stickyCol: { position: 'sticky', top: 16, paddingTop: 56 },
 
   section: { paddingBottom: 8, marginTop: 24 },
   sectionHeader: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 },
@@ -904,6 +926,7 @@ const sl: Record<string, React.CSSProperties> = {
   headerTitle: { color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, flex: 1 },
   badge: { background: '#c8102e', color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 10, padding: '1px 7px', minWidth: 18, textAlign: 'center' },
   unsavedDot: { width: 7, height: 7, borderRadius: '50%', background: '#ffd700', flexShrink: 0 },
+  clearBtn: { background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', padding: '2px 0', marginLeft: 4 },
 
   empty: { padding: '36px 16px', textAlign: 'center' },
   emptyIcon: { fontSize: 28, marginBottom: 10 },
@@ -960,6 +983,7 @@ const sl: Record<string, React.CSSProperties> = {
   footerLabel: { color: '#555', fontSize: 12 },
   footerVal: { color: '#fff', fontSize: 13, fontWeight: 700 },
   placeBtn: { display: 'block', width: '100%', background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '13px', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.3 },
+  overBudgetWarning: { color: '#ff5252', fontSize: 12, fontWeight: 600, textAlign: 'center' as const, marginBottom: 8 },
 
   // Results
   resultRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderTop: '1px solid #161616' },
@@ -991,6 +1015,7 @@ const sv: Record<string, React.CSSProperties> = {
   betTs: { color: '#333', fontSize: 10, marginTop: 3 },
   deleteBtn: { background: 'none', border: 'none', color: '#444', fontSize: 13, cursor: 'pointer', padding: '2px 4px', flexShrink: 0, lineHeight: 1 },
   toggleLegsBtn: { background: 'none', border: 'none', color: '#c8102e', fontSize: 11, cursor: 'pointer', padding: '5px 0 2px', display: 'block' },
+  clearBtn: { background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', padding: '2px 0', marginLeft: 4 },
   legItem: { display: 'flex', alignItems: 'center', gap: 6, paddingTop: 4, paddingLeft: 2 },
   legDot: { fontSize: 11, fontWeight: 700, flexShrink: 0, width: 12 },
   legName: { color: '#777', fontSize: 11 },

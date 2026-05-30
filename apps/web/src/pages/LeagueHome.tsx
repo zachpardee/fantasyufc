@@ -248,7 +248,7 @@ export function LeagueHomePage() {
   }
 
   const navLinks: { label: string; path?: string; icon: string; external?: boolean; show: boolean; onClick?: () => void }[] = [
-    { label: isStaking ? 'Staking' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
+    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' || league.status === 'playoffs' },
     { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
     { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' || league.status === 'playoffs' },

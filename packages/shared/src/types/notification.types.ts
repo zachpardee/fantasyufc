@@ -6,7 +6,8 @@ export type NotificationType =
   | 'fight_result'
   | 'event_starting'
   | 'matchup_result'
-  | 'league_invite';
+  | 'league_invite'
+  | 'card_change';
 
 export interface Notification {
   id: string;

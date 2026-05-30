@@ -627,7 +627,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer', transition: 'border-color 0.1s',
   },
   champFighterBtnSelected: { border: '1px solid #ffd700', background: '#1a1600' },
-  champFighterImg: { width: 48, height: 54, borderRadius: 5, overflow: 'hidden', background: '#222' },
+  champFighterImg: { width: 48, height: 54, borderRadius: 5, overflow: 'hidden', background: '#222', objectFit: 'cover' as const, objectPosition: 'top center' },
   champFighterName: { fontSize: 12, fontWeight: 700, textAlign: 'center' as const, lineHeight: 1.2 },
   champSelectedTag: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.5 },
   champSummaryCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: '14px 16px', marginBottom: 16 },
