@@ -103,6 +103,16 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     const isDecision = espnFight.period >= espnFight.scheduledRounds && espnFight.clockSeconds === 0;
     const inferredOutcome = isDecision ? 'decision_unanimous' : 'ko_tko';
 
+    // Backfill nationality from ESPN flag data while we have it
+    for (const corner of [espnFight.redCorner, espnFight.blueCorner]) {
+      if (corner.country) {
+        await db.query(
+          `UPDATE fighters SET nationality = $1 WHERE ufc_fighter_id = $2 AND nationality IS NULL`,
+          [corner.country, corner.espnAthleteId],
+        );
+      }
+    }
+
     // Resolve winner fighter ID (null for draws)
     let winnerId: string | null = null;
     if (winner) {

@@ -119,9 +119,9 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
                   <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc', display: 'flex', alignItems: 'center', gap: 4 }}>
                     {fight.redLastName}
-                    {countryFlag(fight.redNationality) && <span style={{ fontSize: 9, lineHeight: 1 }}>{countryFlag(fight.redNationality)}</span>}
+                    {countryFlag(fight.redNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.redNationality)}</span>}
                   </div>
                   {fight.redFighterOdds != null && <div style={{ ...mb.fighterOdds, color: redWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.redFighterOdds)}</div>}
                 </div>
@@ -137,9 +137,9 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc', display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 3 }}>
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc', display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }}>
                     {fight.blueLastName}
-                    {countryFlag(fight.blueNationality) && <span style={{ fontSize: 9, lineHeight: 1 }}>{countryFlag(fight.blueNationality)}</span>}
+                    {countryFlag(fight.blueNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.blueNationality)}</span>}
                   </div>
                   {fight.blueFighterOdds != null && <div style={{ ...mb.fighterOdds, color: blueWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.blueFighterOdds)}</div>}
                 </div>

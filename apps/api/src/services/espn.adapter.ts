@@ -50,6 +50,7 @@ export interface EspnFighter {
   displayName: string;
   record?: string;
   isWinner: boolean;
+  country?: string;
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -205,11 +206,13 @@ function parseMoneyline(raw: unknown): number | undefined {
 
 function parseFighter(comp: any): EspnFighter {
   const recordStr = comp.records?.find((r: any) => r.type === 'total')?.summary ?? '';
+  const country: string | undefined = comp.athlete?.flag?.alt ?? comp.athlete?.country?.name ?? undefined;
   return {
     espnAthleteId: String(comp.id),
     displayName: comp.athlete?.displayName ?? '',
     record: recordStr || undefined,
     isWinner: comp.winner ?? false,
+    country: country || undefined,
   };
 }
 
