@@ -55,7 +55,7 @@ function countryFlag(nationality: string | null | undefined): string {
   if (!nationality) return '';
   const code = COUNTRY_TO_CODE[nationality];
   if (!code) return '';
-  return [...code].map((c) => String.fromCodePoint(0x1F1E0 - 65 + c.charCodeAt(0))).join('');
+  return [...code].map((c) => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join('');
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────
