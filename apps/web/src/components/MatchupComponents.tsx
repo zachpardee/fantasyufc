@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FighterPhoto } from './FighterPhoto';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export type PhotoClickHandler = (url: string, name: string) => void;
 
@@ -93,9 +94,10 @@ export function fmtChipScore(n: number): string {
 // ── Fight card ───────────────────────────────────────────────────────────────
 
 export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClick?: PhotoClickHandler }) {
+  const isMobile = useIsMobile();
   if (fights.length === 0) return null;
   return (
-    <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ flex: isMobile ? undefined : 1.2, width: isMobile ? '100%' : undefined, display: 'flex', flexDirection: 'column', gap: 6 }}>
       {fights.map((fight) => {
         const hasResult = !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
         const redWon = !!fight.resultWinnerId && fight.resultWinnerId === fight.redFighterId;
@@ -412,6 +414,32 @@ export function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamN
   isMeHome: boolean; isMeAway: boolean;
   isEventLive: boolean; leagueId?: string; onPhotoClick?: PhotoClickHandler;
 }) {
+  const isMobile = useIsMobile();
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
+        <MatchupBetPanel
+          teamName={homeTeamName}
+          singles={homeStaking?.singles ?? []}
+          parlays={homeStaking?.parlays ?? []}
+          isLocked={!isMeHome && !isEventLive}
+          isOwn={isMeHome}
+          leagueId={leagueId}
+          isEventLive={isEventLive}
+        />
+        <MatchupBetPanel
+          teamName={awayTeamName}
+          singles={awayStaking?.singles ?? []}
+          parlays={awayStaking?.parlays ?? []}
+          isLocked={!isMeAway && !isEventLive}
+          isOwn={isMeAway}
+          leagueId={leagueId}
+          isEventLive={isEventLive}
+        />
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
       <MatchupBetPanel

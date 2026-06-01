@@ -419,7 +419,7 @@ export function MatchupPage() {
 
           {/* Picks (pick'em leagues) */}
           {!isStaking && !!matchup?.eventId && (
-            <div style={styles.section}>
+            <div style={{ ...styles.section, ...(isMobile ? { padding: '0 12px 8px' } : {}) }}>
               <div style={styles.sectionHeader}>
                 <span style={styles.sectionTitle}>PICKS</span>
                 {homePicks?.locked && <span style={styles.lockedTag}>LOCKED</span>}
@@ -427,7 +427,8 @@ export function MatchupPage() {
               {homePicksLoading || awayPicksLoading ? (
                 [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
               ) : (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
+                  {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
                   <MatchupPickPanel
                     teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
                     fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
@@ -437,7 +438,7 @@ export function MatchupPage() {
                     leagueId={leagueId}
                     locked={homePicks?.locked}
                   />
-                  <MatchupFightList fights={fights} onPhotoClick={openPhoto} />
+                  {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
                   <MatchupPickPanel
                     teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
                     fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
@@ -467,7 +468,7 @@ export function MatchupPage() {
 
           {/* Score breakdown (pick'em only) */}
           {!isStaking && (
-            <div style={styles.totalsBar}>
+            <div style={{ ...styles.totalsBar, ...(isMobile ? { padding: '16px', flexDirection: 'column', gap: 24 } : {}) }}>
               <ScoreBreakdown
                 label={matchup.homeTeamName}
                 picks={homePicks?.fights ?? []}
