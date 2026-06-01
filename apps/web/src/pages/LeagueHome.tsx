@@ -302,6 +302,16 @@ export function LeagueHomePage() {
     return (n < 0 ? '-$' : '+$') + s;
   }
 
+  function calcPicksScore(picks: any[], championPts: number, dbFallback: number | null): number {
+    if (dbFallback !== null) return dbFallback;
+    const scored = picks.filter((p) => p.isCorrect !== null);
+    if (scored.length === 0) return 0;
+    const correct = scored.filter((p) => p.isCorrect === true);
+    const pts = picks.reduce((s: number, p: any) => s + (+(p.pointsEarned ?? 0)), 0);
+    const sweep = correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
+    return pts + sweep + championPts;
+  }
+
   const champion = members.find((m) => m.isChampion);
   const showChampionBanner = league.status === 'completed' && !!champion && !!league.completedAt
     && Date.now() - new Date(league.completedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
@@ -498,8 +508,20 @@ export function LeagueHomePage() {
 
       {/* Current matchup + event card */}
       {(matchup || currentEvent) && (() => {
-        const home = matchup ? +matchup.homeScore : 0;
-        const away = matchup ? +matchup.awayScore : 0;
+        const home = !isStaking && matchup
+          ? calcPicksScore(
+              homePicks?.fights ?? [],
+              homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0,
+              homePicks != null ? null : +matchup.homeScore,
+            )
+          : matchup ? +matchup.homeScore : 0;
+        const away = !isStaking && matchup
+          ? calcPicksScore(
+              awayPicks?.fights ?? [],
+              awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
+              awayPicks != null ? null : +matchup.awayScore,
+            )
+          : matchup ? +matchup.awayScore : 0;
         const isLive = matchup?.eventStatus === 'live' || currentEvent?.status === 'live';
         const diff = matchup ? Math.abs(home - away) : 0;
         const leading = matchup ? (home > away ? matchup.homeTeamName : away > home ? matchup.awayTeamName : null) : null;

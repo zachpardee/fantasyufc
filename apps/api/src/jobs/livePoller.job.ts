@@ -90,12 +90,12 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
 
     if (!existingFight || existingFight.result_id) continue; // Already processed
 
-    // Determine winner
-    const isDraw = !espnFight.redCorner.isWinner && !espnFight.blueCorner.isWinner;
-    const winner = isDraw ? null : (espnFight.redCorner.isWinner ? espnFight.redCorner : espnFight.blueCorner);
-    const winnerSide = isDraw ? null : (espnFight.redCorner.isWinner ? 'red' : 'blue');
+    // Skip if ESPN hasn't propagated isWinner yet — it marks completed before the winner flag fires.
+    // True draws are caught by SportsDB enrichment at event end.
+    if (!espnFight.redCorner.isWinner && !espnFight.blueCorner.isWinner) continue;
 
-    if (!winner && !isDraw) continue;
+    const winner = espnFight.redCorner.isWinner ? espnFight.redCorner : espnFight.blueCorner;
+    const winnerSide = espnFight.redCorner.isWinner ? 'red' : 'blue';
 
     // Infer method: if fight lasted all scheduled rounds it went to decision.
     // ESPN clockSeconds is remaining time (0 when round expires). A fight stopped
@@ -113,16 +113,13 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       }
     }
 
-    // Resolve winner fighter ID (null for draws)
-    let winnerId: string | null = null;
-    if (winner) {
-      const { rows: [winnerFighter] } = await db.query(
-        `SELECT id FROM fighters WHERE ufc_fighter_id = $1`,
-        [winner.espnAthleteId],
-      );
-      if (!winnerFighter) continue;
-      winnerId = winnerFighter.id;
-    }
+    // Resolve winner fighter ID
+    const { rows: [winnerFighter] } = await db.query(
+      `SELECT id FROM fighters WHERE ufc_fighter_id = $1`,
+      [winner.espnAthleteId],
+    );
+    if (!winnerFighter) continue;
+    const winnerId = winnerFighter.id;
 
     // Insert basic result (method will be corrected by SportsDB enrichment)
     const { rows: [fightResult] } = await db.query(`
@@ -136,7 +133,7 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       existingFight.id,
       winnerId,
       winnerSide,
-      isDraw ? 'draw' : inferredOutcome,
+      inferredOutcome,
       espnFight.period,
       espnFight.clockSeconds,
     ]);
@@ -148,7 +145,7 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       console.error('[LivePoller] Scoring error for fight:', espnFight.espnFightId, err),
     );
 
-    console.log(`[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${isDraw ? 'DRAW' : winner!.displayName + ' wins'} R${espnFight.period}`);
+    console.log(`[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${winner.displayName} wins R${espnFight.period}`);
   }
 
   // After processing fights, check if every fight now has a result.
@@ -344,18 +341,21 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
     return;
   }
 
+  // LEFT JOIN so we also catch fights that ESPN never recorded a winner for (draws, NC, missed fights)
   const { rows: fights } = await db.query(`
     SELECT f.id, f.ufc_fight_id, fr.id as result_id, fr.outcome,
-           rf.first_name as red_first, rf.last_name as red_last,
-           bf.first_name as blue_first, bf.last_name as blue_last
+           rf.id as red_id, rf.first_name as red_first, rf.last_name as red_last,
+           bf.id as blue_id, bf.first_name as blue_first, bf.last_name as blue_last
     FROM fights f
-    JOIN fight_results fr ON fr.fight_id = f.id
+    LEFT JOIN fight_results fr ON fr.fight_id = f.id
     JOIN fighters rf ON rf.id = f.red_fighter_id
     JOIN fighters bf ON bf.id = f.blue_fighter_id
     WHERE f.event_id = $1
   `, [eventId]);
 
   let updatedCount = 0;
+  let insertedCount = 0;
+
   for (const fight of fights) {
     const redName = `${fight.red_first} ${fight.red_last}`.toLowerCase();
     const blueName = `${fight.blue_first} ${fight.blue_last}`.toLowerCase();
@@ -363,14 +363,12 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
     const sdbResult = sportsDbEvent.results.find((r) => {
       const wName = r.winnerName.toLowerCase();
       const lName = r.loserName.toLowerCase();
-      // Try exact full-name containment first, fall back to last-name matching
       const fullNameMatch =
         redName.includes(wName) || wName.includes(redName) ||
         blueName.includes(wName) || wName.includes(blueName) ||
         redName.includes(lName) || lName.includes(redName) ||
         blueName.includes(lName) || lName.includes(blueName);
       if (fullNameMatch) return true;
-      // Last-name fallback
       const redLast = redName.split(' ').pop()!;
       const blueLast = blueName.split(' ').pop()!;
       const wLast = wName.split(' ').pop()!;
@@ -378,19 +376,48 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
       return (redLast === wLast || redLast === lLast || blueLast === wLast || blueLast === lLast);
     });
 
-    if (!sdbResult || sdbResult.method === fight.outcome) continue;
+    if (!sdbResult) continue;
 
-    await db.query(
-      `UPDATE fight_results SET outcome = $1, ending_round = $2, ending_time_seconds = $3 WHERE id = $4`,
-      [sdbResult.method, sdbResult.round, sdbResult.timeSeconds, fight.result_id],
-    );
+    if (fight.result_id) {
+      // Update existing result if method changed
+      if (sdbResult.method === fight.outcome) continue;
+      await db.query(
+        `UPDATE fight_results SET outcome = $1, ending_round = $2, ending_time_seconds = $3 WHERE id = $4`,
+        [sdbResult.method, sdbResult.round, sdbResult.timeSeconds, fight.result_id],
+      );
+      await processFightResult(fight.result_id).catch(console.error);
+      updatedCount++;
+    } else {
+      // No ESPN result recorded — insert from SportsDB (handles draws, NC, missed fights)
+      const wName = sdbResult.winnerName.toLowerCase();
+      let winnerId: string | null = null;
+      let winnerSide: string | null = null;
 
-    // Re-run scoring with corrected method (handles finish bonus correction)
-    await processFightResult(fight.result_id).catch(console.error);
-    updatedCount++;
+      if (!sdbResult.isDraw && !sdbResult.isNC) {
+        const redMatches =
+          redName.includes(wName) || wName.includes(redName) ||
+          redName.split(' ').pop() === wName.split(' ').pop();
+        winnerId = redMatches ? fight.red_id : fight.blue_id;
+        winnerSide = redMatches ? 'red' : 'blue';
+      }
+
+      const { rows: [fightResult] } = await db.query(`
+        INSERT INTO fight_results (
+          fight_id, winner_id, winner_side, outcome,
+          ending_round, ending_time_seconds,
+          performance_of_night, fight_of_night
+        ) VALUES ($1, $2, $3, $4, $5, $6, false, false)
+        RETURNING id
+      `, [fight.id, winnerId, winnerSide, sdbResult.method, sdbResult.round, sdbResult.timeSeconds]);
+
+      await db.query(`UPDATE fights SET status = 'completed' WHERE id = $1`, [fight.id]);
+      await processFightResult(fightResult.id).catch(console.error);
+      insertedCount++;
+      console.log(`[LivePoller] SportsDB inserted result: ${fight.red_first} ${fight.red_last} vs ${fight.blue_first} ${fight.blue_last} — ${sdbResult.method}`);
+    }
   }
 
-  console.log(`[LivePoller] SportsDB enrichment: corrected ${updatedCount} fight methods for ${eventName}`);
+  console.log(`[LivePoller] SportsDB enrichment: corrected ${updatedCount}, inserted ${insertedCount} fight results for ${eventName}`);
 }
 
 async function notifyEventStarting(eventId: string, eventName: string) {

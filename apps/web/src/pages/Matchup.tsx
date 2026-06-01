@@ -186,6 +186,20 @@ export function MatchupPage() {
   const awayStakingScore = awayHasBets
     ? calcStakingScore(awayStaking)
     : (isMeAway && myStaking ? calcStakingScore(myStaking) : +matchup?.awayScore);
+
+  // For picks leagues, compute scores from the loaded picks data so they're always
+  // accurate regardless of whether the DB matchup scores were updated correctly.
+  const homePicksScore = calcPicksScore(
+    homePicks?.fights ?? [],
+    homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0,
+    homePicks != null ? null : +matchup?.homeScore,
+  );
+  const awayPicksScore = calcPicksScore(
+    awayPicks?.fights ?? [],
+    awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
+    awayPicks != null ? null : +matchup?.awayScore,
+  );
+
   const fights: any[] = homePicks?.fights ?? [];
   const awayPickMap: Record<string, any> = {};
   for (const f of (awayPicks?.fights ?? [])) awayPickMap[f.id] = f;
@@ -380,7 +394,7 @@ export function MatchupPage() {
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.homeTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(homeStakingScore) : (+matchup.homeScore).toFixed(0)}</div>
+              }}>{isStaking ? fmtStakeScore(homeStakingScore) : homePicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
@@ -410,7 +424,7 @@ export function MatchupPage() {
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
                 color: matchup.winnerId === matchup.awayTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(awayStakingScore) : (+matchup.awayScore).toFixed(0)}</div>
+              }}>{isStaking ? fmtStakeScore(awayStakingScore) : awayPicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
           </div>
@@ -472,14 +486,14 @@ export function MatchupPage() {
               <ScoreBreakdown
                 label={matchup.homeTeamName}
                 picks={homePicks?.fights ?? []}
-                matchupPts={+matchup.homeScore}
+                matchupPts={homePicksScore}
                 championPts={homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0}
               />
               <div style={styles.totalsDivider} />
               <ScoreBreakdown
                 label={matchup.awayTeamName}
                 picks={awayPicks?.fights ?? []}
-                matchupPts={+matchup.awayScore}
+                matchupPts={awayPicksScore}
                 championPts={awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0}
               />
             </div>
@@ -553,6 +567,18 @@ export function MatchupPage() {
       )}
     </div>
   );
+}
+
+// Compute pick'em score from the loaded picks data.
+// `dbFallback` is used when picks haven't loaded yet (null triggers computation from picks).
+function calcPicksScore(picks: any[], championPts: number, dbFallback: number | null): number {
+  if (dbFallback !== null) return dbFallback;
+  const scored = picks.filter((p) => p.isCorrect !== null);
+  if (scored.length === 0) return 0;
+  const correct = scored.filter((p) => p.isCorrect === true);
+  const pts = picks.reduce((s: number, p: any) => s + (+(p.pointsEarned ?? 0)), 0);
+  const sweep = correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
+  return pts + sweep + championPts;
 }
 
 type SeasonRow = {

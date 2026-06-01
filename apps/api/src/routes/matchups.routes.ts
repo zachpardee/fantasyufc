@@ -107,7 +107,7 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
     `, [req.params.leagueId, member.id]);
 
     if (!matchup) {
-      // Most recently completed matchup
+      // Most recently completed matchup (show even if tied)
       const { rows: [recent] } = await db.query(`
         SELECT m.*,
           e.name as event_name, e.scheduled_at, e.status as event_status,
@@ -119,7 +119,6 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
         WHERE m.league_id = $1
           AND (m.home_team_id = $2 OR m.away_team_id = $2)
           AND e.status = 'completed'
-          AND (m.winner_id IS NOT NULL OR m.home_score != m.away_score)
         ORDER BY e.scheduled_at DESC
         LIMIT 1
       `, [req.params.leagueId, member.id]);
