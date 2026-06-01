@@ -506,7 +506,7 @@ export function LeagueHomePage() {
         const eventName = matchup?.eventName ?? currentEvent?.name ?? 'Current Event';
         return (
           <>
-            <div style={styles.matchupBanner}>
+            <div style={{ ...styles.matchupBanner, ...(isMobile ? { margin: '0 12px 16px', padding: '12px 12px' } : {}) }}>
               <div style={styles.matchupLabelRow}>
                 <span style={styles.matchupLabel}>Current Matchup</span>
                 {isLive && <span style={styles.livePip}>LIVE</span>}
@@ -516,27 +516,27 @@ export function LeagueHomePage() {
                 const awayMember = members.find(m => m.teamName === matchup?.awayTeamName);
                 const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
                 const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
-                const avatarSize = isMobile ? 36 : 50;
-                const scoreFontSize = isMobile ? (isStaking ? 18 : 26) : 34;
-                const teamGap = isMobile ? 8 : 12;
+                const avatarSize = isMobile ? 32 : 50;
+                const scoreFontSize = isMobile ? (isStaking ? 16 : 24) : 34;
+                const teamGap = isMobile ? 6 : 12;
                 return (
-                  <div style={styles.matchupScoreRow}>
-                    <div style={{ ...styles.matchupTeam, gap: teamGap }}>
+                  <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
+                    <div style={{ ...styles.matchupTeam, gap: teamGap, overflow: 'hidden' }}>
                       {matchup && (
                         <>
-                          <div style={{ position: 'relative', display: 'inline-flex' }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 14 : 20, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                          <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
                             {homeMember && hasBelt(homeMember, members, league) && <BeltHalo size={avatarSize} />}
                             {homeMember && hasBmfBelt(homeMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(homeMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
                             <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{matchup.homeTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, color: home > away ? '#fff' : '#666' }}>{fmtScore(home)}</div>
+                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: home > away ? '#fff' : '#666' }}>{fmtScore(home)}</div>
                           </div>
                         </>
                       )}
                     </div>
-                    <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 auto' : 1, padding: isMobile ? '0 6px' : undefined }}>
+                    <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 auto' : 1, padding: isMobile ? '0 4px' : undefined }}>
                       <span style={{ ...styles.matchupEventTitle, fontSize: isMobile ? 10 : undefined, textAlign: 'center' as const }} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
                       {currentEvent && !isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
@@ -556,15 +556,15 @@ export function LeagueHomePage() {
                         </div>
                       )}
                     </div>
-                    <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'flex-end' }}>
+                    <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'flex-end', overflow: 'hidden' }}>
                       {matchup && (
                         <>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0, overflow: 'hidden' }}>
                             <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{matchup.awayTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
+                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
                           </div>
-                          <div style={{ position: 'relative', display: 'inline-flex' }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 14 : 20, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                          <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
                             {awayMember && hasBelt(awayMember, members, league) && <BeltHalo size={avatarSize} />}
                             {awayMember && hasBmfBelt(awayMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(awayMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
