@@ -517,7 +517,7 @@ export function LeagueHomePage() {
                 const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
                 const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
                 const avatarSize = isMobile ? 32 : 50;
-                const scoreFontSize = isMobile ? (isStaking ? 16 : 24) : 34;
+                const scoreFontSize = isMobile ? (isStaking ? 22 : 28) : 34;
                 const teamGap = isMobile ? 6 : 12;
                 return (
                   <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
@@ -536,24 +536,30 @@ export function LeagueHomePage() {
                         </>
                       )}
                     </div>
-                    <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 auto' : 1, padding: isMobile ? '0 4px' : undefined }}>
-                      <span style={{ ...styles.matchupEventTitle, fontSize: isMobile ? 10 : undefined, textAlign: 'center' as const }} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
-                      {currentEvent && !isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                          {(currentEvent.venue || currentEvent.location) && (
-                            <span style={styles.eventCardLocation}>
-                              {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-                            </span>
+                    <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 32px' : 1 }}>
+                      {isMobile ? (
+                        <span style={{ color: '#333', fontSize: 11, fontWeight: 700 }}>VS</span>
+                      ) : (
+                        <>
+                          <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
+                          {currentEvent && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                              {(currentEvent.venue || currentEvent.location) && (
+                                <span style={styles.eventCardLocation}>
+                                  {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+                                </span>
+                              )}
+                              {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
+                                <span style={styles.eventDate}>
+                                  {(() => {
+                                    const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
+                                    return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                                  })()}
+                                </span>
+                              )}
+                            </div>
                           )}
-                          {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
-                            <span style={styles.eventDate}>
-                              {(() => {
-                                const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
-                                return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-                              })()}
-                            </span>
-                          )}
-                        </div>
+                        </>
                       )}
                     </div>
                     <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'flex-end', overflow: 'hidden' }}>
