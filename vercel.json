@@ -1,5 +1,6 @@
 {
   "installCommand": "npm install",
   "buildCommand": "npx vite build apps/web --outDir dist",
-  "outputDirectory": "apps/web/dist"
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }
