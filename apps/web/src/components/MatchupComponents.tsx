@@ -121,11 +121,13 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
                   <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {fight.redLastName}
-                    {countryFlag(fight.redNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.redNationality)}</span>}
-                  </div>
-                  {fight.redFighterOdds != null && <div style={{ ...mb.fighterOdds, color: redWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.redFighterOdds)}</div>}
+                  <div style={{ ...mb.fighterName, color: redWon ? '#4ade80' : '#ccc' }}>{fight.redLastName}</div>
+                  {(fight.redFighterOdds != null || countryFlag(fight.redNationality)) && (
+                    <div style={{ ...mb.fighterOdds, color: redWon ? '#4ade80' : mb.fighterOdds.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {fight.redFighterOdds != null && fmtO(fight.redFighterOdds)}
+                      {countryFlag(fight.redNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.redNationality)}</span>}
+                    </div>
+                  )}
                 </div>
               </div>
               {isVoidResult
@@ -139,11 +141,13 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueFirstName}</div>
-                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc', display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }}>
-                    {fight.blueLastName}
-                    {countryFlag(fight.blueNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.blueNationality)}</span>}
-                  </div>
-                  {fight.blueFighterOdds != null && <div style={{ ...mb.fighterOdds, color: blueWon ? '#4ade80' : mb.fighterOdds.color }}>{fmtO(fight.blueFighterOdds)}</div>}
+                  <div style={{ ...mb.fighterName, color: blueWon ? '#4ade80' : '#ccc' }}>{fight.blueLastName}</div>
+                  {(fight.blueFighterOdds != null || countryFlag(fight.blueNationality)) && (
+                    <div style={{ ...mb.fighterOdds, color: blueWon ? '#4ade80' : mb.fighterOdds.color, display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }}>
+                      {fight.blueFighterOdds != null && fmtO(fight.blueFighterOdds)}
+                      {countryFlag(fight.blueNationality) && <span style={{ fontSize: 12, lineHeight: 1 }}>{countryFlag(fight.blueNationality)}</span>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
