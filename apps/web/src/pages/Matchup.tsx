@@ -247,7 +247,7 @@ export function MatchupPage() {
             // Only show W/L once the event is fully completed
             const isWin = isEventCompleted && !!(myM?.winnerId) && myM.winnerId === myMember?.id;
             const isLoss = isEventCompleted && !!(myM?.winnerId) && myM.winnerId !== myMember?.id;
-            const hasScore = myM && (isEventCompleted || isLiveEvent || (myScore ?? 0) !== 0);
+            const hasScore = myM && isEventCompleted;
             const eventMatchups = allMatchups.filter((m) => m.eventId === ev.eventId);
             const isBrowsingThisEvent = !myM && eventMatchups.some((m) => m.id === browsingMatchupId);
             const isActive = (!!selectedMatchupId && myM?.id === selectedMatchupId) || selectedEventId === ev.eventId || isBrowsingThisEvent;
