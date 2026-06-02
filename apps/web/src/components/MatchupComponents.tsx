@@ -1,8 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FighterPhoto } from './FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { apiClient } from '../api/client';
 
-export type PhotoClickHandler = (url: string, name: string) => void;
+export type PhotoClickHandler = (url: string, name: string, fighterId?: string) => void;
 
 export const METHOD_LABELS: Record<string, string> = {
   ko_tko: 'KO/TKO', submission: 'SUB',
@@ -116,7 +118,7 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
             <div style={mb.fightCardFighters}>
               <div
                 style={{ ...mb.fighterSide, opacity: hasResult && !redWon ? 0.3 : 1, cursor: fight.redImageUrl ? 'zoom-in' : 'default' }}
-                onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`)}
+                onClick={() => fight.redImageUrl && onPhotoClick?.(fight.redImageUrl, `${fight.redFirstName} ${fight.redLastName}`, fight.redFighterId)}
               >
                 <FighterPhoto imageUrl={fight.redImageUrl} name={`${fight.redFirstName} ${fight.redLastName}`} style={mb.photo} />
                 <div>
@@ -136,7 +138,7 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
               }
               <div
                 style={{ ...mb.fighterSide, flexDirection: 'row-reverse', opacity: hasResult && !blueWon ? 0.3 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
-                onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`)}
+                onClick={() => fight.blueImageUrl && onPhotoClick?.(fight.blueImageUrl, `${fight.blueFirstName} ${fight.blueLastName}`, fight.blueFighterId)}
               >
                 <FighterPhoto imageUrl={fight.blueImageUrl} name={`${fight.blueFirstName} ${fight.blueLastName}`} style={mb.photo} />
                 <div style={{ textAlign: 'right' }}>
@@ -507,3 +509,126 @@ export const mb: Record<string, React.CSSProperties> = {
   fighterOdds: { color: '#555', fontSize: 10 },
   vsLabel: { color: '#333', fontSize: 9, fontWeight: 700, flexShrink: 0, padding: '0 2px' },
 };
+
+// ── Fighter modal ─────────────────────────────────────────────────────────────
+
+export function FighterModal({ photo, name, fighterId, onClose }: {
+  photo: string; name: string; fighterId?: string; onClose: () => void;
+}) {
+  const { data: fighter, isLoading } = useQuery<any>({
+    queryKey: ['fighter-detail', fighterId],
+    queryFn: () => apiClient.get(`/fighters/${fighterId}`),
+    enabled: !!fighterId,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: liveStats } = useQuery<any>({
+    queryKey: ['fighter-live-stats', fighterId],
+    queryFn: () => apiClient.get(`/fighters/${fighterId}/live-stats`),
+    enabled: !!fighterId,
+    staleTime: 30 * 60_000,
+  });
+
+  function fmtHeight(inches: number | null | undefined): string {
+    if (!inches) return '—';
+    const ft = Math.floor(inches / 12);
+    const i = Math.round(inches % 12);
+    return `${ft}' ${i}"`;
+  }
+
+  function fmtAge(dob: string | null | undefined): string {
+    if (!dob) return '';
+    const birth = new Date(dob);
+    const today = new Date();
+    const age = today.getFullYear() - birth.getFullYear()
+      - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+    return `(${age})`;
+  }
+
+  function fmtDob(dob: string | null | undefined): string {
+    if (!dob) return '—';
+    const d = new Date(dob);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  }
+
+  const flag = fighter?.nationality ? countryFlag(fighter.nationality) : '';
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', cursor: 'zoom-out' }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, overflow: 'hidden', maxWidth: 680, width: '100%', cursor: 'default', maxHeight: '90vh', overflowY: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header: photo + name + info */}
+        <div style={{ display: 'flex', gap: 0, background: '#0f0f0f' }}>
+          <img
+            src={photo}
+            alt={name}
+            style={{ width: 140, height: 170, objectFit: 'cover', objectPosition: 'top center', flexShrink: 0 }}
+          />
+          <div style={{ padding: '20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+            {fighter ? (
+              <>
+                <div style={{ color: '#aaa', fontSize: 18, fontWeight: 400, textTransform: 'uppercase', letterSpacing: 1, lineHeight: 1 }}>{fighter.firstName}</div>
+                <div style={{ color: '#fff', fontSize: 28, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, lineHeight: 1.1 }}>{fighter.lastName}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  {flag && <span style={{ fontSize: 16 }}>{flag}</span>}
+                  <span style={{ color: '#666', fontSize: 13 }}>
+                    {[fighter.nationality, fighter.weightClassName].filter(Boolean).join(' · ')}
+                  </span>
+                </div>
+                {fighter.nickname && (
+                  <div style={{ color: '#555', fontSize: 12, fontStyle: 'italic', marginTop: 2 }}>"{fighter.nickname}"</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div style={{ color: '#fff', fontSize: 22, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>{name}</div>
+                {isLoading && <div style={{ color: '#444', fontSize: 12, marginTop: 4 }}>Loading stats…</div>}
+              </>
+            )}
+          </div>
+        </div>
+
+        {fighter && (
+          <>
+            {/* Info rows */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#1a1a1a', borderTop: '1px solid #1a1a1a' }}>
+              {[
+                ['HT / REACH', [fmtHeight(fighter.heightInches), fighter.reachInches ? `${fighter.reachInches}" reach` : null].filter(Boolean).join('  ·  ') || '—'],
+                ['BIRTHDATE', fighter.dob ? `${fmtDob(fighter.dob)} ${fmtAge(fighter.dob)}` : '—'],
+                ['TEAM', liveStats?.team || fighter.team || '—'],
+                ['STANCE', liveStats?.stance || fighter.stance || '—'],
+              ].map(([label, value]) => (
+                <div key={label} style={{ background: '#141414', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ color: '#444', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
+                  <div style={{ color: '#ccc', fontSize: 13, fontWeight: 600 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Stats box */}
+            <div style={{ background: '#111', borderTop: '1px solid #1a1a1a' }}>
+              <div style={{ color: '#555', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', padding: '10px 0 6px' }}>STATS</div>
+              <div style={{ display: 'flex', borderTop: '1px solid #1a1a1a' }}>
+                {[
+                  ['W-L-D', `${liveStats?.wins ?? fighter.record?.wins ?? 0}-${liveStats?.losses ?? fighter.record?.losses ?? 0}-${liveStats?.draws ?? fighter.record?.draws ?? 0}`],
+                  ['(T)KO', String(liveStats?.koTkoWins ?? fighter.koTkoWins ?? 0)],
+                  ['SUB', String(liveStats?.submissionWins ?? fighter.submissionWins ?? 0)],
+                ].map(([label, value], i) => (
+                  <div key={label} style={{ flex: 1, padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, borderLeft: i > 0 ? '1px solid #1a1a1a' : 'none' }}>
+                    <div style={{ color: '#555', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
+                    <div style={{ color: '#fff', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

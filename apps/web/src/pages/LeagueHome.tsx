@@ -9,7 +9,7 @@ import { FighterPhoto } from '../components/FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
-import { MatchupFightList, MatchupPickPanel, StakingBetsSection, type PhotoClickHandler } from '../components/MatchupComponents';
+import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, type PhotoClickHandler } from '../components/MatchupComponents';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -86,8 +86,8 @@ export function LeagueHomePage() {
     },
   });
 
-  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string } | null>(null);
-  const openPhoto: PhotoClickHandler = (url, name) => setEnlargedPhoto({ url, name });
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string; fighterId?: string } | null>(null);
+  const openPhoto: PhotoClickHandler = (url, name, fighterId) => setEnlargedPhoto({ url, name, fighterId });
 
   const matchupEventId = matchup?.eventId;
   const matchupHomeId = matchup?.homeTeamId;
@@ -1065,13 +1065,12 @@ export function LeagueHomePage() {
       )}
 
       {enlargedPhoto && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
-          onClick={() => setEnlargedPhoto(null)}
-        >
-          <img src={enlargedPhoto.url} alt={enlargedPhoto.name} style={{ maxWidth: '80vw', maxHeight: '75vh', objectFit: 'contain', objectPosition: 'top center', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }} />
-          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginTop: 16 }}>{enlargedPhoto.name}</div>
-        </div>
+        <FighterModal
+          photo={enlargedPhoto.url}
+          name={enlargedPhoto.name}
+          fighterId={enlargedPhoto.fighterId}
+          onClose={() => setEnlargedPhoto(null)}
+        />
       )}
 
     </div>

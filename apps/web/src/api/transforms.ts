@@ -18,6 +18,7 @@ const NUMERIC_FIELDS = new Set([
   'redFighterOdds', 'blueFighterOdds',
   'redRecordWins', 'redRecordLosses', 'redRecordDraws',
   'blueRecordWins', 'blueRecordLosses', 'blueRecordDraws',
+  'koTkoWins', 'submissionWins',
 ]);
 
 function transformKeys(obj: unknown): unknown {

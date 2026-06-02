@@ -45,7 +45,9 @@ fightersRouter.get('/', async (req, res, next) => {
 fightersRouter.get('/:fighterId', async (req, res, next) => {
   try {
     const { rows: [fighter] } = await db.query(`
-      SELECT f.*, wc.name as weight_class_name, wc.slug as weight_class_slug
+      SELECT f.*, wc.name as weight_class_name, wc.slug as weight_class_slug,
+        (SELECT COUNT(*)::int FROM fight_results fr WHERE fr.winner_id = f.id AND fr.outcome = 'ko_tko') AS ko_tko_wins,
+        (SELECT COUNT(*)::int FROM fight_results fr WHERE fr.winner_id = f.id AND fr.outcome = 'submission') AS submission_wins
       FROM fighters f
       JOIN weight_classes wc ON wc.id = f.weight_class_id
       WHERE f.id = $1
@@ -73,6 +75,54 @@ fightersRouter.get('/:fighterId/history', async (req, res, next) => {
       LIMIT 20
     `, [req.params.fighterId]);
     res.json(rows);
+  } catch (err) { next(err); }
+});
+
+fightersRouter.get('/:fighterId/live-stats', async (req, res, next) => {
+  try {
+    const { rows: [fighter] } = await db.query(
+      `SELECT ufc_fighter_id FROM fighters WHERE id = $1`,
+      [req.params.fighterId],
+    );
+    if (!fighter?.ufc_fighter_id) { res.json({}); return; }
+
+    const espnId = fighter.ufc_fighter_id;
+    const baseUrl = `https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/athletes/${espnId}`;
+
+    const [athleteRes, recordsRes] = await Promise.all([
+      fetch(baseUrl),
+      fetch(`${baseUrl}/records`),
+    ]);
+
+    const [athleteData, recordsData]: [any, any] = await Promise.all([
+      athleteRes.ok ? athleteRes.json() : {},
+      recordsRes.ok ? recordsRes.json() : {},
+    ]);
+
+    // Pull team and stance from athlete endpoint
+    const team: string | null = athleteData?.association?.name ?? null;
+    const stance: string | null = athleteData?.stance?.text ?? null;
+
+    // Pull career stats from records endpoint
+    // recordsData.items is an array of category objects; find the career totals
+    const items: any[] = recordsData?.items ?? [];
+    const career = items.find((it: any) => it.type === 'total') ?? items[0] ?? {};
+    const stats: Record<string, number> = {};
+    for (const stat of (career.stats ?? [])) {
+      if (stat.name) stats[stat.name] = stat.value ?? 0;
+    }
+
+    res.json({
+      team,
+      stance,
+      wins: stats.wins ?? null,
+      losses: stats.losses ?? null,
+      draws: stats.draws ?? null,
+      koTkoWins: stats.tkos ?? null,
+      koTkoLosses: stats.tkoLosses ?? null,
+      submissionWins: stats.submissions ?? null,
+      submissionLosses: stats.submissionLosses ?? null,
+    });
   } catch (err) { next(err); }
 });
 
