@@ -595,6 +595,20 @@ export function FighterModal({ photo, name, fighterId, onClose }: {
 
         {fighter && (
           <>
+            {/* Stats row — directly below header */}
+            <div style={{ display: 'flex', borderTop: '1px solid #1a1a1a', background: '#111' }}>
+              {[
+                ['W-L-D', `${liveStats?.wins ?? fighter.record?.wins ?? 0}-${liveStats?.losses ?? fighter.record?.losses ?? 0}-${liveStats?.draws ?? fighter.record?.draws ?? 0}`],
+                ['(T)KO', String(liveStats?.koTkoWins ?? fighter.koTkoWins ?? 0)],
+                ['SUB', String(liveStats?.submissionWins ?? fighter.submissionWins ?? 0)],
+              ].map(([label, value], i) => (
+                <div key={label} style={{ flex: 1, padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, borderLeft: i > 0 ? '1px solid #1a1a1a' : 'none' }}>
+                  <div style={{ color: '#555', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
+                  <div style={{ color: '#fff', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
             {/* Info rows */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#1a1a1a', borderTop: '1px solid #1a1a1a' }}>
               {[
@@ -608,23 +622,6 @@ export function FighterModal({ photo, name, fighterId, onClose }: {
                   <div style={{ color: '#ccc', fontSize: 13, fontWeight: 600 }}>{value}</div>
                 </div>
               ))}
-            </div>
-
-            {/* Stats box */}
-            <div style={{ background: '#111', borderTop: '1px solid #1a1a1a' }}>
-              <div style={{ color: '#555', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center', padding: '10px 0 6px' }}>STATS</div>
-              <div style={{ display: 'flex', borderTop: '1px solid #1a1a1a' }}>
-                {[
-                  ['W-L-D', `${liveStats?.wins ?? fighter.record?.wins ?? 0}-${liveStats?.losses ?? fighter.record?.losses ?? 0}-${liveStats?.draws ?? fighter.record?.draws ?? 0}`],
-                  ['(T)KO', String(liveStats?.koTkoWins ?? fighter.koTkoWins ?? 0)],
-                  ['SUB', String(liveStats?.submissionWins ?? fighter.submissionWins ?? 0)],
-                ].map(([label, value], i) => (
-                  <div key={label} style={{ flex: 1, padding: '14px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, borderLeft: i > 0 ? '1px solid #1a1a1a' : 'none' }}>
-                    <div style={{ color: '#555', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</div>
-                    <div style={{ color: '#fff', fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{value}</div>
-                  </div>
-                ))}
-              </div>
             </div>
           </>
         )}
