@@ -27,6 +27,38 @@ eventsRouter.get('/', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+eventsRouter.get('/live-card', async (_req, res, next) => {
+  try {
+    const { rows: [liveEvent] } = await db.query(`
+      SELECT id, name, status, scheduled_at
+      FROM ufc_events
+      WHERE status = 'live'
+      ORDER BY scheduled_at DESC
+      LIMIT 1
+    `);
+    if (!liveEvent) { res.json(null); return; }
+
+    const { rows: fights } = await db.query(`
+      SELECT
+        f.id, f.bout_order, f.card_segment, f.status, f.is_title_fight,
+        f.red_fighter_id, f.blue_fighter_id,
+        rf.first_name as red_first, rf.last_name as red_last, rf.image_url as red_image,
+        bf.first_name as blue_first, bf.last_name as blue_last, bf.image_url as blue_image,
+        wc.name as weight_class_name,
+        fr.outcome, fr.winner_id, fr.ending_round, fr.ending_time_seconds
+      FROM fights f
+      JOIN fighters rf ON rf.id = f.red_fighter_id
+      JOIN fighters bf ON bf.id = f.blue_fighter_id
+      JOIN weight_classes wc ON wc.id = f.weight_class_id
+      LEFT JOIN fight_results fr ON fr.fight_id = f.id
+      WHERE f.event_id = $1
+      ORDER BY f.bout_order DESC
+    `, [liveEvent.id]);
+
+    res.json({ event: liveEvent, fights });
+  } catch (err) { next(err); }
+});
+
 eventsRouter.get('/:eventId', async (req, res, next) => {
   try {
     const { rows: [event] } = await db.query(

@@ -9,7 +9,7 @@ import { FighterPhoto } from '../components/FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
-import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, type PhotoClickHandler } from '../components/MatchupComponents';
+import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -738,6 +738,13 @@ export function LeagueHomePage() {
           {!isCommissioner && (
             <p style={styles.waitingMsg}>Waiting for the commissioner to start the season...</p>
           )}
+        </div>
+      )}
+
+      {/* Live fight card */}
+      {matchup?.eventStatus === 'live' && (
+        <div style={{ padding: isMobile ? '0 12px' : '0 24px', marginBottom: 4 }}>
+          <LiveFightCard />
         </div>
       )}
 

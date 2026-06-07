@@ -9,7 +9,7 @@ import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/Member
 import { SkeletonFightRow } from '../components/LoadingScreen';
 import {
   fmtStakeScore, fmtChipScore,
-  MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal,
+  MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard,
   type PhotoClickHandler,
 } from '../components/MatchupComponents';
 
@@ -430,6 +430,13 @@ export function MatchupPage() {
           </div>
             );
           })()}
+
+          {/* Live fight card */}
+          {isLive && (
+            <div style={{ ...styles.section, ...(isMobile ? { padding: '0 12px 8px' } : {}) }}>
+              <LiveFightCard />
+            </div>
+          )}
 
           {/* Picks (pick'em leagues) */}
           {!isStaking && !!matchup?.eventId && (

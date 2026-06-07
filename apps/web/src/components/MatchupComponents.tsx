@@ -510,6 +510,94 @@ export const mb: Record<string, React.CSSProperties> = {
   vsLabel: { color: '#333', fontSize: 9, fontWeight: 700, flexShrink: 0, padding: '0 2px' },
 };
 
+// ── Live fight card ───────────────────────────────────────────────────────────
+
+const OUTCOME_SHORT: Record<string, string> = {
+  ko_tko: 'KO/TKO', submission: 'SUB',
+  decision_unanimous: 'DEC', decision_split: 'DEC (S)', decision_majority: 'DEC (M)',
+  draw: 'DRAW', no_contest: 'NC', disqualification: 'DQ',
+};
+
+function fmtTime(seconds: number | null | undefined): string {
+  if (seconds == null) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export function LiveFightCard() {
+  const { data, dataUpdatedAt } = useQuery<any>({
+    queryKey: ['live-card'],
+    queryFn: () => apiClient.get('/events/live-card'),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+  });
+
+  if (!data) return null;
+
+  const { event, fights } = data as { event: any; fights: any[] };
+  const total = fights.length;
+  const done = fights.filter((f) => f.outcome).length;
+  const nextFight = fights.slice().reverse().find((f) => !f.outcome);
+
+  return (
+    <div style={{ background: '#0f0f0f', border: '1px solid #1e1e1e', borderRadius: 10, overflow: 'hidden', margin: '0 0 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderBottom: '1px solid #1a1a1a', background: '#141414' }}>
+        <span style={{ background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, letterSpacing: 0.8 }}>LIVE</span>
+        <span style={{ color: '#888', fontSize: 11, fontWeight: 700, flex: 1 }}>{event.name}</span>
+        <span style={{ color: '#444', fontSize: 10 }}>{done}/{total} fights</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {fights.map((fight, i) => {
+          const isDone = !!fight.outcome;
+          const isNext = !isDone && fight.id === nextFight?.id;
+          const redWon = isDone && fight.winnerId === fight.redFighterId;
+          const blueWon = isDone && fight.winnerId === fight.blueFighterId;
+          const isDraw = isDone && !fight.winnerId;
+          return (
+            <div
+              key={fight.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px',
+                borderBottom: i < fights.length - 1 ? '1px solid #141414' : 'none',
+                background: isNext ? '#1a1800' : 'transparent',
+                opacity: isDone && !isNext ? 0.7 : 1,
+              }}
+            >
+              {isNext && <span style={{ color: '#ffd700', fontSize: 8, fontWeight: 700, letterSpacing: 0.5, flexShrink: 0 }}>NEXT</span>}
+              {isDone && <span style={{ color: '#333', fontSize: 9, flexShrink: 0 }}>✓</span>}
+              {!isDone && !isNext && <span style={{ color: '#222', fontSize: 9, flexShrink: 0 }}>·</span>}
+
+              <span style={{ flex: 1, color: redWon ? '#4ade80' : isDone && !isDraw ? '#444' : '#aaa', fontSize: 12, fontWeight: redWon ? 700 : 400, textAlign: 'right' }}>
+                {fight.redLast}
+              </span>
+              <span style={{ color: '#333', fontSize: 9, flexShrink: 0 }}>vs</span>
+              <span style={{ flex: 1, color: blueWon ? '#4ade80' : isDone && !isDraw ? '#444' : '#aaa', fontSize: 12, fontWeight: blueWon ? 700 : 400 }}>
+                {fight.blueLast}
+              </span>
+
+              {isDone && (
+                <span style={{ color: '#555', fontSize: 10, flexShrink: 0, minWidth: 80, textAlign: 'right' }}>
+                  {isDraw ? 'DRAW' : `${OUTCOME_SHORT[fight.outcome] ?? fight.outcome} R${fight.endingRound}${fight.endingTimeSeconds != null ? ` ${fmtTime(fight.endingTimeSeconds)}` : ''}`}
+                </span>
+              )}
+              {!isDone && (
+                <span style={{ color: '#333', fontSize: 10, minWidth: 80, textAlign: 'right' }}>
+                  {fight.weightClassName?.replace(' Weight', '').replace('Super ', 'S-')}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding: '5px 14px', borderTop: '1px solid #141414', color: '#2a2a2a', fontSize: 9, textAlign: 'right' }}>
+        updated {new Date(dataUpdatedAt).toLocaleTimeString()}
+      </div>
+    </div>
+  );
+}
+
 // ── Fighter modal ─────────────────────────────────────────────────────────────
 
 export function FighterModal({ photo, name, fighterId, onClose }: {
