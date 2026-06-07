@@ -449,7 +449,7 @@ export function MatchupPage() {
                 [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
               ) : (
                 <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
-                  {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
+                  {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={isLive} />}
                   <MatchupPickPanel
                     teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
                     fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
@@ -459,7 +459,7 @@ export function MatchupPage() {
                     leagueId={leagueId}
                     locked={homePicks?.locked}
                   />
-                  {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
+                  {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={isLive} />}
                   <MatchupPickPanel
                     teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
                     fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}

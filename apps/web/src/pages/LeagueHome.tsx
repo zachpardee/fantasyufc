@@ -776,7 +776,7 @@ export function LeagueHomePage() {
               />
             ) : (
               <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
-                {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
+                {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={matchup?.eventStatus === 'live'} />}
                 <MatchupPickPanel
                   teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
                   fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
@@ -786,7 +786,7 @@ export function LeagueHomePage() {
                   leagueId={leagueId}
                   locked={homePicks?.locked}
                 />
-                {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} />}
+                {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={matchup?.eventStatus === 'live'} />}
                 <MatchupPickPanel
                   teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
                   fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}

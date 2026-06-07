@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -21,6 +21,12 @@ export function CommissionerToolsPage() {
     return <div style={styles.page}><div style={styles.empty}>Commissioner access only.</div></div>;
   }
 
+  const { data: currentEvent } = useQuery<any>({
+    queryKey: ['picks-current-event', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
+    enabled: !!league,
+  });
+
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
@@ -30,6 +36,7 @@ export function CommissionerToolsPage() {
       {league && (
         <div style={styles.body}>
           <SettingsSection league={league} leagueId={leagueId!} qc={qc} />
+          {currentEvent && <OddsSection eventId={currentEvent.id} eventName={currentEvent.name} qc={qc} />}
           <ScheduleSection league={league} leagueId={leagueId!} qc={qc} />
           <PlayoffsSection league={league} leagueId={leagueId!} qc={qc} />
           <DangerSection leagueId={leagueId!} qc={qc} navigate={navigate} />
@@ -38,6 +45,131 @@ export function CommissionerToolsPage() {
     </div>
   );
 }
+
+function OddsSection({ eventId, eventName }: { eventId: string; eventName: string; qc: any }) {
+  const { data: adminFights, isLoading: fightsLoading, refetch } = useQuery<any[]>({
+    queryKey: ['admin-event-fights', eventId],
+    queryFn: () => apiClient.get(`/admin/events/${eventId}/fights`),
+    retry: false,
+  });
+
+  const [oddsMap, setOddsMap] = useState<Record<string, { red: string; blue: string }>>({});
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  // Seed oddsMap from loaded fights
+  useEffect(() => {
+    if (!adminFights) return;
+    const m: Record<string, { red: string; blue: string }> = {};
+    for (const f of adminFights) {
+      m[f.id] = {
+        red: f.redFighterOdds != null ? String(f.redFighterOdds) : '',
+        blue: f.blueFighterOdds != null ? String(f.blueFighterOdds) : '',
+      };
+    }
+    setOddsMap(m);
+  }, [adminFights]);
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const entries = Object.entries(oddsMap).map(([fightId, v]) => ({
+        fightId,
+        redOdds: v.red !== '' ? Number(v.red) : null,
+        blueOdds: v.blue !== '' ? Number(v.blue) : null,
+      }));
+      return apiClient.post(`/admin/events/${eventId}/odds/bulk`, entries);
+    },
+    onSuccess: () => {
+      refetch();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    },
+    onError: (err: any) => setError(err?.error ?? 'Failed to save odds'),
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () => apiClient.post(`/admin/events/${eventId}/sync-odds`, {}),
+    onSuccess: () => {
+      refetch();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      setError('');
+    },
+    onError: (err: any) => setError(err?.error ?? 'Sync failed'),
+  });
+
+  const fights = adminFights ?? [];
+
+  return (
+    <section style={styles.section}>
+      <h2 style={styles.sectionTitle}>Fight Odds — {eventName}</h2>
+      <p style={{ ...styles.hint, marginBottom: 16 }}>
+        Enter American-style moneyline odds (e.g. -250 or +180). You can also auto-sync from The Odds API if ODDS_API_KEY is configured.
+      </p>
+
+      {fightsLoading && <p style={styles.hint}>Loading fights...</p>}
+
+      {fights.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {[...fights].sort((a, b) => (b.boutOrder ?? 0) - (a.boutOrder ?? 0)).map((fight) => {
+            const entry = oddsMap[fight.id] ?? { red: '', blue: '' };
+            return (
+              <div key={fight.id} style={oddsRowStyle}>
+                <span style={oddsName}>{fight.redLastName ?? fight.redFirst}</span>
+                <input
+                  style={oddsInput}
+                  placeholder="e.g. -250"
+                  value={entry.red}
+                  onChange={(e) => setOddsMap((m) => ({ ...m, [fight.id]: { ...entry, red: e.target.value } }))}
+                />
+                <span style={{ color: '#555', fontSize: 12 }}>vs</span>
+                <input
+                  style={oddsInput}
+                  placeholder="e.g. +200"
+                  value={entry.blue}
+                  onChange={(e) => setOddsMap((m) => ({ ...m, [fight.id]: { ...entry, blue: e.target.value } }))}
+                />
+                <span style={oddsName}>{fight.blueLastName ?? fight.blueFirst}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {error && <p style={styles.errMsg}>{error}</p>}
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        {saved && <span style={styles.savedMsg}>Saved!</span>}
+        <button
+          style={{ ...styles.saveBtn, background: '#1a3a1a', color: '#4ade80', border: '1px solid #2a5a2a' }}
+          onClick={() => { setError(''); syncMutation.mutate(); }}
+          disabled={syncMutation.isPending}
+        >
+          {syncMutation.isPending ? 'Syncing...' : 'Auto-Sync Odds'}
+        </button>
+        <button
+          style={styles.saveBtn}
+          onClick={() => { setError(''); saveMutation.mutate(); }}
+          disabled={saveMutation.isPending || fights.length === 0}
+        >
+          {saveMutation.isPending ? 'Saving...' : 'Save Odds'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const oddsRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 90px 24px 90px 1fr',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 10px',
+  background: '#1a1a1a',
+  borderRadius: 6,
+};
+const oddsName: React.CSSProperties = { color: '#ccc', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const oddsInput: React.CSSProperties = { background: '#111', border: '1px solid #333', borderRadius: 5, color: '#fff', fontSize: 13, padding: '6px 8px', outline: 'none', width: '100%', boxSizing: 'border-box', textAlign: 'center' };
 
 function SettingsSection({ league, leagueId, qc }: { league: any; leagueId: string; qc: any }) {
   const [name, setName] = useState(league.name ?? '');

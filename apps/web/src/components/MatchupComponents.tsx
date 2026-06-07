@@ -95,9 +95,14 @@ export function fmtChipScore(n: number): string {
 
 // ── Fight card ───────────────────────────────────────────────────────────────
 
-export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPhotoClick?: PhotoClickHandler }) {
+export function MatchupFightList({ fights, onPhotoClick, isEventLive }: { fights: any[]; onPhotoClick?: PhotoClickHandler; isEventLive?: boolean }) {
   const isMobile = useIsMobile();
   if (fights.length === 0) return null;
+  const nextFightId = isEventLive
+    ? fights
+        .filter((f) => !f.resultWinnerId && !['draw', 'no_contest', 'cancelled'].includes(f.resultOutcome))
+        .sort((a, b) => (a.boutOrder ?? 0) - (b.boutOrder ?? 0))[0]?.id
+    : null;
   return (
     <div style={{ flex: isMobile ? undefined : 1.2, width: isMobile ? '100%' : undefined, display: 'flex', flexDirection: 'column', gap: 6 }}>
       {fights.map((fight) => {
@@ -106,14 +111,13 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
         const blueWon = !!fight.resultWinnerId && fight.resultWinnerId === fight.blueFighterId;
         const isVoidResult = ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
         const voidLabel = fight.resultOutcome === 'draw' ? 'DRAW' : fight.resultOutcome === 'no_contest' ? 'NC' : 'CNCL';
+        const isNext = fight.id === nextFightId;
         const fmtO = (n: number) => n >= 0 ? `+${n}` : `${n}`;
         return (
-          <div key={fight.id} style={mb.fightCard}>
+          <div key={fight.id} style={{ ...mb.fightCard, ...(isNext ? { border: '1px solid #4ade80', background: '#0a1a0a' } : {}) }}>
             <div style={mb.fightCardMeta}>
               <span style={mb.weightLabel}>{fight.weightClassName}</span>
-              {hasResult && fight.resultOutcome && !isVoidResult && (
-                <span style={mb.resultLabel}>{METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome}</span>
-              )}
+              {isNext && <span style={{ color: '#4ade80', fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>NEXT</span>}
             </div>
             <div style={mb.fightCardFighters}>
               <div
@@ -134,7 +138,14 @@ export function MatchupFightList({ fights, onPhotoClick }: { fights: any[]; onPh
               </div>
               {isVoidResult
                 ? <div style={mb.vsLabel}><span style={{ color: '#ffd700', fontSize: 8, fontWeight: 700, letterSpacing: 0.5 }}>{voidLabel}</span></div>
-                : <div style={mb.vsLabel}>VS</div>
+                : hasResult
+                  ? <div style={{ ...mb.vsLabel, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 38 }}>
+                      <span style={{ color: '#888', fontSize: 8, fontWeight: 700, lineHeight: 1 }}>{METHOD_LABELS[fight.resultOutcome] ?? 'WIN'}</span>
+                      {fight.resultEndingRound != null && <span style={{ color: '#555', fontSize: 7, lineHeight: 1 }}>R{fight.resultEndingRound}</span>}
+                    </div>
+                  : isNext
+                    ? <div style={mb.vsLabel}><span style={{ color: '#4ade80', fontSize: 8, fontWeight: 700, letterSpacing: 0.5 }}>NEXT</span></div>
+                    : <div style={mb.vsLabel}>VS</div>
               }
               <div
                 style={{ ...mb.fighterSide, flexDirection: 'row-reverse', opacity: hasResult && !blueWon ? 0.3 : 1, cursor: fight.blueImageUrl ? 'zoom-in' : 'default' }}
@@ -424,7 +435,7 @@ export function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamN
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
+        <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} isEventLive={isEventLive} />
         <MatchupBetPanel
           teamName={homeTeamName}
           singles={homeStaking?.singles ?? []}

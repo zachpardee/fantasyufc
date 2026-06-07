@@ -167,3 +167,137 @@ adminRouter.post('/fights/:fightId/result', requireAuth, requireAdmin, async (re
     res.redirect(307, `/api/v1/events/admin/${req.body.eventId}/results`);
   } catch (err) { next(err); }
 });
+
+// List fights for an event with current odds
+adminRouter.get('/events/:eventId/fights', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT f.id, f.bout_order,
+        rf.first_name AS red_first, rf.last_name AS red_last_name,
+        bf.first_name AS blue_first, bf.last_name AS blue_last_name,
+        f.red_fighter_odds, f.blue_fighter_odds
+      FROM fights f
+      JOIN fighters rf ON rf.id = f.red_fighter_id
+      JOIN fighters bf ON bf.id = f.blue_fighter_id
+      WHERE f.event_id = $1
+      ORDER BY f.bout_order DESC
+    `, [req.params.eventId]);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// Set odds for a single fight
+adminRouter.patch('/fights/:fightId/odds', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const { redOdds, blueOdds } = req.body;
+    if (redOdds === undefined && blueOdds === undefined) {
+      throw new AppError(400, 'Provide redOdds and/or blueOdds');
+    }
+    const { rowCount } = await db.query(
+      `UPDATE fights SET
+        red_fighter_odds = COALESCE($1, red_fighter_odds),
+        blue_fighter_odds = COALESCE($2, blue_fighter_odds)
+       WHERE id = $3`,
+      [redOdds ?? null, blueOdds ?? null, req.params.fightId],
+    );
+    if (!rowCount) throw new AppError(404, 'Fight not found');
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// Bulk-set odds for an event's fights: [{ fightId, redOdds, blueOdds }]
+adminRouter.post('/events/:eventId/odds/bulk', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const entries: { fightId: string; redOdds?: number | null; blueOdds?: number | null }[] = req.body;
+    if (!Array.isArray(entries)) throw new AppError(400, 'Body must be an array');
+    let updated = 0;
+    for (const e of entries) {
+      const { rowCount } = await db.query(
+        `UPDATE fights SET
+          red_fighter_odds = COALESCE($1, red_fighter_odds),
+          blue_fighter_odds = COALESCE($2, blue_fighter_odds)
+         WHERE id = $3 AND event_id = $4`,
+        [e.redOdds ?? null, e.blueOdds ?? null, e.fightId, req.params.eventId],
+      );
+      if (rowCount) updated++;
+    }
+    res.json({ ok: true, updated });
+  } catch (err) { next(err); }
+});
+
+// Sync odds from The Odds API (https://the-odds-api.com — free tier: 500 req/month)
+// Requires ODDS_API_KEY env variable. Matches fighters by display name (fuzzy last-name match).
+adminRouter.post('/events/:eventId/sync-odds', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const apiKey = process.env.ODDS_API_KEY;
+    if (!apiKey) throw new AppError(503, 'ODDS_API_KEY not configured');
+
+    const { rows: fights } = await db.query(`
+      SELECT f.id, f.ufc_fight_id,
+        rf.first_name AS red_first, rf.last_name AS red_last,
+        bf.first_name AS blue_first, bf.last_name AS blue_last,
+        e.scheduled_at
+      FROM fights f
+      JOIN fighters rf ON rf.id = f.red_fighter_id
+      JOIN fighters bf ON bf.id = f.blue_fighter_id
+      JOIN ufc_events e ON e.id = f.event_id
+      WHERE f.event_id = $1
+    `, [req.params.eventId]);
+
+    if (!fights.length) throw new AppError(404, 'No fights found for this event');
+
+    const eventDate = new Date(fights[0].scheduled_at);
+    const commenceFrom = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const commenceTo = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    const url = `https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american&commenceTimeFrom=${commenceFrom}&commenceTimeTo=${commenceTo}`;
+    const oddsRes = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!oddsRes.ok) {
+      const text = await oddsRes.text();
+      throw new AppError(502, `Odds API error ${oddsRes.status}: ${text}`);
+    }
+    const oddsEvents = await oddsRes.json() as any[];
+
+    let matched = 0;
+    for (const fight of fights) {
+      const redLast = fight.red_last.toLowerCase();
+      const blueLast = fight.blue_last.toLowerCase();
+
+      const oddsEvent = oddsEvents.find((oe) => {
+        const names = [oe.home_team?.toLowerCase() ?? '', oe.away_team?.toLowerCase() ?? ''];
+        return names.some((n) => n.includes(redLast) || n.includes(blueLast));
+      });
+      if (!oddsEvent) continue;
+
+      const bookmaker = oddsEvent.bookmakers?.find((b: any) => b.key === 'draftkings')
+        ?? oddsEvent.bookmakers?.[0];
+      if (!bookmaker) continue;
+
+      const h2h = bookmaker.markets?.find((m: any) => m.key === 'h2h');
+      if (!h2h) continue;
+
+      let redOdds: number | null = null;
+      let blueOdds: number | null = null;
+
+      for (const outcome of h2h.outcomes ?? []) {
+        const name = outcome.name?.toLowerCase() ?? '';
+        if (name.includes(redLast)) redOdds = outcome.price;
+        else if (name.includes(blueLast)) blueOdds = outcome.price;
+      }
+
+      if (redOdds !== null || blueOdds !== null) {
+        await db.query(
+          `UPDATE fights SET
+            red_fighter_odds = COALESCE($1, red_fighter_odds),
+            blue_fighter_odds = COALESCE($2, blue_fighter_odds)
+           WHERE id = $3`,
+          [redOdds, blueOdds, fight.id],
+        );
+        matched++;
+      }
+    }
+
+    const remaining = oddsRes.headers.get('x-requests-remaining');
+    res.json({ ok: true, matched, total: fights.length, requestsRemaining: remaining });
+  } catch (err) { next(err); }
+});

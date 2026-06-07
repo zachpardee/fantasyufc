@@ -495,8 +495,8 @@ function FighterPick({ firstName, lastName, imageUrl, ranking, isChampion, corne
     : isWinner ? '#4caf50'
     : '#2a2a2a';
 
-  const isUnderdog = odds != null && odds >= 350;
   const oddsLabel = odds != null ? (odds > 0 ? `+${odds}` : `${odds}`) : null;
+  const isFavorite = odds != null && odds < 0;
 
   return (
     <button
@@ -523,8 +523,8 @@ function FighterPick({ firstName, lastName, imageUrl, ranking, isChampion, corne
           : <span style={{ color: '#444' }}>NR</span>}
       </div>
       {oddsLabel && (
-        <div style={isUnderdog ? styles.underdogOdds : styles.oddsLabel}>
-          {oddsLabel}{isUnderdog && ' 🐶'}
+        <div style={{ fontSize: 13, fontWeight: 700, color: isFavorite ? '#aaa' : '#4ade80' }}>
+          {oddsLabel}
         </div>
       )}
       {isPicked && isCorrect === true && (
@@ -581,8 +581,6 @@ const styles: Record<string, React.CSSProperties> = {
   champBadge: { background: '#2a2400', color: '#ffd700', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 3 },
   pickedTag: { color: '#c8102e', fontSize: 10, fontWeight: 700, letterSpacing: 0.5 },
   pickResult: { color: '#4caf50', fontSize: 12, fontWeight: 700 },
-  oddsLabel: { color: '#555', fontSize: 12 },
-  underdogOdds: { color: '#ffd700', fontSize: 12, fontWeight: 700 },
   methodRow: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' },
   methodLabel: { color: '#555', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' },
   methodBtns: { display: 'flex', gap: 6 },
