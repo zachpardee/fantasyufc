@@ -596,7 +596,7 @@ export function LeagueHomePage() {
                 const teamGap = isMobile ? 6 : 12;
                 return (
                   <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
-                    <div style={{ ...styles.matchupTeam, gap: teamGap, overflow: 'hidden' }}>
+                    <div style={{ ...styles.matchupTeam, gap: teamGap, overflow: 'hidden', justifyContent: 'center' }}>
                       {effectiveMatchup && (
                         <>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
@@ -642,10 +642,10 @@ export function LeagueHomePage() {
                         </>
                       )}
                     </div>
-                    <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'flex-end', overflow: 'hidden' }}>
+                    <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'center', overflow: 'hidden' }}>
                       {effectiveMatchup && (
                         <>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0, overflow: 'hidden' }}>
                             <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{effectiveMatchup.awayTeamName}</div>
                             <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
                           </div>
