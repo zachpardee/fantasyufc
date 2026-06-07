@@ -31,6 +31,7 @@ export function LeagueHomePage() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showFightCard, setShowFightCard] = useState(false);
   const [msgInput, setMsgInput] = useState('');
+  const [viewedMatchupIdx, setViewedMatchupIdx] = useState<number | null>(null);
   const msgEndRef = useRef<HTMLDivElement>(null);
 
   const { data: league } = useQuery<League>({
@@ -86,17 +87,33 @@ export function LeagueHomePage() {
     },
   });
 
+  const { data: allMatchups = [] } = useQuery<any[]>({
+    queryKey: ['matchups-all', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
+    enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
+  });
+
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string; fighterId?: string } | null>(null);
   const openPhoto: PhotoClickHandler = (url, name, fighterId) => setEnlargedPhoto({ url, name, fighterId });
 
-  const matchupEventId = matchup?.eventId;
-  const matchupHomeId = matchup?.homeTeamId;
-  const matchupAwayId = matchup?.awayTeamId;
-  const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
+  // Build the user's matchup list (sorted newest-first) and compute the viewed matchup
+  const myMemberId = members.find((m) => m.userId === session?.user.id)?.id;
+  const myMatchups = (allMatchups as any[])
+    .filter((m: any) => myMemberId && (m.homeTeamId === myMemberId || m.awayTeamId === myMemberId))
+    .sort((a: any, b: any) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+  const currentMatchupIdx = matchup ? myMatchups.findIndex((m: any) => m.id === matchup.id) : -1;
+  const effectiveIdx = viewedMatchupIdx ?? Math.max(0, currentMatchupIdx);
+  const effectiveMatchup: typeof matchup = myMatchups[effectiveIdx] ?? matchup ?? null;
+
+  const matchupEventId = effectiveMatchup?.eventId;
+  const matchupHomeId = effectiveMatchup?.homeTeamId;
+  const matchupAwayId = effectiveMatchup?.awayTeamId;
+  const eventIsLive = effectiveMatchup?.eventStatus === 'live' || effectiveMatchup?.eventStatus === 'completed';
 
   const leagueIsStaking = (league as any)?.leagueFormat === 'staking';
 
-  const liveRefetchInterval = matchup?.eventStatus === 'live' ? 30_000 : false;
+  // Only live-poll when showing the actual live matchup
+  const liveRefetchInterval = (viewedMatchupIdx === null && matchup?.eventStatus === 'live') ? 30_000 : false as const;
 
   const { data: homePicks } = useQuery<any>({
     queryKey: ['home-picks', leagueId, matchupEventId, matchupHomeId],
@@ -134,6 +151,9 @@ export function LeagueHomePage() {
     enabled: !!matchupEventId && !!matchupAwayId && leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
+
+  // Reset to current matchup when the underlying current matchup changes (e.g. event goes live)
+  useEffect(() => { setViewedMatchupIdx(null); }, [matchup?.id]);
 
   // Real-time score sync: subscribe to matchup DB updates just like the Matchup page does
   useEffect(() => {
@@ -507,35 +527,65 @@ export function LeagueHomePage() {
       </div>
 
       {/* Current matchup + event card */}
-      {(matchup || currentEvent) && (() => {
-        const home = !isStaking && matchup
+      {(effectiveMatchup || currentEvent) && (() => {
+        const home = !isStaking && effectiveMatchup
           ? calcPicksScore(
               homePicks?.fights ?? [],
               homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0,
-              homePicks != null ? null : +matchup.homeScore,
+              homePicks != null ? null : +effectiveMatchup.homeScore,
             )
-          : matchup ? +matchup.homeScore : 0;
-        const away = !isStaking && matchup
+          : effectiveMatchup ? +effectiveMatchup.homeScore : 0;
+        const away = !isStaking && effectiveMatchup
           ? calcPicksScore(
               awayPicks?.fights ?? [],
               awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
-              awayPicks != null ? null : +matchup.awayScore,
+              awayPicks != null ? null : +effectiveMatchup.awayScore,
             )
-          : matchup ? +matchup.awayScore : 0;
-        const isLive = matchup?.eventStatus === 'live' || currentEvent?.status === 'live';
-        const diff = matchup ? Math.abs(home - away) : 0;
-        const leading = matchup ? (home > away ? matchup.homeTeamName : away > home ? matchup.awayTeamName : null) : null;
-        const eventName = matchup?.eventName ?? currentEvent?.name ?? 'Current Event';
+          : effectiveMatchup ? +effectiveMatchup.awayScore : 0;
+        const isLive = effectiveMatchup?.eventStatus === 'live' || (viewedMatchupIdx === null && currentEvent?.status === 'live');
+        const diff = effectiveMatchup ? Math.abs(home - away) : 0;
+        const leading = effectiveMatchup ? (home > away ? effectiveMatchup.homeTeamName : away > home ? effectiveMatchup.awayTeamName : null) : null;
+        const eventName = effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Current Event';
+
+        const hasPrev = myMatchups.length > 1 && effectiveIdx < myMatchups.length - 1;
+        const hasNext = myMatchups.length > 1 && effectiveIdx > 0;
+        const bannerLabel =
+          viewedMatchupIdx === null || currentMatchupIdx === -1 || effectiveIdx === currentMatchupIdx ? 'CURRENT MATCHUP'
+          : effectiveIdx < currentMatchupIdx ? 'UPCOMING MATCHUP'
+          : 'PREVIOUS MATCHUP';
+
         return (
           <>
-            <div style={{ ...styles.matchupBanner, ...(isMobile ? { margin: '0 12px 16px', padding: '12px 12px' } : {}) }}>
+            <div style={{ ...styles.matchupBanner, position: 'relative', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 40px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
+              {/* Previous matchup arrow (left) */}
+              <button
+                onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
+                disabled={!hasPrev}
+                style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: hasPrev ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: isMobile ? '6px 8px' : '8px 12px', color: hasPrev ? '#666' : '#2a2a2a' }}
+              >
+                <span style={{ fontSize: 20, lineHeight: 1 }}>‹</span>
+                <span style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 1.2, textAlign: 'center' }}>Prev</span>
+                <span style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+              </button>
+
+              {/* Next matchup arrow (right) */}
+              <button
+                onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
+                disabled={!hasNext}
+                style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: hasNext ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: isMobile ? '6px 8px' : '8px 12px', color: hasNext ? '#666' : '#2a2a2a' }}
+              >
+                <span style={{ fontSize: 20, lineHeight: 1 }}>›</span>
+                <span style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 1.2, textAlign: 'center' }}>Next</span>
+                <span style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+              </button>
+
               <div style={styles.matchupLabelRow}>
-                <span style={styles.matchupLabel}>Current Matchup</span>
+                <span style={styles.matchupLabel}>{bannerLabel}</span>
                 {isLive && <span style={styles.livePip}>LIVE</span>}
               </div>
               {(() => {
-                const homeMember = members.find(m => m.teamName === matchup?.homeTeamName);
-                const awayMember = members.find(m => m.teamName === matchup?.awayTeamName);
+                const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
+                const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
                 const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
                 const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
                 const avatarSize = isMobile ? 32 : 50;
@@ -544,15 +594,15 @@ export function LeagueHomePage() {
                 return (
                   <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
                     <div style={{ ...styles.matchupTeam, gap: teamGap, overflow: 'hidden' }}>
-                      {matchup && (
+                      {effectiveMatchup && (
                         <>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{effectiveMatchup.homeTeamName?.charAt(0).toUpperCase()}</div>
                             {homeMember && hasBelt(homeMember, members, league) && <BeltHalo size={avatarSize} />}
                             {homeMember && hasBmfBelt(homeMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(homeMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{matchup.homeTeamName}</div>
+                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{effectiveMatchup.homeTeamName}</div>
                             <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: home > away ? '#fff' : '#666' }}>{fmtScore(home)}</div>
                           </div>
                         </>
@@ -564,7 +614,7 @@ export function LeagueHomePage() {
                       ) : (
                         <>
                           <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
-                          {currentEvent && (
+                          {viewedMatchupIdx === null && currentEvent && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                               {(currentEvent.venue || currentEvent.location) && (
                                 <span style={styles.eventCardLocation}>
@@ -581,18 +631,23 @@ export function LeagueHomePage() {
                               )}
                             </div>
                           )}
+                          {viewedMatchupIdx !== null && (effectiveMatchup as any)?.scheduledAt && (
+                            <span style={styles.eventDate}>
+                              {new Date((effectiveMatchup as any).scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          )}
                         </>
                       )}
                     </div>
                     <div style={{ ...styles.matchupTeam, gap: teamGap, justifyContent: 'flex-end', overflow: 'hidden' }}>
-                      {matchup && (
+                      {effectiveMatchup && (
                         <>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{matchup.awayTeamName}</div>
+                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{effectiveMatchup.awayTeamName}</div>
                             <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
                           </div>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{effectiveMatchup.awayTeamName?.charAt(0).toUpperCase()}</div>
                             {awayMember && hasBelt(awayMember, members, league) && <BeltHalo size={avatarSize} />}
                             {awayMember && hasBmfBelt(awayMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(awayMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
@@ -603,9 +658,9 @@ export function LeagueHomePage() {
                 );
               })()}
               <Link to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`} style={styles.eventPicksLink}>{isStaking ? 'Place Bets →' : 'Make Picks →'}</Link>
-              {matchup && <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>Matchup Details →</Link>}
+              {effectiveMatchup && <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>Matchup Details →</Link>}
             </div>
-            {matchup && (
+            {effectiveMatchup && (
               <div style={styles.matchupSubRow}>
                 {leading
                   ? <span style={styles.matchupLeadLabel}>{leading} leads by {fmtScore(diff)}</span>
@@ -749,9 +804,9 @@ export function LeagueHomePage() {
       )}
 
       {/* Picks / bets section above nav */}
-      {matchup && (league.status === 'active' || league.status === 'playoffs') && (() => {
-        const isMeHome = !!myMember && myMember.id === matchup.homeTeamId;
-        const isMeAway = !!myMember && myMember.id === matchup.awayTeamId;
+      {effectiveMatchup && (league.status === 'active' || league.status === 'playoffs') && (() => {
+        const isMeHome = !!myMember && myMember.id === effectiveMatchup.homeTeamId;
+        const isMeAway = !!myMember && myMember.id === effectiveMatchup.awayTeamId;
         const fights: any[] = homePicks?.fights ?? homeStaking?.fights ?? awayStaking?.fights ?? [];
         return (
           <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
@@ -766,8 +821,8 @@ export function LeagueHomePage() {
                 fights={fights}
                 homeStaking={homeStaking}
                 awayStaking={awayStaking}
-                homeTeamName={matchup.homeTeamName}
-                awayTeamName={matchup.awayTeamName}
+                homeTeamName={effectiveMatchup.homeTeamName}
+                awayTeamName={effectiveMatchup.awayTeamName}
                 isMeHome={isMeHome}
                 isMeAway={isMeAway}
                 isEventLive={eventIsLive}
@@ -776,9 +831,9 @@ export function LeagueHomePage() {
               />
             ) : (
               <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
-                {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={matchup?.eventStatus === 'live'} />}
+                {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />}
                 <MatchupPickPanel
-                  teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
+                  teamName={isMeHome ? effectiveMatchup.homeTeamName : isMeAway ? effectiveMatchup.awayTeamName : effectiveMatchup.homeTeamName}
                   fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
                   champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
                   isLocked={!(isMeHome || isMeAway) && !eventIsLive}
@@ -786,9 +841,9 @@ export function LeagueHomePage() {
                   leagueId={leagueId}
                   locked={homePicks?.locked}
                 />
-                {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={matchup?.eventStatus === 'live'} />}
+                {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />}
                 <MatchupPickPanel
-                  teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
+                  teamName={isMeHome ? effectiveMatchup.awayTeamName : isMeAway ? effectiveMatchup.homeTeamName : effectiveMatchup.awayTeamName}
                   fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
                   champion={isMeHome ? awayChampion : isMeAway ? homeChampion : awayChampion}
                   isLocked={!eventIsLive}
