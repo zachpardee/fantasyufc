@@ -549,10 +549,11 @@ export function LeagueHomePage() {
 
         const hasPrev = myMatchups.length > 1 && effectiveIdx < myMatchups.length - 1;
         const hasNext = myMatchups.length > 1 && effectiveIdx > 0;
+        const isViewingCurrent = viewedMatchupIdx === null || currentMatchupIdx === -1 || effectiveIdx === currentMatchupIdx;
         const bannerLabel =
-          viewedMatchupIdx === null || currentMatchupIdx === -1 || effectiveIdx === currentMatchupIdx ? 'CURRENT MATCHUP'
+          isViewingCurrent ? 'CURRENT MATCHUP'
           : effectiveIdx < currentMatchupIdx ? 'UPCOMING MATCHUP'
-          : 'PREVIOUS MATCHUP';
+          : 'VIEWING PREVIOUS MATCHUP';
 
         return (
           <>
@@ -657,7 +658,7 @@ export function LeagueHomePage() {
                   </div>
                 );
               })()}
-              <Link to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`} style={styles.eventPicksLink}>{isStaking ? 'Place Bets →' : 'Make Picks →'}</Link>
+              {isViewingCurrent && <Link to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`} style={styles.eventPicksLink}>{isStaking ? 'Place Bets →' : 'Make Picks →'}</Link>}
               {effectiveMatchup && <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>Matchup Details →</Link>}
             </div>
             {effectiveMatchup && (
