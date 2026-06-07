@@ -66,11 +66,6 @@ export function LeagueHomePage() {
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
 
-  const { data: fightCardData } = useQuery<{ fights: any[] }>({
-    queryKey: ['fight-card', leagueId, currentEvent?.id],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}`),
-    enabled: showFightCard && !!currentEvent,
-  });
 
   const { data: matchup, refetch: refetchMatchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
     queryKey: ['matchup-current', leagueId],
@@ -108,12 +103,19 @@ export function LeagueHomePage() {
   const matchupEventId = effectiveMatchup?.eventId;
   const matchupHomeId = effectiveMatchup?.homeTeamId;
   const matchupAwayId = effectiveMatchup?.awayTeamId;
+  const fightCardEventId = matchupEventId ?? currentEvent?.id;
   const eventIsLive = effectiveMatchup?.eventStatus === 'live' || effectiveMatchup?.eventStatus === 'completed';
 
   const leagueIsStaking = (league as any)?.leagueFormat === 'staking';
 
   // Only live-poll when showing the actual live matchup
   const liveRefetchInterval = (viewedMatchupIdx === null && matchup?.eventStatus === 'live') ? 30_000 : false as const;
+
+  const { data: fightCardData } = useQuery<{ fights: any[] }>({
+    queryKey: ['fight-card', leagueId, fightCardEventId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${fightCardEventId}`),
+    enabled: showFightCard && !!fightCardEventId,
+  });
 
   const { data: homePicks } = useQuery<any>({
     queryKey: ['home-picks', leagueId, matchupEventId, matchupHomeId],
@@ -1047,10 +1049,10 @@ export function LeagueHomePage() {
           <div style={styles.bottomSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.sheetHandle} />
             <div style={styles.sheetHeader}>
-              <span style={styles.sheetTitle}>{currentEvent?.name ?? 'Fight Card'}</span>
+              <span style={styles.sheetTitle}>{effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Fight Card'}</span>
               <button style={styles.modalClose} onClick={() => setShowFightCard(false)}>✕</button>
             </div>
-            {currentEvent && (
+            {viewedMatchupIdx === null && currentEvent && (
               <div style={styles.sheetSubtitle}>
                 {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
                 {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
@@ -1062,8 +1064,8 @@ export function LeagueHomePage() {
               </div>
             )}
             <div style={styles.sheetBody}>
-              {currentEvent === null ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No upcoming event</div>
+              {!fightCardEventId ? (
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No event available</div>
               ) : !fightCardData ? (
                 <div style={{ paddingTop: 8 }}>{[0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)}</div>
               ) : fightCardData.fights.length === 0 ? (
