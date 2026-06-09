@@ -63,6 +63,12 @@ export async function syncEvents() {
     await redis.del('events:upcoming');
     await refreshLeaguePlayoffs();
     await enrollNewSeasonEvents();
+
+    // Push events to all leagues + sync odds after every event sync
+    const { prepUpcomingEvents } = await import('./preEventPrep.job');
+    await prepUpcomingEvents().catch((err: Error) =>
+      console.error('[EventSync] Pre-event prep failed:', err.message),
+    );
   } catch (err) {
     console.error('[EventSync] Error:', err);
   }
@@ -194,6 +200,11 @@ async function refreshLeaguePlayoffs() {
       }
     }
   }
+}
+
+// Exported so preEventPrep.job can refresh individual event fight cards
+export async function upsertEventPublic(event: Awaited<ReturnType<typeof fetchUpcomingEvents>>[number]) {
+  return upsertEvent(event);
 }
 
 async function upsertEvent(event: Awaited<ReturnType<typeof fetchUpcomingEvents>>[number]) {

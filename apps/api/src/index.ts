@@ -8,6 +8,7 @@ import { startEventSyncJob } from './jobs/eventSync.job';
 import { startFighterSyncJob } from './jobs/fighterSync.job';
 import { startLivePollerJob } from './jobs/livePoller.job';
 import { startAutoScheduleJob } from './jobs/autoSchedule.job';
+import { startPreEventPrepJob } from './jobs/preEventPrep.job';
 async function main() {
   await db.connect();
   await redis.connect().catch((err: unknown) => {
@@ -19,6 +20,7 @@ async function main() {
   startFighterSyncJob();
   startLivePollerJob();
   startAutoScheduleJob();
+  startPreEventPrepJob();
 
   app.listen(env.PORT, () => {
     console.log(`API running on port ${env.PORT} (${env.NODE_ENV})`);
