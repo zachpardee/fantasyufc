@@ -10,7 +10,8 @@ import { startLivePollerJob } from './jobs/livePoller.job';
 import { startAutoScheduleJob } from './jobs/autoSchedule.job';
 import { startPreEventPrepJob } from './jobs/preEventPrep.job';
 async function main() {
-  await db.connect();
+  const dbClient = await db.connect();
+  dbClient.release();
   await redis.connect().catch((err: unknown) => {
     console.warn('[Cache] Redis connect failed, falling back to in-memory cache:', (err as Error).message);
   });
