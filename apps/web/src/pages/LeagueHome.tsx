@@ -586,6 +586,7 @@ export function LeagueHomePage() {
                 <span style={styles.matchupLabel}>{bannerLabel}</span>
                 {isLive && <span style={styles.livePip}>LIVE</span>}
               </div>
+              <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
               {(() => {
                 const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
                 const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
@@ -621,7 +622,6 @@ export function LeagueHomePage() {
                         <span style={{ color: '#333', fontSize: 11, fontWeight: 700 }}>VS</span>
                       ) : (
                         <>
-                          <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
                           {viewedMatchupIdx === null && currentEvent && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                               {(currentEvent.venue || currentEvent.location) && (
