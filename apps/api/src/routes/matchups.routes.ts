@@ -107,26 +107,7 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
     `, [req.params.leagueId, member.id]);
 
     if (!matchup) {
-      // Most recently completed matchup (show even if tied)
-      const { rows: [recent] } = await db.query(`
-        SELECT m.*,
-          e.name as event_name, e.scheduled_at, e.status as event_status,
-          ht.team_name as home_team_name, at2.team_name as away_team_name
-        FROM matchups m
-        JOIN ufc_events e ON e.id = m.event_id
-        JOIN league_members ht ON ht.id = m.home_team_id
-        JOIN league_members at2 ON at2.id = m.away_team_id
-        WHERE m.league_id = $1
-          AND (m.home_team_id = $2 OR m.away_team_id = $2)
-          AND e.status = 'completed'
-        ORDER BY e.scheduled_at DESC
-        LIMIT 1
-      `, [req.params.leagueId, member.id]);
-      matchup = recent ?? null;
-    }
-
-    if (!matchup) {
-      // Next scheduled matchup (no completed events yet)
+      // Next scheduled matchup (upcoming event — preferred over completed for pick-making)
       const { rows: [upcoming] } = await db.query(`
         SELECT m.*,
           e.name as event_name, e.scheduled_at, e.status as event_status,
@@ -142,6 +123,25 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
         LIMIT 1
       `, [req.params.leagueId, member.id]);
       matchup = upcoming ?? null;
+    }
+
+    if (!matchup) {
+      // Fall back to most recently completed matchup
+      const { rows: [recent] } = await db.query(`
+        SELECT m.*,
+          e.name as event_name, e.scheduled_at, e.status as event_status,
+          ht.team_name as home_team_name, at2.team_name as away_team_name
+        FROM matchups m
+        JOIN ufc_events e ON e.id = m.event_id
+        JOIN league_members ht ON ht.id = m.home_team_id
+        JOIN league_members at2 ON at2.id = m.away_team_id
+        WHERE m.league_id = $1
+          AND (m.home_team_id = $2 OR m.away_team_id = $2)
+          AND e.status = 'completed'
+        ORDER BY e.scheduled_at DESC
+        LIMIT 1
+      `, [req.params.leagueId, member.id]);
+      matchup = recent ?? null;
     }
 
     if (!matchup) { res.json(null); return; }
