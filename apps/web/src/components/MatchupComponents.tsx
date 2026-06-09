@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FighterPhoto } from './FighterPhoto';
-import { useIsMobile } from '../hooks/useIsMobile';
 import { apiClient } from '../api/client';
 
 export type PhotoClickHandler = (url: string, name: string, fighterId?: string) => void;
@@ -96,7 +95,6 @@ export function fmtChipScore(n: number): string {
 // ── Fight card ───────────────────────────────────────────────────────────────
 
 export function MatchupFightList({ fights, onPhotoClick, isEventLive }: { fights: any[]; onPhotoClick?: PhotoClickHandler; isEventLive?: boolean }) {
-  const isMobile = useIsMobile();
   if (fights.length === 0) return null;
   const nextFightId = isEventLive
     ? fights
@@ -104,7 +102,7 @@ export function MatchupFightList({ fights, onPhotoClick, isEventLive }: { fights
         .sort((a, b) => (a.boutOrder ?? 0) - (b.boutOrder ?? 0))[0]?.id
     : null;
   return (
-    <div style={{ flex: isMobile ? undefined : 1.2, width: isMobile ? '100%' : undefined, display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
       {fights.map((fight) => {
         const hasResult = !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
         const redWon = !!fight.resultWinnerId && fight.resultWinnerId === fight.redFighterId;
@@ -431,11 +429,10 @@ export function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamN
   isMeHome: boolean; isMeAway: boolean;
   isEventLive: boolean; leagueId?: string; onPhotoClick?: PhotoClickHandler;
 }) {
-  const isMobile = useIsMobile();
-  if (isMobile) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} isEventLive={isEventLive} />
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} isEventLive={isEventLive} />
+      <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
         <MatchupBetPanel
           teamName={homeTeamName}
           singles={homeStaking?.singles ?? []}
@@ -455,29 +452,6 @@ export function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamN
           isEventLive={isEventLive}
         />
       </div>
-    );
-  }
-  return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      <MatchupBetPanel
-        teamName={homeTeamName}
-        singles={homeStaking?.singles ?? []}
-        parlays={homeStaking?.parlays ?? []}
-        isLocked={!isMeHome && !isEventLive}
-        isOwn={isMeHome}
-        leagueId={leagueId}
-        isEventLive={isEventLive}
-      />
-      <MatchupFightList fights={fights} onPhotoClick={onPhotoClick} />
-      <MatchupBetPanel
-        teamName={awayTeamName}
-        singles={awayStaking?.singles ?? []}
-        parlays={awayStaking?.parlays ?? []}
-        isLocked={!isMeAway && !isEventLive}
-        isOwn={isMeAway}
-        leagueId={leagueId}
-        isEventLive={isEventLive}
-      />
     </div>
   );
 }
@@ -485,7 +459,7 @@ export function StakingBetsSection({ fights, homeStaking, awayStaking, homeTeamN
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 export const mb: Record<string, React.CSSProperties> = {
-  panel: { flex: 1, background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' },
+  panel: { flex: 1, minWidth: 0, background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' },
   header: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#141414', borderBottom: '1px solid #1a1a1a' },
   headerTitle: { color: '#666', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, flex: 1 },
   badge: { background: '#222', color: '#888', fontSize: 11, fontWeight: 700, borderRadius: 10, padding: '1px 7px', minWidth: 18, textAlign: 'center' },

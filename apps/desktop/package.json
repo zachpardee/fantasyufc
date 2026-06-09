@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/main.ts",
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
     "build": "tsc && electron-builder",
     "pack": "electron-builder --dir"
   },

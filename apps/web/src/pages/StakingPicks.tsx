@@ -30,6 +30,16 @@ export function StakingPicksPage() {
   const { session } = useAuthStore();
   const qc = useQueryClient();
 
+  const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  // 3 columns side by side above 960px; below that, fight card full-width on top,
+  // bet slip + saved bets side by side on the row beneath
+  const isWide = windowWidth >= 960;
+
   const [singles, setSingles] = useState<SingleBet[]>([]);
   const [parlayLegs, setParlayLegs] = useState<ParlayLegs>({});
   const [parlayStake, setParlayStake] = useState('');
@@ -400,9 +410,9 @@ export function StakingPicksPage() {
 
       {saveError && <div style={s.errorBanner}>{saveError}</div>}
 
-      <div style={s.body}>
+      <div style={{ ...s.body, flexWrap: 'wrap' }}>
         {/* ── Col 1: Fight cards ────────────────────────────── */}
-        <div style={s.col}>
+        <div style={{ ...s.col, flex: isWide ? 1 : '0 0 100%' }}>
           <div style={{ paddingTop: 24 }}>
           <div style={{ ...s.section, marginTop: 0 }}>
             <div style={s.sectionHeader}>
@@ -466,28 +476,28 @@ export function StakingPicksPage() {
           </div>
         </div>
 
-        {/* ── Col 2: Bet Slip ───────────────────────────────── */}
-        <div style={s.col}>
-          <div style={s.stickyCol}>
-            <BetSlip {...slipProps} />
+        {/* ── Cols 2+3: Bet Slip + Saved Bets — always side by side ── */}
+        <div style={{ flex: isWide ? 2 : '0 0 100%', display: 'flex', gap: 20, alignItems: 'flex-start', minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={s.stickyCol}>
+              <BetSlip {...slipProps} />
+            </div>
           </div>
-        </div>
-
-        {/* ── Col 3: Saved Bets ─────────────────────────────── */}
-        <div style={s.col}>
-          <div style={s.stickyCol}>
-            <SavedBetsPanel
-              betsData={betsData}
-              locked={locked}
-              onDeleteSingle={(id) => deleteSavedSingleMutation.mutate(id)}
-              onDeleteParlay={(id) => deleteSavedParlayMutation.mutate(id)}
-              onClearAll={async () => {
-                const pending = (betsData?.singles ?? []).filter((s: any) => s.status === 'pending');
-                const parlays = (betsData?.parlays ?? []).filter((p: any) => p.status === 'pending');
-                for (const s of pending) await deleteSavedSingleMutation.mutateAsync(s.id);
-                for (const p of parlays) await deleteSavedParlayMutation.mutateAsync(p.id);
-              }}
-            />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={s.stickyCol}>
+              <SavedBetsPanel
+                betsData={betsData}
+                locked={locked}
+                onDeleteSingle={(id) => deleteSavedSingleMutation.mutate(id)}
+                onDeleteParlay={(id) => deleteSavedParlayMutation.mutate(id)}
+                onClearAll={async () => {
+                  const pending = (betsData?.singles ?? []).filter((s: any) => s.status === 'pending');
+                  const parlays = (betsData?.parlays ?? []).filter((p: any) => p.status === 'pending');
+                  for (const s of pending) await deleteSavedSingleMutation.mutateAsync(s.id);
+                  for (const p of parlays) await deleteSavedParlayMutation.mutateAsync(p.id);
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
