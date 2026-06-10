@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fantasyufc.app"
+      "bundleIdentifier": "com.zachpardee.fantasyfightingleague"
     },
     "android": {
       "adaptiveIcon": {
