@@ -30,7 +30,9 @@ function fmtScore(n: number, isStaking: boolean): string {
 function MatchupCard({ matchup, isStaking }: { matchup: PlayoffMatchup; isStaking: boolean }) {
   const homeWon = !!matchup.winnerId ? matchup.winnerId === matchup.homeTeamId : +matchup.homeScore > +matchup.awayScore;
   const awayWon = !!matchup.winnerId ? matchup.winnerId === matchup.awayTeamId : +matchup.awayScore > +matchup.homeScore;
-  const scored = +matchup.homeScore > 0 || +matchup.awayScore > 0;
+  const scored = isStaking
+    ? matchup.eventStatus === 'live' || matchup.eventStatus === 'completed'
+    : +matchup.homeScore > 0 || +matchup.awayScore > 0;
 
   return (
     <div style={styles.matchupCard}>
