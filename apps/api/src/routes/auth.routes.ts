@@ -43,7 +43,7 @@ authRouter.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const body = z.object({
       displayName: z.string().max(100).optional(),
-      avatarUrl: z.string().url().optional(),
+      avatarUrl: z.union([z.string().url(), z.literal('')]).optional(),
       timezone: z.string().optional(),
       notificationPrefs: z.object({
         fightResults: z.boolean(),
