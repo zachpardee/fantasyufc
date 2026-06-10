@@ -16,7 +16,8 @@ export function UserBadge() {
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isLeaguePage = /^\/league\/[^/]+$/.test(location.pathname);
-  if (!session || isAuthPage || isLeaguePage || !profile) return null;
+  const isHomePage = location.pathname === '/';
+  if (!session || isAuthPage || isLeaguePage || isHomePage || !profile) return null;
 
   const email = session.user.email ?? '';
   const label = email.charAt(0).toUpperCase();
