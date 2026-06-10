@@ -4,9 +4,9 @@ import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 
-const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
-const MAX_URL_BYTES = 5 * 1024 * 1024;  // 5 MB — checked via HEAD request
-const OUTPUT_SIZE = 256;                 // resize to 256×256
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_URL_BYTES = 5 * 1024 * 1024;
+const OUTPUT_SIZE = 256;
 
 interface Props { onClose: () => void; currentUrl?: string }
 
@@ -18,8 +18,12 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
   const [tab, setTab] = useState<'upload' | 'url'>('upload');
   const [urlInput, setUrlInput] = useState('');
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  const hasPendingChange = pendingBlob !== null || pendingUrl !== null;
 
   const saveProfile = useMutation({
     mutationFn: (avatarUrl: string) => apiClient.patch('/auth/me', { avatarUrl }),
@@ -27,61 +31,64 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
     onError: (e: any) => setError(e?.error ?? 'Failed to save'),
   });
 
-  async function resizeAndUpload(file: File) {
+  async function prepareFile(file: File) {
     if (file.size > MAX_FILE_BYTES) { setError('File must be under 2 MB'); return; }
     if (!file.type.startsWith('image/')) { setError('Must be an image file'); return; }
-
     setError('');
-    setUploading(true);
     try {
-      // Resize to OUTPUT_SIZE × OUTPUT_SIZE via canvas
       const bitmap = await createImageBitmap(file);
       const canvas = document.createElement('canvas');
       canvas.width = OUTPUT_SIZE;
       canvas.height = OUTPUT_SIZE;
       const ctx = canvas.getContext('2d')!;
-      const scale = Math.min(OUTPUT_SIZE / bitmap.width, OUTPUT_SIZE / bitmap.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+      const scale = Math.max(OUTPUT_SIZE / bitmap.width, OUTPUT_SIZE / bitmap.height);
       const w = bitmap.width * scale;
       const h = bitmap.height * scale;
       ctx.drawImage(bitmap, (OUTPUT_SIZE - w) / 2, (OUTPUT_SIZE - h) / 2, w, h);
-
       const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/jpeg', 0.85));
-      const path = `${session!.user.id}.jpg`;
-
-      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, blob, {
-        upsert: true, contentType: 'image/jpeg',
-      });
-      if (uploadErr) throw new Error(uploadErr.message);
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      setPreview(publicUrl + '?t=' + Date.now());
-      await saveProfile.mutateAsync(publicUrl);
+      setPendingBlob(blob);
+      setPendingUrl(null);
+      setPreview(canvas.toDataURL('image/jpeg', 0.85));
     } catch (e: any) {
-      setError(e.message ?? 'Upload failed');
-    } finally {
-      setUploading(false);
+      setError(e.message ?? 'Failed to process image');
     }
   }
 
-  async function saveUrl() {
+  function previewUrl() {
     setError('');
     const url = urlInput.trim();
     if (!url.startsWith('https://')) { setError('URL must start with https://'); return; }
+    setPendingUrl(url);
+    setPendingBlob(null);
+    setPreview(url);
+  }
 
+  async function saveChanges() {
+    setError('');
     setUploading(true);
     try {
-      // HEAD request to check size
-      const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(8000) }).catch(() => null);
-      if (head) {
-        const len = parseInt(head.headers.get('content-length') ?? '0', 10);
-        if (len > MAX_URL_BYTES) { setError('Image must be under 5 MB'); setUploading(false); return; }
-        const ct = head.headers.get('content-type') ?? '';
-        if (ct && !ct.startsWith('image/')) { setError('URL must point to an image'); setUploading(false); return; }
+      if (pendingBlob) {
+        const path = `${session!.user.id}.jpg`;
+        const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, pendingBlob, {
+          upsert: true, contentType: 'image/jpeg',
+        });
+        if (uploadErr) throw new Error(uploadErr.message);
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+        await saveProfile.mutateAsync(publicUrl);
+      } else if (pendingUrl) {
+        const head = await fetch(pendingUrl, { method: 'HEAD', signal: AbortSignal.timeout(8000) }).catch(() => null);
+        if (head) {
+          const len = parseInt(head.headers.get('content-length') ?? '0', 10);
+          if (len > MAX_URL_BYTES) { setError('Image must be under 5 MB'); setUploading(false); return; }
+          const ct = head.headers.get('content-type') ?? '';
+          if (ct && !ct.startsWith('image/')) { setError('URL must point to an image'); setUploading(false); return; }
+        }
+        await saveProfile.mutateAsync(pendingUrl);
       }
-      setPreview(url);
-      await saveProfile.mutateAsync(url);
     } catch (e: any) {
-      setError(e.message ?? 'Failed to save URL');
+      setError(e.message ?? 'Save failed');
     } finally {
       setUploading(false);
     }
@@ -110,25 +117,30 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
         </div>
 
         {/* Preview */}
-        <div style={s.previewWrap}>
-          {preview
-            ? <img src={preview} alt="avatar" style={s.previewImg} onError={() => setPreview(null)} />
-            : <div style={s.previewPlaceholder}>?</div>
-          }
+        <div style={s.previewSection}>
+          <div style={s.previewWrap}>
+            {preview
+              ? <img src={preview} alt="avatar" style={s.previewImg} onError={() => setPreview(null)} />
+              : <div style={s.previewPlaceholder}>?</div>
+            }
+          </div>
+          <span style={s.previewLabel}>
+            {hasPendingChange ? 'Preview — click Save to confirm' : currentUrl ? 'Current avatar' : 'No avatar set'}
+          </span>
         </div>
 
         {/* Tabs */}
         <div style={s.tabs}>
-          <button style={{ ...s.tab, ...(tab === 'upload' ? s.tabActive : {}) }} onClick={() => setTab('upload')}>Upload File</button>
-          <button style={{ ...s.tab, ...(tab === 'url' ? s.tabActive : {}) }} onClick={() => setTab('url')}>Image URL</button>
+          <button style={{ ...s.tab, ...(tab === 'upload' ? s.tabActive : {}) }} onClick={() => { setTab('upload'); setPendingBlob(null); setPendingUrl(null); setPreview(currentUrl ?? null); setError(''); }}>Upload File</button>
+          <button style={{ ...s.tab, ...(tab === 'url' ? s.tabActive : {}) }} onClick={() => { setTab('url'); setPendingBlob(null); setPendingUrl(null); setPreview(currentUrl ?? null); setError(''); }}>Image URL</button>
         </div>
 
         {tab === 'upload' && (
           <div style={s.body}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) resizeAndUpload(f); }} />
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) prepareFile(f); }} />
             <button style={s.pickBtn} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? 'Uploading…' : 'Choose Image'}
+              Choose Image
             </button>
             <div style={s.hint}>JPG, PNG, GIF, WebP · max 2 MB · resized to 256×256</div>
           </div>
@@ -141,18 +153,24 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
               placeholder="https://example.com/avatar.jpg"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && saveUrl()}
+              onKeyDown={(e) => e.key === 'Enter' && previewUrl()}
             />
             <div style={s.hint}>Must be https:// · max 5 MB · must be a direct image link</div>
-            <button style={s.saveBtn} onClick={saveUrl} disabled={uploading || !urlInput.trim()}>
-              {uploading ? 'Saving…' : 'Save URL'}
+            <button style={s.previewBtn} onClick={previewUrl} disabled={!urlInput.trim()}>
+              Preview
             </button>
           </div>
         )}
 
         {error && <div style={s.error}>{error}</div>}
 
-        {currentUrl && (
+        {hasPendingChange && (
+          <button style={s.saveBtn} onClick={saveChanges} disabled={uploading}>
+            {uploading ? 'Saving…' : 'Save Avatar'}
+          </button>
+        )}
+
+        {currentUrl && !hasPendingChange && (
           <button style={s.removeBtn} onClick={removeAvatar} disabled={uploading}>Remove avatar</button>
         )}
       </div>
@@ -166,15 +184,18 @@ const s: Record<string, React.CSSProperties> = {
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   title: { color: '#fff', fontSize: 16, fontWeight: 700 },
   closeBtn: { background: 'none', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer', padding: 0 },
+  previewSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
   previewWrap: { display: 'flex', justifyContent: 'center' },
-  previewImg: { width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid #333' },
-  previewPlaceholder: { width: 80, height: 80, borderRadius: '50%', background: '#222', border: '2px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 32 },
+  previewImg: { width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '3px solid #333' },
+  previewPlaceholder: { width: 96, height: 96, borderRadius: '50%', background: '#222', border: '3px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 36 },
+  previewLabel: { color: '#555', fontSize: 11, textAlign: 'center' },
   tabs: { display: 'flex', gap: 4, background: '#111', borderRadius: 8, padding: 4 },
   tab: { flex: 1, background: 'none', border: 'none', color: '#666', fontSize: 13, fontWeight: 600, padding: '7px 0', borderRadius: 6, cursor: 'pointer' },
   tabActive: { background: '#222', color: '#fff' },
   body: { display: 'flex', flexDirection: 'column', gap: 10 },
-  pickBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
-  saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  pickBtn: { background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  previewBtn: { background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  saveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
   hint: { color: '#444', fontSize: 11, textAlign: 'center' },
   urlInput: { background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: 13, padding: '10px 12px', outline: 'none' },
   error: { color: '#ff5252', fontSize: 12, textAlign: 'center' },

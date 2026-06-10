@@ -53,6 +53,13 @@ export function LeagueHomePage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
+  const { data: myProfile } = useQuery<{ username: string; displayName?: string; avatarUrl?: string; avatarColor?: string }>({
+    queryKey: ['my-profile'],
+    queryFn: () => apiClient.get('/auth/me'),
+    enabled: !!session,
+    staleTime: 5 * 60_000,
+  });
+
   const { data: members = [] } = useQuery<(LeagueMember & { username: string; displayName?: string })[]>({
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
@@ -1241,7 +1248,7 @@ export function LeagueHomePage() {
 
       {/* Avatar modal */}
       {showAvatarModal && (
-        <AvatarModal onClose={() => setShowAvatarModal(false)} currentUrl={undefined} />
+        <AvatarModal onClose={() => setShowAvatarModal(false)} currentUrl={myProfile?.avatarUrl} />
       )}
 
       {/* Member profile sheet */}
