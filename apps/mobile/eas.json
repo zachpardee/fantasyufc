@@ -18,8 +18,8 @@
     "production": {
       "ios": {
         "appleId": "zachpardee@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "ascAppId": "6778824950",
+        "appleTeamId": "RBZ34FV487"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
