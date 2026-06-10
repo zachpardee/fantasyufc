@@ -18,6 +18,14 @@ export function DashboardPage() {
   const [teamName, setTeamName] = useState('');
   const [joinError, setJoinError] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  const [createForm, setCreateForm] = useState({
+    name: '', teamName: '', maxTeams: '10', seasonLengthMonths: '6',
+    leagueFormat: '' as 'pickem' | 'staking' | '', weeklyBudget: '100' as '50' | '100' | '500',
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [showFightCard, setShowFightCard] = useState(false);
   const [showFighters, setShowFighters] = useState(false);
   const [fighterSearch, setFighterSearch] = useState('');
@@ -55,6 +63,33 @@ export function DashboardPage() {
     enabled: showFightCard && !!nextEvent?.id,
     staleTime: 60_000,
   });
+
+  function openCreate() {
+    setCreateForm({ name: '', teamName: '', maxTeams: '10', seasonLengthMonths: '6', leagueFormat: '', weeklyBudget: '100' });
+    setCreateStep(1);
+    setCreateError('');
+    setShowCreate(true);
+  }
+
+  async function submitCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateError('');
+    try {
+      const league = await apiClient.post<any, any>('/leagues', {
+        name: createForm.name,
+        teamName: createForm.teamName || 'My Team',
+        maxTeams: parseInt(createForm.maxTeams),
+        seasonLengthMonths: parseInt(createForm.seasonLengthMonths) as 4 | 6,
+        leagueFormat: createForm.leagueFormat,
+        ...(createForm.leagueFormat === 'staking' ? { weeklyBudget: parseInt(createForm.weeklyBudget) } : {}),
+      });
+      navigate(`/league/${league.id}`);
+    } catch (err: any) {
+      setCreateError(err.error ?? err.message ?? 'Failed to create league');
+      setCreateLoading(false);
+    }
+  }
 
   async function joinLeague(e: React.FormEvent) {
     e.preventDefault();
@@ -111,19 +146,28 @@ export function DashboardPage() {
         ) : null}
 
         <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>My Leagues</h2>
-            <div style={styles.actions}>
-              <button style={styles.btn} onClick={() => setShowJoin(true)}>Join League</button>
-              <button style={styles.btnPrimary} onClick={() => navigate('/league/create')}>+ Create</button>
-            </div>
+          <div style={styles.leagueActions}>
+            <button style={{ ...styles.leagueActionBtn, ...styles.leagueActionBtnSecondary }} onClick={() => setShowJoin(true)}>
+              <span style={styles.leagueActionIcon}>+</span>
+              <span style={styles.leagueActionLabel}>Join League</span>
+              <span style={styles.leagueActionSub}>Enter an invite code</span>
+            </button>
+            <button style={{ ...styles.leagueActionBtn, ...styles.leagueActionBtnPrimary }} onClick={openCreate}>
+              <span style={styles.leagueActionIcon}>⚡</span>
+              <span style={styles.leagueActionLabel}>Create League</span>
+              <span style={styles.leagueActionSub}>Start a new league</span>
+            </button>
           </div>
 
-
+          <h2 style={styles.sectionTitle}>My Leagues</h2>
           <div style={{ ...styles.leagueGrid, ...(isMobile ? styles.leagueGridMobile : {}) }}>
             {leaguesLoading
               ? [0, 1, 2].map((i) => <SkeletonLeagueCard key={i} />)
-              : leagues.map((league) => (
+              : leagues.length === 0 ? (
+                <div style={styles.emptyLeagues}>
+                  No leagues yet — join or create one above
+                </div>
+              ) : leagues.map((league) => (
                 <Link key={league.id} to={`/league/${league.id}`} style={styles.leagueCard}>
                   <h3 style={styles.leagueName}>{league.name}</h3>
                   <p style={styles.leagueMeta}>{league.memberCount} teams</p>
@@ -294,6 +338,86 @@ export function DashboardPage() {
         </div>
       )}
 
+      {showCreate && (
+        <div style={styles.joinOverlay} onClick={() => setShowCreate(false)}>
+          <div style={styles.joinCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.joinHeader}>
+              <div>
+                {createStep === 2 && (
+                  <button style={{ background: 'none', border: 'none', color: '#666', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 4 }} onClick={() => setCreateStep(1)}>
+                    ← Back
+                  </button>
+                )}
+                <h2 style={styles.joinTitle}>{createStep === 1 ? 'Choose Format' : 'League Settings'}</h2>
+              </div>
+              <button style={styles.joinClose} onClick={() => setShowCreate(false)}>✕</button>
+            </div>
+
+            {createStep === 1 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ color: '#666', fontSize: 13, margin: '0 0 4px' }}>How do you want to play?</p>
+                {([
+                  { fmt: 'pickem', title: "Pick'em", icon: '🎯', desc: 'Pick fight winners & methods each week. Earn points for correct predictions. Compete head-to-head.' },
+                  { fmt: 'staking', title: 'Staking', icon: '💰', desc: 'Bet a weekly budget on fights. Odds-based payouts. Most profit at the end of the season wins.' },
+                ] as const).map(({ fmt, title, icon, desc }) => (
+                  <button
+                    key={fmt}
+                    style={styles.formatPickBtn}
+                    onClick={() => { setCreateForm((f) => ({ ...f, leagueFormat: fmt })); setCreateStep(2); }}
+                  >
+                    <span style={{ fontSize: 28, marginBottom: 6, display: 'block' }}>{icon}</span>
+                    <span style={{ color: '#fff', fontSize: 16, fontWeight: 700, display: 'block', marginBottom: 4 }}>{title}</span>
+                    <span style={{ color: '#666', fontSize: 13, lineHeight: 1.5, display: 'block' }}>{desc}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <form onSubmit={submitCreate} style={styles.joinForm}>
+                <div style={styles.joinField}>
+                  <label style={styles.joinLabel}>League Name</label>
+                  <input style={styles.joinInput} placeholder="My Fantasy League" value={createForm.name}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} required maxLength={100} autoFocus />
+                </div>
+                <div style={styles.joinField}>
+                  <label style={styles.joinLabel}>Your Team Name</label>
+                  <input style={styles.joinInput} placeholder="My Team" value={createForm.teamName}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, teamName: e.target.value }))} maxLength={100} />
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ ...styles.joinField, flex: 1 }}>
+                    <label style={styles.joinLabel}>Max Teams</label>
+                    <select style={styles.joinInput} value={createForm.maxTeams} onChange={(e) => setCreateForm((f) => ({ ...f, maxTeams: e.target.value }))}>
+                      {[4,6,8,10,12].map((n) => <option key={n} value={n}>{n} teams</option>)}
+                    </select>
+                  </div>
+                  <div style={{ ...styles.joinField, flex: 1 }}>
+                    <label style={styles.joinLabel}>Season Length</label>
+                    <select style={styles.joinInput} value={createForm.seasonLengthMonths} onChange={(e) => setCreateForm((f) => ({ ...f, seasonLengthMonths: e.target.value }))}>
+                      <option value="4">4 months</option>
+                      <option value="6">6 months</option>
+                    </select>
+                  </div>
+                </div>
+                {createForm.leagueFormat === 'staking' && (
+                  <div style={styles.joinField}>
+                    <label style={styles.joinLabel}>Weekly Budget</label>
+                    <select style={styles.joinInput} value={createForm.weeklyBudget} onChange={(e) => setCreateForm((f) => ({ ...f, weeklyBudget: e.target.value as '50' | '100' | '500' }))}>
+                      <option value="50">$50 / week</option>
+                      <option value="100">$100 / week</option>
+                      <option value="500">$500 / week</option>
+                    </select>
+                  </div>
+                )}
+                {createError && <p style={styles.joinError}>{createError}</p>}
+                <button type="submit" style={{ ...styles.joinBtn, ...(createLoading ? styles.joinBtnDisabled : {}) }} disabled={createLoading}>
+                  {createLoading ? 'Creating...' : 'Create League'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {zoomedFighter && (
         <div style={styles.modalBackdrop} onClick={() => setZoomedFighter(null)}>
           <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
@@ -337,11 +461,16 @@ const styles: Record<string, React.CSSProperties> = {
   eventDate: { color: '#888', fontSize: 14 },
   eventLocation: { color: '#666', fontSize: 13, marginTop: 2 },
   section: {},
-  sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 700 },
-  actions: { display: 'flex', gap: 10 },
-  btn: { background: '#2a2a2a', color: '#ccc', border: '1px solid #444', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontSize: 14 },
-  btnPrimary: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontSize: 14, fontWeight: 700 },
+  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 14 },
+  leagueActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 },
+  leagueActionsMobile: { gridTemplateColumns: '1fr' },
+  leagueActionBtn: { background: '#141414', border: '1px solid #2a2a2a', borderRadius: 12, padding: '16px 20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left', transition: 'border-color 0.15s' },
+  leagueActionBtnPrimary: { background: '#1a0508', border: '1px solid #c8102e' },
+  leagueActionBtnSecondary: { background: '#0d0d1f', border: '1px solid #5555ff' },
+  leagueActionIcon: { fontSize: 22, marginBottom: 4, display: 'block' },
+  leagueActionLabel: { color: '#fff', fontSize: 16, fontWeight: 700, display: 'block' },
+  leagueActionSub: { color: '#666', fontSize: 13, display: 'block' },
+  emptyLeagues: { color: '#444', fontSize: 14, padding: '32px 0', textAlign: 'center' as const },
   input: { background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, padding: '8px 14px', color: '#fff', fontSize: 14, outline: 'none', flex: 1, minWidth: 140 },
   joinOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 },
   joinCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 36, width: '100%', maxWidth: 480, boxShadow: '0 4px 24px rgba(0,0,0,0.6)' },
@@ -355,6 +484,7 @@ const styles: Record<string, React.CSSProperties> = {
   joinError: { color: '#ff6b6b', fontSize: 14, margin: 0 },
   joinBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: 14, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
   joinBtnDisabled: { opacity: 0.6, cursor: 'not-allowed' },
+  formatPickBtn: { background: '#1e1e1e', border: '1px solid #2a2a2a', borderRadius: 12, padding: '18px 20px', cursor: 'pointer', textAlign: 'left' as const, width: '100%' },
   leagueGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 },
   leagueGridMobile: { gridTemplateColumns: '1fr' },
   leagueCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 20, textDecoration: 'none', display: 'block', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
