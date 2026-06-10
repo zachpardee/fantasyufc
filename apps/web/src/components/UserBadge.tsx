@@ -15,9 +15,9 @@ export function UserBadge() {
   });
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  const isLeaguePage = /^\/league\/[^/]+$/.test(location.pathname);
-  const isHomePage = location.pathname === '/';
-  if (!session || isAuthPage || isLeaguePage || isHomePage || !profile) return null;
+  const isLeaguePage = /^\/league\/[^/]+$/.test(location.pathname); // league home has its own pill
+  const isDashboard = location.pathname === '/';                     // dashboard has its own email+logout
+  if (!session || isAuthPage || isLeaguePage || isDashboard || !profile) return null;
 
   const email = session.user.email ?? '';
   const label = email.charAt(0).toUpperCase();
@@ -40,18 +40,18 @@ export function UserBadge() {
 const styles: Record<string, React.CSSProperties> = {
   wrap: {
     position: 'fixed',
-    top: 16,
-    right: 20,
+    top: 0,
+    right: 0,
+    height: 52,
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     background: '#111',
-    border: '1px solid #222',
-    borderRadius: 24,
-    padding: '5px 12px 5px 5px',
-    zIndex: 1000,
+    borderBottom: '1px solid #222',
+    borderLeft: '1px solid #1e1e1e',
+    padding: '0 16px 0 12px',
+    zIndex: 500,
     pointerEvents: 'none',
-    maxWidth: 240,
   },
   avatar: {
     width: 28,
@@ -69,15 +69,16 @@ const styles: Record<string, React.CSSProperties> = {
     width: 28,
     height: 28,
     borderRadius: '50%',
-    objectFit: 'cover',
+    objectFit: 'cover' as const,
     flexShrink: 0,
   },
   email: {
     color: '#888',
     fontSize: 12,
     fontWeight: 600,
-    whiteSpace: 'nowrap',
+    whiteSpace: 'nowrap' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    maxWidth: 200,
   },
 };
