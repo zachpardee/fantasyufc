@@ -10,6 +10,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
+import { AvatarModal } from '../components/AvatarModal';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -25,6 +26,7 @@ export function LeagueHomePage() {
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [settingsTeamName, setSettingsTeamName] = useState('');
   const [settingsColor, setSettingsColor] = useState('#5555ff');
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -1028,6 +1030,13 @@ export function LeagueHomePage() {
               </div>
 
               <div style={styles.settingsSection}>
+                <label style={styles.settingsLabel}>Profile Picture</label>
+                <button style={styles.avatarUploadBtn} onClick={() => setShowAvatarModal(true)}>
+                  Change Avatar Photo
+                </button>
+              </div>
+
+              <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Avatar Color</label>
                 <div style={styles.colorSwatches}>
                   {['#5555ff','#c8102e','#4caf50','#ff8c42','#ffd700','#00bcd4','#e040fb','#ffffff'].map((c) => (
@@ -1081,6 +1090,11 @@ export function LeagueHomePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Avatar modal */}
+      {showAvatarModal && (
+        <AvatarModal onClose={() => setShowAvatarModal(false)} currentUrl={undefined} />
       )}
 
       {/* Member profile sheet */}
@@ -1233,6 +1247,7 @@ const styles: Record<string, React.CSSProperties> = {
   settingsInput: { background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: 15, fontWeight: 600, padding: '10px 14px', outline: 'none' },
   colorSwatches: { display: 'flex', gap: 10, flexWrap: 'wrap' as const },
   colorSwatch: { width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0 },
+  avatarUploadBtn: { background: '#222', border: '1px solid #333', borderRadius: 8, color: '#ccc', fontSize: 13, padding: '10px 12px', cursor: 'pointer', textAlign: 'left' as const, width: '100%' },
   saveSettingsBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   settingsDivider: { height: 1, background: '#2a2a2a' },
   leaveBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 8, color: '#ff5252', fontSize: 14, padding: '11px', cursor: 'pointer', fontWeight: 600 },
