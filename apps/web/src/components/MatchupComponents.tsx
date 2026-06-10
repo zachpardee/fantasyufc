@@ -342,7 +342,7 @@ export function MatchupPickPanel({ teamName, fights, champion, isLocked, isOwn, 
   return (
     <div style={mb.panel}>
       <div style={mb.header}>
-        <span style={mb.headerTitle}>{teamName} Betslip</span>
+        <span style={mb.headerTitle}>{teamName} Picks</span>
         {pickedCount > 0 && <span style={mb.badge}>{pickedCount}</span>}
         {isOwn && leagueId && !locked && (
           <Link to={`/league/${leagueId}/picks`} style={mb.editLink}>Edit Picks</Link>

@@ -838,24 +838,28 @@ export function LeagueHomePage() {
                 onPhotoClick={openPhoto}
               />
             ) : (
-              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
-                {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />}
-                <MatchupPickPanel
-                  teamName={isMeHome ? effectiveMatchup.homeTeamName : isMeAway ? effectiveMatchup.awayTeamName : effectiveMatchup.homeTeamName}
-                  fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
-                  champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
-                  isLocked={!(isMeHome || isMeAway) && !eventIsLive}
-                  isOwn={isMeHome || isMeAway}
-                  leagueId={leagueId}
-                  locked={homePicks?.locked}
-                />
-                {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />}
-                <MatchupPickPanel
-                  teamName={isMeHome ? effectiveMatchup.awayTeamName : isMeAway ? effectiveMatchup.homeTeamName : effectiveMatchup.awayTeamName}
-                  fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
-                  champion={isMeHome ? awayChampion : isMeAway ? homeChampion : awayChampion}
-                  isLocked={!eventIsLive}
-                />
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />
+                <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+                  <MatchupPickPanel
+                    teamName={effectiveMatchup.homeTeamName}
+                    fights={homePicks?.fights ?? []}
+                    champion={homeChampion}
+                    isLocked={!isMeHome && !eventIsLive}
+                    isOwn={isMeHome}
+                    leagueId={leagueId}
+                    locked={homePicks?.locked}
+                  />
+                  <MatchupPickPanel
+                    teamName={effectiveMatchup.awayTeamName}
+                    fights={awayPicks?.fights ?? []}
+                    champion={awayChampion}
+                    isLocked={!isMeAway && !eventIsLive}
+                    isOwn={isMeAway}
+                    leagueId={leagueId}
+                    locked={awayPicks?.locked}
+                  />
+                </div>
               </div>
             )}
           </div>
