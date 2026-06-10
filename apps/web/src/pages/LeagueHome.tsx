@@ -27,7 +27,6 @@ export function LeagueHomePage() {
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [settingsTeamName, setSettingsTeamName] = useState('');
   const [settingsColor, setSettingsColor] = useState('#5555ff');
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -1106,9 +1105,7 @@ export function LeagueHomePage() {
 
               <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Profile Picture</label>
-                <button style={styles.avatarUploadBtn} onClick={() => setShowAvatarModal(true)}>
-                  Edit Avatar Photo
-                </button>
+                <AvatarModal inline currentUrl={myProfile?.avatarUrl} onClose={() => {}} />
               </div>
 
               <div style={styles.settingsSection}>
@@ -1247,10 +1244,6 @@ export function LeagueHomePage() {
       )}
 
       {/* Avatar modal */}
-      {showAvatarModal && (
-        <AvatarModal onClose={() => setShowAvatarModal(false)} currentUrl={myProfile?.avatarUrl} />
-      )}
-
       {/* Member profile sheet */}
       {selectedMember && (
         <MemberSheet

@@ -11,9 +11,9 @@ const PREVIEW_SIZE = 200;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
-interface Props { onClose: () => void; currentUrl?: string }
+interface Props { onClose: () => void; currentUrl?: string; inline?: boolean; onSaved?: () => void }
 
-export function AvatarModal({ onClose, currentUrl }: Props) {
+export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
   const { session } = useAuthStore();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,7 +76,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
 
   const saveProfile = useMutation({
     mutationFn: (avatarUrl: string) => apiClient.patch('/auth/me', { avatarUrl }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['my-profile'] }); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['my-profile'] }); onSaved ? onSaved() : onClose(); },
     onError: (e: any) => setError(e?.error ?? 'Failed to save'),
   });
 
@@ -188,7 +188,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
       await supabase.storage.from('avatars').remove([`${session!.user.id}.jpg`]).catch(() => {});
       await apiClient.patch('/auth/me', { avatarUrl: '' });
       qc.invalidateQueries({ queryKey: ['my-profile'] });
-      onClose();
+      onSaved ? onSaved() : onClose();
     } catch (e: any) {
       setError(e.message ?? 'Failed to remove avatar');
     } finally {
@@ -204,13 +204,14 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
     setError('');
   }
 
-  return (
-    <div style={s.backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={s.modal}>
+  const content = (
+    <div style={inline ? s.inlineWrap : s.modal}>
+      {!inline && (
         <div style={s.header}>
           <span style={s.title}>Change Avatar</span>
           <button style={s.closeBtn} onClick={onClose}>✕</button>
         </div>
+      )}
 
         {/* Crop / Preview */}
         <div style={s.previewSection}>
@@ -315,6 +316,12 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
           <button style={s.removeBtn} onClick={removeAvatar} disabled={uploading}>Remove avatar</button>
         )}
       </div>
+  );
+
+  if (inline) return content;
+  return (
+    <div style={s.backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      {content}
     </div>
   );
 }
@@ -322,6 +329,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
 const s: Record<string, React.CSSProperties> = {
   backdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modal: { background: '#161616', border: '1px solid #2a2a2a', borderRadius: 12, width: 340, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 },
+  inlineWrap: { display: 'flex', flexDirection: 'column', gap: 12 },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   title: { color: '#fff', fontSize: 16, fontWeight: 700 },
   closeBtn: { background: 'none', border: 'none', color: '#666', fontSize: 18, cursor: 'pointer', padding: 0 },
