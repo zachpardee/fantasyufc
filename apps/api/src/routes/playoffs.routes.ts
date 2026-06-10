@@ -8,35 +8,33 @@ export const playoffsRouter = Router({ mergeParams: true });
 
 async function getBracket(leagueId: string) {
   const { rows: [leagueRow] } = await db.query(
-    `SELECT league_format FROM leagues WHERE id = $1`, [leagueId],
+    `SELECT league_format, weekly_budget FROM leagues WHERE id = $1`, [leagueId],
   );
   const isStaking = leagueRow?.league_format === 'staking';
+  const weeklyBudget = +(leagueRow?.weekly_budget ?? 100);
 
-  const { rows: semis } = await db.query(`
+  const matchupSelect = `
     SELECT m.id, m.home_team_id, m.away_team_id, m.home_score, m.away_score,
            m.home_seed, m.away_seed, m.winner_id, m.playoff_round,
            ht.team_name AS home_team_name, at2.team_name AS away_team_name,
+           ht.wins AS home_wins, ht.losses AS home_losses,
+           at2.wins AS away_wins, at2.losses AS away_losses,
            e.name AS event_name, e.status AS event_status, e.scheduled_at
     FROM matchups m
     JOIN league_members ht ON ht.id = m.home_team_id
     JOIN league_members at2 ON at2.id = m.away_team_id
     JOIN ufc_events e ON e.id = m.event_id
-    WHERE m.league_id = $1 AND m.playoff_round = 'semis'
-    ORDER BY m.home_seed ASC
-  `, [leagueId]);
+  `;
 
-  const { rows: finals } = await db.query(`
-    SELECT m.id, m.home_team_id, m.away_team_id, m.home_score, m.away_score,
-           m.home_seed, m.away_seed, m.winner_id, m.playoff_round,
-           ht.team_name AS home_team_name, at2.team_name AS away_team_name,
-           e.name AS event_name, e.status AS event_status, e.scheduled_at
-    FROM matchups m
-    JOIN league_members ht ON ht.id = m.home_team_id
-    JOIN league_members at2 ON at2.id = m.away_team_id
-    JOIN ufc_events e ON e.id = m.event_id
-    WHERE m.league_id = $1 AND m.playoff_round = 'finals'
-    LIMIT 1
-  `, [leagueId]);
+  const { rows: semis } = await db.query(
+    `${matchupSelect} WHERE m.league_id = $1 AND m.playoff_round = 'semis' ORDER BY m.home_seed ASC`,
+    [leagueId],
+  );
+
+  const { rows: finals } = await db.query(
+    `${matchupSelect} WHERE m.league_id = $1 AND m.playoff_round = 'finals' LIMIT 1`,
+    [leagueId],
+  );
 
   const sortCol = isStaking ? 'lm.staking_balance' : 'lm.total_points';
   const { rows: seeds } = await db.query(`
@@ -52,7 +50,7 @@ async function getBracket(leagueId: string) {
   if (finals.length > 0) phase = 'finals';
   if (finals.length > 0 && finals[0].winner_id) phase = 'complete';
 
-  return { phase, seeds, semisMatchups: semis, finalsMatchup: finals[0] ?? null, isStaking };
+  return { phase, seeds, semisMatchups: semis, finalsMatchup: finals[0] ?? null, isStaking, weeklyBudget };
 }
 
 playoffsRouter.get('/bracket', requireAuth, async (req: AuthRequest, res, next) => {

@@ -9,7 +9,9 @@ type Seed = { id: string; teamName: string; wins: number; losses: number; totalP
 type PlayoffMatchup = {
   id: string;
   homeTeamId: string; homeTeamName: string; homeSeed: number; homeScore: number;
+  homeWins: number; homeLosses: number;
   awayTeamId: string; awayTeamName: string; awaySeed: number; awayScore: number;
+  awayWins: number; awayLosses: number;
   winnerId: string | null; eventName: string; eventStatus: string;
 };
 type Bracket = {
@@ -18,40 +20,86 @@ type Bracket = {
   semisMatchups: PlayoffMatchup[];
   finalsMatchup: PlayoffMatchup | null;
   isStaking: boolean;
+  weeklyBudget: number;
 };
 
-function fmtScore(n: number, isStaking: boolean): string {
-  if (!isStaking) return n.toFixed(0);
+function fmtPts(n: number) { return n.toFixed(0); }
+
+function fmtBalance(n: number, weeklyBudget: number): { display: string; pnl: string; pnlPositive: boolean } {
+  const profit = n - weeklyBudget;
   const abs = Math.abs(n);
-  const s = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
-  return n < 0 ? `(${s})` : s;
+  const display = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  const absProfit = Math.abs(profit);
+  const pnlStr = '$' + (absProfit % 1 < 0.005 ? absProfit.toFixed(0) : absProfit.toFixed(2));
+  return { display, pnl: (profit >= 0 ? '+' : '−') + pnlStr, pnlPositive: profit >= 0 };
 }
 
-function MatchupCard({ matchup, isStaking }: { matchup: PlayoffMatchup; isStaking: boolean }) {
+function MatchupCard({ matchup, isStaking, weeklyBudget }: { matchup: PlayoffMatchup; isStaking: boolean; weeklyBudget: number }) {
   const homeWon = !!matchup.winnerId ? matchup.winnerId === matchup.homeTeamId : +matchup.homeScore > +matchup.awayScore;
   const awayWon = !!matchup.winnerId ? matchup.winnerId === matchup.awayTeamId : +matchup.awayScore > +matchup.homeScore;
   const scored = isStaking
     ? matchup.eventStatus === 'live' || matchup.eventStatus === 'completed'
     : +matchup.homeScore > 0 || +matchup.awayScore > 0;
 
+  const homeStaking = isStaking && scored ? fmtBalance(+matchup.homeScore, weeklyBudget) : null;
+  const awayStaking = isStaking && scored ? fmtBalance(+matchup.awayScore, weeklyBudget) : null;
+
   return (
     <div style={styles.matchupCard}>
-      <div style={styles.matchupEvent}>{matchup.eventName}</div>
+      <div style={styles.matchupEventRow}>
+        <span style={styles.matchupEvent}>{matchup.eventName}</span>
+        {matchup.eventStatus === 'live' && <span style={styles.liveChip}>LIVE</span>}
+        {isStaking && <span style={styles.stakingHint}>Higher balance wins</span>}
+      </div>
       <div style={styles.matchupRow}>
+        {/* Home team */}
         <div style={{ ...styles.teamSide, ...(homeWon && scored ? styles.winnerSide : {}) }}>
-          <span style={styles.seedBadge}>#{matchup.homeSeed}</span>
-          <span style={styles.teamName}>{matchup.homeTeamName}</span>
-          <span style={{ ...styles.score, ...(homeWon && scored ? styles.winnerScore : {}) }}>
-            {scored ? fmtScore(+matchup.homeScore, isStaking) : '–'}
+          <div style={styles.teamTopRow}>
+            <span style={styles.seedBadge}>#{matchup.homeSeed}</span>
+            {homeWon && scored && <span style={styles.winnerCrown}>👑</span>}
+          </div>
+          <span style={{ ...styles.teamName, ...(homeWon && scored ? styles.winnerName : {}) }}>
+            {matchup.homeTeamName}
           </span>
+          <span style={styles.teamRecord}>{matchup.homeWins}–{matchup.homeLosses}</span>
+          {scored ? (
+            isStaking ? (
+              <div style={styles.stakingScoreCol}>
+                <span style={{ ...styles.score, ...(homeWon ? styles.winnerScore : {}) }}>{homeStaking!.display}</span>
+                <span style={{ ...styles.pnlBadge, color: homeStaking!.pnlPositive ? '#4caf50' : '#ff5252' }}>{homeStaking!.pnl}</span>
+              </div>
+            ) : (
+              <span style={{ ...styles.score, ...(homeWon ? styles.winnerScore : {}) }}>{fmtPts(+matchup.homeScore)} pts</span>
+            )
+          ) : (
+            <span style={styles.scoreDash}>—</span>
+          )}
         </div>
-        <span style={styles.vs}>vs</span>
+
+        <span style={styles.vs}>VS</span>
+
+        {/* Away team */}
         <div style={{ ...styles.teamSide, alignItems: 'flex-end', ...(awayWon && scored ? styles.winnerSide : {}) }}>
-          <span style={styles.seedBadge}>#{matchup.awaySeed}</span>
-          <span style={styles.teamName}>{matchup.awayTeamName}</span>
-          <span style={{ ...styles.score, ...(awayWon && scored ? styles.winnerScore : {}) }}>
-            {scored ? fmtScore(+matchup.awayScore, isStaking) : '–'}
+          <div style={{ ...styles.teamTopRow, justifyContent: 'flex-end' }}>
+            {awayWon && scored && <span style={styles.winnerCrown}>👑</span>}
+            <span style={styles.seedBadge}>#{matchup.awaySeed}</span>
+          </div>
+          <span style={{ ...styles.teamName, textAlign: 'right', ...(awayWon && scored ? styles.winnerName : {}) }}>
+            {matchup.awayTeamName}
           </span>
+          <span style={{ ...styles.teamRecord, textAlign: 'right' as const }}>{matchup.awayWins}–{matchup.awayLosses}</span>
+          {scored ? (
+            isStaking ? (
+              <div style={{ ...styles.stakingScoreCol, alignItems: 'flex-end' }}>
+                <span style={{ ...styles.score, ...(awayWon ? styles.winnerScore : {}) }}>{awayStaking!.display}</span>
+                <span style={{ ...styles.pnlBadge, color: awayStaking!.pnlPositive ? '#4caf50' : '#ff5252' }}>{awayStaking!.pnl}</span>
+              </div>
+            ) : (
+              <span style={{ ...styles.score, ...(awayWon ? styles.winnerScore : {}) }}>{fmtPts(+matchup.awayScore)} pts</span>
+            )
+          ) : (
+            <span style={styles.scoreDash}>—</span>
+          )}
         </div>
       </div>
     </div>
@@ -118,7 +166,7 @@ export function PlayoffsPage() {
 
   if (isLoading || !bracket) return <LoadingScreen />;
 
-  const { phase, seeds, semisMatchups, finalsMatchup, isStaking } = bracket;
+  const { phase, seeds, semisMatchups, finalsMatchup, isStaking, weeklyBudget } = bracket;
 
   function fmtDate(iso: string | undefined) {
     if (!iso) return '—';
@@ -186,7 +234,7 @@ export function PlayoffsPage() {
                 <span style={styles.seedRecord}>{s.wins}–{s.losses}</span>
                 <span style={styles.seedPts}>
                   {isStaking
-                    ? fmtScore(+(s.stakingBalance ?? 0), true)
+                    ? fmtBalance(+(s.stakingBalance ?? 0), weeklyBudget).pnl
                     : `${(+s.totalPoints).toFixed(0)} pts`}
                 </span>
               </div>
@@ -237,7 +285,7 @@ export function PlayoffsPage() {
             <div style={{ ...styles.bracket, ...(isMobile ? styles.bracketMobile : {}) }}>
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Semifinals</p>
-                {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} isStaking={isStaking} />)}
+                {semisMatchups.map((m) => <MatchupCard key={m.id} matchup={m} isStaking={isStaking} weeklyBudget={weeklyBudget} />)}
               </div>
               <div style={isMobile ? styles.connectorMobile : styles.connector}>
                 {isMobile
@@ -246,13 +294,13 @@ export function PlayoffsPage() {
               </div>
               <div style={styles.bracketCol}>
                 <p style={styles.roundLabel}>Finals</p>
-                {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} /> : <TBDCard subtitle="Awaiting semifinal results" />}
+                {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} weeklyBudget={weeklyBudget} /> :<TBDCard subtitle="Awaiting semifinal results" />}
               </div>
             </div>
           ) : (
             <div style={styles.bracketSingle}>
               <p style={styles.roundLabel}>Finals</p>
-              {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} /> : <TBDCard />}
+              {finalsMatchup ? <MatchupCard matchup={finalsMatchup} isStaking={isStaking} weeklyBudget={weeklyBudget} /> :<TBDCard />}
             </div>
           )}
         </div>
@@ -294,15 +342,25 @@ const styles: Record<string, React.CSSProperties> = {
   connectorLine: { flex: 1, width: 1, background: '#333', minHeight: 20 },
   connectorArrow: { color: '#444', fontSize: 18 },
   matchupCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
-  matchupEvent: { color: '#555', fontSize: 12, marginBottom: 12 },
-  matchupRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  teamSide: { flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 3 },
+  matchupEventRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 },
+  matchupEvent: { color: '#555', fontSize: 12, flex: 1 },
+  liveChip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: 0.5 },
+  stakingHint: { color: '#444', fontSize: 10, fontStyle: 'italic' as const },
+  matchupRow: { display: 'flex', alignItems: 'flex-start', gap: 8 },
+  teamSide: { flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 4 },
   winnerSide: {},
+  teamTopRow: { display: 'flex', alignItems: 'center', gap: 4 },
   seedBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700 },
-  teamName: { color: '#ccc', fontSize: 14, fontWeight: 600 },
-  score: { color: '#555', fontSize: 28, fontWeight: 700 },
+  winnerCrown: { fontSize: 10 },
+  teamName: { color: '#888', fontSize: 13, fontWeight: 600 },
+  winnerName: { color: '#fff' },
+  teamRecord: { color: '#444', fontSize: 11 },
+  score: { color: '#555', fontSize: 24, fontWeight: 700, lineHeight: 1 },
   winnerScore: { color: '#fff' },
-  vs: { color: '#333', fontSize: 12, flexShrink: 0 },
+  scoreDash: { color: '#333', fontSize: 24, fontWeight: 700 },
+  stakingScoreCol: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
+  pnlBadge: { fontSize: 11, fontWeight: 700 },
+  vs: { color: '#2a2a2a', fontSize: 11, fontWeight: 700, flexShrink: 0, paddingTop: 28 },
   tbdCard: { opacity: 0.5 },
   tbdText: { color: '#555', fontSize: 14, fontStyle: 'italic' },
   empty: { color: '#555', textAlign: 'center' as const, padding: '60px 24px', fontSize: 14, fontStyle: 'italic' },
