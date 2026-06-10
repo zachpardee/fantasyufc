@@ -328,7 +328,7 @@ export function LeagueHomePage() {
     <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
       <nav style={styles.nav}>
         <Link to="/" style={styles.logoLink}><img src="/logo.jpg" alt="FFL" style={styles.logo} /></Link>
-        <Link to="/" style={styles.homeBtn}>🏠 Home</Link>
+        <Link to="/" style={styles.homeBtn}>🏠 User Home</Link>
       </nav>
       <SkeletonLeagueHeader />
       <div style={{ padding: '0 24px' }}>
@@ -420,7 +420,7 @@ export function LeagueHomePage() {
         <Link to="/" style={styles.logoLink}>
           <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         </Link>
-        <Link to="/" style={styles.homeBtn}>🏠 Home</Link>
+        <Link to="/" style={styles.homeBtn}>🏠 User Home</Link>
         <div ref={leagueMenuRef} style={{ position: 'relative' }}>
           <button
             style={styles.leagueMenuBtn}
@@ -430,6 +430,9 @@ export function LeagueHomePage() {
           </button>
           {showLeagueMenu && (
             <div style={styles.leagueMenuDropdown}>
+              <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
+                <span style={styles.leagueMenuIcon}>🏠</span>League Home
+              </Link>
               {navLinks.filter((l) => l.show).map((item) =>
                 item.onClick ? (
                   <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
