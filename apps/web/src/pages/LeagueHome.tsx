@@ -36,6 +36,10 @@ export function LeagueHomePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailMsg, setEmailMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showFightCard, setShowFightCard] = useState(false);
   const [msgInput, setMsgInput] = useState('');
@@ -363,6 +367,22 @@ export function LeagueHomePage() {
     navigator.clipboard.writeText(league!.inviteCode);
     setCopyMsg('Copied!');
     setTimeout(() => setCopyMsg(''), 2000);
+  }
+
+  async function changeEmail() {
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed.includes('@')) { setEmailMsg({ type: 'error', text: 'Enter a valid email address' }); return; }
+    setEmailLoading(true);
+    setEmailMsg(null);
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    setEmailLoading(false);
+    if (error) {
+      setEmailMsg({ type: 'error', text: error.message });
+    } else {
+      setEmailMsg({ type: 'success', text: 'Confirmation sent to ' + trimmed });
+      setNewEmail('');
+      setTimeout(() => { setShowEmailForm(false); setEmailMsg(null); }, 2500);
+    }
   }
 
   async function changePassword() {
@@ -1027,11 +1047,11 @@ export function LeagueHomePage() {
 
       {/* Settings modal */}
       {showSettings && (
-        <div style={styles.modalOverlay} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); }}>
+        <div style={styles.modalOverlay} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}>
           <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <span style={styles.modalTitle}>Team Settings</span>
-              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); }}>✕</button>
+              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}>✕</button>
             </div>
 
             <div style={styles.modalBody}>
@@ -1081,6 +1101,41 @@ export function LeagueHomePage() {
               </button>
 
               <div style={styles.settingsDivider} />
+
+              <div style={styles.settingsSection}>
+                <button
+                  style={styles.avatarUploadBtn}
+                  onClick={() => { setShowEmailForm((v) => !v); setEmailMsg(null); setNewEmail(''); }}
+                >
+                  {showEmailForm ? 'Cancel Email Change' : 'Change Email Address'}
+                </button>
+                {showEmailForm && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: '#555' }}>Current: {session?.user.email}</div>
+                    <input
+                      style={styles.settingsInput}
+                      type="email"
+                      placeholder="New email address"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      autoComplete="email"
+                      onKeyDown={(e) => e.key === 'Enter' && changeEmail()}
+                    />
+                    {emailMsg && (
+                      <span style={{ fontSize: 12, color: emailMsg.type === 'error' ? '#ff5252' : '#4caf50' }}>
+                        {emailMsg.text}
+                      </span>
+                    )}
+                    <button
+                      style={{ ...styles.saveSettingsBtn, opacity: emailLoading ? 0.6 : 1 }}
+                      disabled={emailLoading || !newEmail.trim()}
+                      onClick={changeEmail}
+                    >
+                      {emailLoading ? 'Sending...' : 'Send Confirmation'}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div style={styles.settingsSection}>
                 <button
