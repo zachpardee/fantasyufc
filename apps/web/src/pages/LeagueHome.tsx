@@ -31,6 +31,11 @@ export function LeagueHomePage() {
   const [settingsTeamName, setSettingsTeamName] = useState('');
   const [settingsColor, setSettingsColor] = useState('#5555ff');
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showFightCard, setShowFightCard] = useState(false);
   const [msgInput, setMsgInput] = useState('');
@@ -358,6 +363,23 @@ export function LeagueHomePage() {
     navigator.clipboard.writeText(league!.inviteCode);
     setCopyMsg('Copied!');
     setTimeout(() => setCopyMsg(''), 2000);
+  }
+
+  async function changePassword() {
+    if (newPassword.length < 8) { setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' }); return; }
+    if (newPassword !== confirmPassword) { setPasswordMsg({ type: 'error', text: 'Passwords do not match' }); return; }
+    setPasswordLoading(true);
+    setPasswordMsg(null);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordLoading(false);
+    if (error) {
+      setPasswordMsg({ type: 'error', text: error.message });
+    } else {
+      setPasswordMsg({ type: 'success', text: 'Password updated!' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => { setShowPasswordForm(false); setPasswordMsg(null); }, 1800);
+    }
   }
 
   const navLinks: { label: string; path?: string; icon: string; external?: boolean; show: boolean; onClick?: () => void }[] = [
@@ -1005,11 +1027,11 @@ export function LeagueHomePage() {
 
       {/* Settings modal */}
       {showSettings && (
-        <div style={styles.modalOverlay} onClick={() => { setShowSettings(false); setConfirmLeave(false); }}>
+        <div style={styles.modalOverlay} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); }}>
           <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <span style={styles.modalTitle}>Team Settings</span>
-              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); }}>✕</button>
+              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); }}>✕</button>
             </div>
 
             <div style={styles.modalBody}>
@@ -1057,6 +1079,50 @@ export function LeagueHomePage() {
               >
                 {saveSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
               </button>
+
+              <div style={styles.settingsDivider} />
+
+              <div style={styles.settingsSection}>
+                <button
+                  style={styles.avatarUploadBtn}
+                  onClick={() => { setShowPasswordForm((v) => !v); setPasswordMsg(null); setNewPassword(''); setConfirmPassword(''); }}
+                >
+                  {showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
+                </button>
+                {showPasswordForm && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                    <input
+                      style={styles.settingsInput}
+                      type="password"
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    <input
+                      style={styles.settingsInput}
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
+                      onKeyDown={(e) => e.key === 'Enter' && changePassword()}
+                    />
+                    {passwordMsg && (
+                      <span style={{ fontSize: 12, color: passwordMsg.type === 'error' ? '#ff5252' : '#4caf50' }}>
+                        {passwordMsg.text}
+                      </span>
+                    )}
+                    <button
+                      style={{ ...styles.saveSettingsBtn, opacity: passwordLoading ? 0.6 : 1 }}
+                      disabled={passwordLoading || !newPassword || !confirmPassword}
+                      onClick={changePassword}
+                    >
+                      {passwordLoading ? 'Updating...' : 'Update Password'}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div style={styles.settingsDivider} />
 
