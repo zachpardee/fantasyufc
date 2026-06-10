@@ -1231,6 +1231,12 @@ export function LeagueHomePage() {
           members={members}
           league={league}
           onClose={() => setSelectedMember(null)}
+          isMe={selectedMember.userId === session?.user.id}
+          onSettings={() => {
+            setSettingsTeamName(myMember!.teamName);
+            setSettingsColor((myMember as any).avatarColor ?? '#5555ff');
+            setShowSettings(true);
+          }}
         />
       )}
 

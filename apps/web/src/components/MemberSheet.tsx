@@ -60,8 +60,8 @@ export function BeltHalo({ size, variant = 'ufc', position = 'top', offset = 0 }
   );
 }
 
-export function MemberSheet({ member, members, league, onClose }: {
-  member: any; members: any[]; league: any; onClose: () => void;
+export function MemberSheet({ member, members, league, onClose, isMe, onSettings }: {
+  member: any; members: any[]; league: any; onClose: () => void; isMe?: boolean; onSettings?: () => void;
 }) {
   const color = member.avatarColor ?? '#5555ff';
   const streak = member.streak ?? 0;
@@ -132,6 +132,11 @@ export function MemberSheet({ member, members, league, onClose }: {
               )}
             </div>
           )}
+          {isMe && onSettings && (
+            <button style={styles.settingsBtn} onClick={() => { onClose(); onSettings(); }}>
+              ⚙ User Settings
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -159,4 +164,5 @@ const styles: Record<string, React.CSSProperties> = {
   bragUfc: { background: '#2a2000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 13, fontWeight: 700, padding: '8px 18px' },
   bragBmf: { background: '#0f0f0f', border: '1px solid #c8a00066', borderRadius: 8, color: '#c8a000', fontSize: 13, fontWeight: 700, padding: '8px 18px', letterSpacing: 0.5 },
   bragBoth: { background: '#1a1000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 13, fontWeight: 700, padding: '8px 18px', textAlign: 'center' },
+  settingsBtn: { marginTop: 8, width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, color: '#aaa', fontSize: 13, fontWeight: 600, padding: '10px 0', cursor: 'pointer' },
 };
