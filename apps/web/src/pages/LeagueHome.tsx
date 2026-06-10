@@ -11,6 +11,7 @@ import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
 import { AvatarModal } from '../components/AvatarModal';
+import { MemberAvatar } from '../components/MemberAvatar';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -438,20 +439,17 @@ export function LeagueHomePage() {
           <div style={styles.onlineRow}>
             {onlineUsers.map((u) => {
               const member = members.find((m) => m.userId === u.userId);
+              const onlineColor = u.userId === session?.user.id ? '#4caf50' : '#5555ff';
               return (
                 <div key={u.userId} style={{ position: 'relative', display: 'inline-flex' }}>
-                  <div
-                    style={{
-                      ...styles.onlineAvatar,
-                      background: u.userId === session?.user.id ? '#1a3a1a' : '#1a1a3a',
-                      borderColor: u.userId === session?.user.id ? '#4caf50' : '#5555ff',
-                      cursor: member ? 'pointer' : 'default',
-                    }}
+                  <MemberAvatar
+                    teamName={u.teamName}
+                    color={onlineColor}
+                    size={28}
+                    avatarUrl={(member as any)?.avatarUrl}
                     title={u.teamName}
                     onClick={() => member && setSelectedMember(member)}
-                  >
-                    {u.teamName.charAt(0).toUpperCase()}
-                  </div>
+                  />
                   {member && hasBelt(member, members, league) && <BeltHalo size={28} />}
                   {member && hasBmfBelt(member, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(member, members, league) ? 'bottom' : 'top'} />}
                 </div>
@@ -470,9 +468,7 @@ export function LeagueHomePage() {
             const color = (m as any).avatarColor ?? '#5555ff';
             return (
               <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                <div style={{ ...styles.memberAvatar, background: color + '33', borderColor: color }} title={m.teamName} onClick={() => setSelectedMember(m)}>
-                  {m.teamName.charAt(0).toUpperCase()}
-                </div>
+                <MemberAvatar teamName={m.teamName} color={color} size={32} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
                 {hasBelt(m, members, league) && <BeltHalo size={32} />}
                 {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
               </div>
@@ -560,9 +556,7 @@ export function LeagueHomePage() {
             const color = (m as any).avatarColor ?? '#5555ff';
             return (
               <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                <div style={{ ...styles.memberAvatar, background: color + '33', borderColor: color }} title={m.teamName} onClick={() => setSelectedMember(m)}>
-                  {m.teamName.charAt(0).toUpperCase()}
-                </div>
+                <MemberAvatar teamName={m.teamName} color={color} size={32} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
                 {hasBelt(m, members, league) && <BeltHalo size={32} />}
                 {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
               </div>
@@ -649,7 +643,7 @@ export function LeagueHomePage() {
                       {effectiveMatchup && (
                         <>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: homeColor + '33', borderColor: homeColor, cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>{effectiveMatchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                            <MemberAvatar teamName={effectiveMatchup.homeTeamName ?? ''} color={homeColor} size={avatarSize} avatarUrl={(homeMember as any)?.avatarUrl} onClick={() => homeMember && setSelectedMember(homeMember)} />
                             {homeMember && hasBelt(homeMember, members, league) && <BeltHalo size={avatarSize} />}
                             {homeMember && hasBmfBelt(homeMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(homeMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
@@ -698,7 +692,7 @@ export function LeagueHomePage() {
                             <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
                           </div>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <div style={{ ...styles.matchupAvatar, width: avatarSize, height: avatarSize, fontSize: isMobile ? 13 : 20, background: awayColor + '33', borderColor: awayColor, cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>{effectiveMatchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                            <MemberAvatar teamName={effectiveMatchup.awayTeamName ?? ''} color={awayColor} size={avatarSize} avatarUrl={(awayMember as any)?.avatarUrl} onClick={() => awayMember && setSelectedMember(awayMember)} />
                             {awayMember && hasBelt(awayMember, members, league) && <BeltHalo size={avatarSize} />}
                             {awayMember && hasBmfBelt(awayMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(awayMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
@@ -954,15 +948,16 @@ export function LeagueHomePage() {
               })();
               return (
                 <div key={msg.id} style={{ ...styles.msgRow, ...(isMe ? styles.msgRowMe : {}) }}>
-                  <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                    <div
-                      style={{ ...styles.msgAvatar, background: color + '33', borderColor: color, cursor: 'pointer' }}
-                      onClick={() => { const m = members.find((m) => m.id === msg.memberId); if (m) setSelectedMember(m); }}
-                    >
-                      {msg.teamName?.charAt(0).toUpperCase()}
-                    </div>
-                    {(() => { const m = members.find((mm) => mm.id === msg.memberId); return <>{m && hasBelt(m, members, league) && <BeltHalo size={28} />}{m && hasBmfBelt(m, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}</>; })()}
-                  </div>
+                  {(() => {
+                    const msgMember = members.find((mm) => mm.id === msg.memberId);
+                    return (
+                      <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                        <MemberAvatar teamName={msg.teamName ?? '?'} color={color} size={28} avatarUrl={(msgMember as any)?.avatarUrl} onClick={() => msgMember && setSelectedMember(msgMember)} />
+                        {msgMember && hasBelt(msgMember, members, league) && <BeltHalo size={28} />}
+                        {msgMember && hasBmfBelt(msgMember, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(msgMember, members, league) ? 'bottom' : 'top'} />}
+                      </div>
+                    );
+                  })()}
                   <div style={styles.msgContent}>
                     <div style={styles.msgMeta}>
                       <span style={styles.msgTeam}>{msg.teamName}</span>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { MemberAvatar } from './MemberAvatar';
 
 export function hasBelt(member: any, members: any[], league: any): boolean {
   const anyChampion = members.some((m) => m.isChampion);
@@ -83,9 +84,7 @@ export function MemberSheet({ member, members, league, onClose }: {
         </div>
         <div style={styles.body}>
           <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <div style={{ ...styles.avatar, background: color + '33', borderColor: color }}>
-              {member.teamName.charAt(0).toUpperCase()}
-            </div>
+            <MemberAvatar teamName={member.teamName} color={color} size={72} avatarUrl={member.avatarUrl} borderWidth={3} />
             {belt && <BeltHalo size={72} offset={8} />}
             {bmf && <BeltHalo size={72} variant="bmf" position={belt ? 'bottom' : 'top'} />}
           </div>

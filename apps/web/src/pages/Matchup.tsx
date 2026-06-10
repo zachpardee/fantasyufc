@@ -6,6 +6,7 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
+import { MemberAvatar } from '../components/MemberAvatar';
 import { SkeletonFightRow } from '../components/LoadingScreen';
 import {
   fmtStakeScore, fmtChipScore,
@@ -383,8 +384,8 @@ export function MatchupPage() {
           <div style={{ ...styles.scoreboard, ...(isMobile ? styles.scoreboardMobile : {}) }}>
             <div style={styles.teamBlock}>
               <div style={styles.teamLabelRow}>
-                <div style={{ position: 'relative', display: 'inline-flex', cursor: homeMember ? 'pointer' : 'default' }} onClick={() => homeMember && setSelectedMember(homeMember)}>
-                  <div style={{ ...styles.teamAvatar, background: homeColor + '33', borderColor: homeColor }}>{matchup.homeTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => homeMember && setSelectedMember(homeMember)}>
+                  <MemberAvatar teamName={matchup.homeTeamName ?? ''} color={homeColor} size={32} avatarUrl={homeMember?.avatarUrl} onClick={() => homeMember && setSelectedMember(homeMember)} />
                   {homeHasBelt && <BeltHalo size={32} />}
                   {homeHasBmf && <BeltHalo size={32} variant="bmf" position={homeHasBelt ? 'bottom' : 'top'} />}
                 </div>
@@ -413,8 +414,8 @@ export function MatchupPage() {
 
             <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
               <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
-                <div style={{ position: 'relative', display: 'inline-flex', cursor: awayMember ? 'pointer' : 'default' }} onClick={() => awayMember && setSelectedMember(awayMember)}>
-                  <div style={{ ...styles.teamAvatar, background: awayColor + '33', borderColor: awayColor }}>{matchup.awayTeamName?.charAt(0).toUpperCase()}</div>
+                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => awayMember && setSelectedMember(awayMember)}>
+                  <MemberAvatar teamName={matchup.awayTeamName ?? ''} color={awayColor} size={32} avatarUrl={awayMember?.avatarUrl} onClick={() => awayMember && setSelectedMember(awayMember)} />
                   {awayHasBelt && <BeltHalo size={32} />}
                   {awayHasBmf && <BeltHalo size={32} variant="bmf" position={awayHasBelt ? 'bottom' : 'top'} />}
                 </div>
