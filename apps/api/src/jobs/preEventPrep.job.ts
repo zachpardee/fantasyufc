@@ -110,12 +110,16 @@ async function syncOddsForEvent(event: { id: string; name: string; scheduled_at:
   if (!fights.length) return 0;
 
   const eventDate = new Date(event.scheduled_at);
-  const commenceFrom = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const commenceTo = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const toOddsTs = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const commenceFrom = toOddsTs(new Date(eventDate.getTime() - 24 * 60 * 60 * 1000));
+  const commenceTo = toOddsTs(new Date(eventDate.getTime() + 24 * 60 * 60 * 1000));
 
   const url = `https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/?apiKey=${apiKey}&regions=us&markets=h2h&oddsFormat=american&commenceTimeFrom=${commenceFrom}&commenceTimeTo=${commenceTo}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) return 0;
+  if (!res.ok) {
+    console.warn(`[PreEventPrep] Odds API error ${res.status}:`, await res.text().catch(() => ''));
+    return 0;
+  }
 
   const oddsEvents = await res.json() as any[];
   let matched = 0;
