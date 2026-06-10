@@ -820,7 +820,7 @@ export function LeagueHomePage() {
           <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px' }}>
               <span style={{ color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1 }}>
-                {isStaking ? 'BETS' : 'PICKS'}
+                FIGHT CARD
               </span>
               {homePicks?.locked && <span style={{ background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 }}>LOCKED</span>}
             </div>
