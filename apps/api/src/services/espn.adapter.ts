@@ -104,7 +104,7 @@ async function fetchAthleteByRef(ref: string): Promise<EspnAthlete | null> {
       heightInches: data.height,
       reachInches: data.reach,
       dateOfBirth: data.dateOfBirth,
-      country: data.citizenshipCountry?.name,
+      country: data.flag?.alt ?? data.citizenship ?? data.citizenshipCountry?.name ?? undefined,
       weightClassSlug: slug ? normalizeWeightClassSlug(slug) : undefined,
       imageUrl: data.headshot?.href,
     };
