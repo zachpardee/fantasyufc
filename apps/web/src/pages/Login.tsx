@@ -8,6 +8,17 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  async function handleForgotPassword() {
+    if (!email) { setError('Enter your email address first, then click Forgot Password.'); return; }
+    setResetLoading(true);
+    setError('');
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+    setResetSent(true);
+    setResetLoading(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,8 +39,12 @@ export function LoginPage() {
           <input style={styles.input} type="password" placeholder="Password" value={password}
             onChange={(e) => setPassword(e.target.value)} required />
           {error && <p style={styles.error}>{error}</p>}
+          {resetSent && <p style={styles.success}>Password reset email sent — check your inbox.</p>}
           <button style={styles.button} type="submit" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+          <button type="button" style={styles.forgotBtn} onClick={handleForgotPassword} disabled={resetLoading}>
+            {resetLoading ? 'Sending...' : 'Forgot Password?'}
           </button>
         </form>
         <Link to="/register" style={styles.link}>Don't have an account? Sign up</Link>
@@ -46,5 +61,7 @@ const styles: Record<string, React.CSSProperties> = {
   input: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 8, padding: '14px 16px', color: '#fff', fontSize: 15, outline: 'none' },
   button: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 16px', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
   error: { color: '#ff6b6b', fontSize: 14 },
+  success: { color: '#4caf50', fontSize: 14 },
+  forgotBtn: { background: 'none', border: 'none', color: '#888', fontSize: 13, cursor: 'pointer', padding: 0, textAlign: 'center' },
   link: { display: 'block', textAlign: 'center', marginTop: 20, color: '#c8102e', fontSize: 14 },
 };
