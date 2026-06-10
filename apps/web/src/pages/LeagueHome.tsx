@@ -32,7 +32,9 @@ export function LeagueHomePage() {
   const [showFightCard, setShowFightCard] = useState(false);
   const [msgInput, setMsgInput] = useState('');
   const [viewedMatchupIdx, setViewedMatchupIdx] = useState<number | null>(null);
+  const [showLeagueMenu, setShowLeagueMenu] = useState(false);
   const msgEndRef = useRef<HTMLDivElement>(null);
+  const leagueMenuRef = useRef<HTMLDivElement>(null);
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
@@ -299,6 +301,17 @@ export function LeagueHomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [leagueId, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!showLeagueMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (leagueMenuRef.current && !leagueMenuRef.current.contains(e.target as Node)) {
+        setShowLeagueMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showLeagueMenu]);
+
   if (!league) return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
       <nav style={styles.nav}>
@@ -363,6 +376,34 @@ export function LeagueHomePage() {
           <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         </Link>
         <Link to="/" style={styles.homeBtn}>🏠 Home</Link>
+        <div ref={leagueMenuRef} style={{ position: 'relative' }}>
+          <button
+            style={styles.leagueMenuBtn}
+            onClick={() => setShowLeagueMenu((v) => !v)}
+          >
+            League {showLeagueMenu ? '▲' : '▼'}
+          </button>
+          {showLeagueMenu && (
+            <div style={styles.leagueMenuDropdown}>
+              {navLinks.filter((l) => l.show).map((item) =>
+                item.onClick ? (
+                  <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
+                    <span style={styles.leagueMenuIcon}>{item.icon}</span>{item.label}
+                  </button>
+                ) : (
+                  <Link
+                    key={item.label}
+                    to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
+                    style={styles.leagueMenuItem}
+                    onClick={() => setShowLeagueMenu(false)}
+                  >
+                    <span style={styles.leagueMenuIcon}>{item.icon}</span>{item.label}
+                  </Link>
+                )
+              )}
+            </div>
+          )}
+        </div>
         <span style={{ flex: 1 }} />
         <div style={styles.bellWrap}>
           <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
@@ -1171,6 +1212,10 @@ const styles: Record<string, React.CSSProperties> = {
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
   homeBtn: { color: '#aaa', textDecoration: 'none', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 },
+  leagueMenuBtn: { background: 'none', border: '1px solid #333', borderRadius: 6, color: '#ccc', fontSize: 13, fontWeight: 600, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
+  leagueMenuDropdown: { position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, minWidth: 180, zIndex: 200, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' },
+  leagueMenuItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', color: '#ccc', fontSize: 13, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
+  leagueMenuIcon: { fontSize: 14, width: 18, textAlign: 'center' as const },
   logo: { height: 48, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
