@@ -64,6 +64,24 @@ function TBDCard({ subtitle }: { subtitle?: string }) {
   );
 }
 
+function PreviewCard({ top, bottom }: { top: { seed: number; name: string }; bottom: { seed: number; name: string } }) {
+  return (
+    <div style={{ ...styles.matchupCard, borderStyle: 'dashed' }}>
+      <div style={styles.matchupRow}>
+        <div style={styles.teamSide}>
+          <span style={styles.seedBadge}>#{top.seed}</span>
+          <span style={styles.teamName}>{top.name}</span>
+        </div>
+        <span style={styles.vs}>vs</span>
+        <div style={{ ...styles.teamSide, alignItems: 'flex-end' }}>
+          <span style={styles.seedBadge}>#{bottom.seed}</span>
+          <span style={styles.teamName}>{bottom.name}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PlayoffsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const isMobile = useIsMobile();
@@ -175,8 +193,38 @@ export function PlayoffsPage() {
         </div>
       )}
 
-      {/* Bracket */}
-      {phase === 'none' && (
+      {/* Bracket preview (pre-playoffs) */}
+      {phase === 'none' && seeds.length > 0 && (
+        <div style={styles.section}>
+          <p style={styles.sectionLabel}>Bracket Preview — If Playoffs Started Today</p>
+          <p style={styles.previewNote}>Seeding is based on current standings. Dashed borders indicate projected matchups.</p>
+          {seeds.length >= 4 ? (
+            <div style={{ ...styles.bracket, ...(isMobile ? styles.bracketMobile : {}) }}>
+              <div style={styles.bracketCol}>
+                <p style={styles.roundLabel}>Semifinals</p>
+                <PreviewCard top={{ seed: 1, name: seeds[0].teamName }} bottom={{ seed: 4, name: seeds[3].teamName }} />
+                <PreviewCard top={{ seed: 2, name: seeds[1].teamName }} bottom={{ seed: 3, name: seeds[2].teamName }} />
+              </div>
+              <div style={isMobile ? styles.connectorMobile : styles.connector}>
+                {isMobile
+                  ? <span style={styles.connectorArrow}>↓</span>
+                  : <><div style={styles.connectorLine} /><span style={styles.connectorArrow}>→</span><div style={styles.connectorLine} /></>}
+              </div>
+              <div style={styles.bracketCol}>
+                <p style={styles.roundLabel}>Finals</p>
+                <TBDCard subtitle="Awaiting semifinal results" />
+              </div>
+            </div>
+          ) : seeds.length >= 2 ? (
+            <div style={styles.bracketSingle}>
+              <p style={styles.roundLabel}>Finals</p>
+              <PreviewCard top={{ seed: 1, name: seeds[0].teamName }} bottom={{ seed: 2, name: seeds[1].teamName }} />
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {phase === 'none' && seeds.length === 0 && (
         <div style={styles.empty}>Playoffs start automatically after the regular season ends.</div>
       )}
 
@@ -256,4 +304,5 @@ const styles: Record<string, React.CSSProperties> = {
   tbdCard: { opacity: 0.5 },
   tbdText: { color: '#555', fontSize: 14, fontStyle: 'italic' },
   empty: { color: '#555', textAlign: 'center' as const, padding: '60px 24px', fontSize: 14, fontStyle: 'italic' },
+  previewNote: { color: '#444', fontSize: 12, margin: '0 0 16px', fontStyle: 'italic' },
 };
