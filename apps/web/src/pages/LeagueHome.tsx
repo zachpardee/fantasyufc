@@ -680,6 +680,23 @@ export function LeagueHomePage() {
                 {isLive && <span style={styles.livePip}>LIVE</span>}
               </div>
               <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
+              {viewedMatchupIdx === null && currentEvent && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 4 }}>
+                  {(currentEvent.venue || currentEvent.location) && (
+                    <span style={styles.eventCardLocation}>
+                      {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                  {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
+                    <span style={styles.eventDate}>
+                      {(() => {
+                        const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
+                        return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                      })()}
+                    </span>
+                  )}
+                </div>
+              )}
               {(() => {
                 const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
                 const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
