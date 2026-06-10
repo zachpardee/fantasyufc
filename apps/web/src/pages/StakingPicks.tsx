@@ -1003,7 +1003,7 @@ const s: Record<string, React.CSSProperties> = {
   eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
   eventDate: { color: '#555', fontSize: 12, marginTop: 2 },
 
-  balanceBar: { display: 'flex', background: '#111', borderBottom: '1px solid #1e1e1e', padding: '14px 24px' },
+  balanceBar: { display: 'flex', background: '#111', borderBottom: '1px solid #1e1e1e', padding: '14px 24px', position: 'sticky', top: 0, zIndex: 50 },
   balanceStat: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 },
   balanceVal: { color: '#fff', fontSize: 18, fontWeight: 700 },
   balanceLabel: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
