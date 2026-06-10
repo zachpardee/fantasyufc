@@ -1212,7 +1212,7 @@ const styles: Record<string, React.CSSProperties> = {
   nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 16 },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
   homeBtn: { color: '#aaa', textDecoration: 'none', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 },
-  leagueMenuBtn: { background: 'none', border: '1px solid #333', borderRadius: 6, color: '#ccc', fontSize: 13, fontWeight: 600, padding: '5px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
+  leagueMenuBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: 14, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   leagueMenuDropdown: { position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, minWidth: 180, zIndex: 200, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' },
   leagueMenuItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', color: '#ccc', fontSize: 13, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
   leagueMenuIcon: { fontSize: 14, width: 18, textAlign: 'center' as const },
