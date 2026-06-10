@@ -1,19 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 
+export interface AvatarModalHandle {
+  save: () => Promise<void>;
+  hasPendingChange: boolean;
+}
+
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_URL_BYTES = 5 * 1024 * 1024;
 const OUTPUT_SIZE = 256;
 const PREVIEW_SIZE = 200;
+const INLINE_PREVIEW_SIZE = 100;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
 interface Props { onClose: () => void; currentUrl?: string; inline?: boolean; onSaved?: () => void }
 
-export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
+export const AvatarModal = forwardRef<AvatarModalHandle, Props>(function AvatarModal({ onClose, currentUrl, inline, onSaved }, ref) {
   const { session } = useAuthStore();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +47,10 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
   const hasPendingUrl = pendingUrl !== null;
   const hasPendingChange = hasPendingFile || hasPendingUrl;
 
+  const ps = inline ? INLINE_PREVIEW_SIZE : PREVIEW_SIZE;
+
+  useImperativeHandle(ref, () => ({ save: saveChanges, hasPendingChange }), [hasPendingChange, saveChanges]);
+
   // Load existing avatar into crop UI on open
   useEffect(() => {
     if (!currentUrl) return;
@@ -50,7 +60,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
     img.onload = async () => {
       try {
         const bitmap = await createImageBitmap(img);
-        const scale = Math.max(PREVIEW_SIZE / bitmap.width, PREVIEW_SIZE / bitmap.height);
+        const scale = Math.max(ps / bitmap.width, ps / bitmap.height);
         setBaseScaledW(bitmap.width * scale);
         setBaseScaledH(bitmap.height * scale);
         setZoom(1);
@@ -67,8 +77,8 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
 
   const scaledW = baseScaledW * zoom;
   const scaledH = baseScaledH * zoom;
-  const maxOffsetX = Math.max(0, (scaledW - PREVIEW_SIZE) / 2);
-  const maxOffsetY = Math.max(0, (scaledH - PREVIEW_SIZE) / 2);
+  const maxOffsetX = Math.max(0, (scaledW - ps) / 2);
+  const maxOffsetY = Math.max(0, (scaledH - ps) / 2);
 
   useEffect(() => {
     return () => { if (bitmapSrc) URL.revokeObjectURL(bitmapSrc); };
@@ -86,7 +96,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
     setError('');
     try {
       const bitmap = await createImageBitmap(file);
-      const scale = Math.max(PREVIEW_SIZE / bitmap.width, PREVIEW_SIZE / bitmap.height);
+      const scale = Math.max(ps / bitmap.width, ps / bitmap.height);
       setBaseScaledW(bitmap.width * scale);
       setBaseScaledH(bitmap.height * scale);
       setZoom(1);
@@ -105,8 +115,8 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
     setZoom(newZoom);
     const newW = baseScaledW * newZoom;
     const newH = baseScaledH * newZoom;
-    const newMaxX = Math.max(0, (newW - PREVIEW_SIZE) / 2);
-    const newMaxY = Math.max(0, (newH - PREVIEW_SIZE) / 2);
+    const newMaxX = Math.max(0, (newW - ps) / 2);
+    const newMaxY = Math.max(0, (newH - ps) / 2);
     setOffsetX((x) => Math.max(-newMaxX, Math.min(newMaxX, x)));
     setOffsetY((y) => Math.max(-newMaxY, Math.min(newMaxY, y)));
   }
@@ -148,7 +158,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
         const ctx = canvas.getContext('2d')!;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
-        const canvasScale = OUTPUT_SIZE / PREVIEW_SIZE;
+        const canvasScale = OUTPUT_SIZE / ps;
         const scale = Math.max(OUTPUT_SIZE / pendingBitmap.width, OUTPUT_SIZE / pendingBitmap.height) * zoom;
         const cW = pendingBitmap.width * scale;
         const cH = pendingBitmap.height * scale;
@@ -164,7 +174,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
         });
         if (uploadErr) throw new Error(uploadErr.message);
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-        await saveProfile.mutateAsync(publicUrl);
+        await saveProfile.mutateAsync(publicUrl + '?t=' + Date.now());
       } else if (pendingUrl) {
         const head = await fetch(pendingUrl, { method: 'HEAD', signal: AbortSignal.timeout(8000) }).catch(() => null);
         if (head) {
@@ -214,70 +224,94 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
       )}
 
         {/* Crop / Preview */}
-        <div style={s.previewSection}>
-          {hasPendingFile && bitmapSrc ? (
-            <>
-              <div
-                style={{ ...s.cropCircle, cursor: 'grab' }}
-                onMouseDown={onDragStart}
-                onMouseMove={onDragMove}
-                onMouseUp={onDragEnd}
-                onMouseLeave={onDragEnd}
-                onTouchStart={onDragStart}
-                onTouchMove={onDragMove}
-                onTouchEnd={onDragEnd}
-              >
-                <img
-                  src={bitmapSrc}
-                  draggable={false}
-                  style={{
-                    position: 'absolute',
-                    width: scaledW,
-                    height: scaledH,
-                    left: (PREVIEW_SIZE - scaledW) / 2 + offsetX,
-                    top: (PREVIEW_SIZE - scaledH) / 2 + offsetY,
-                    userSelect: 'none',
-                    pointerEvents: 'none',
-                  }}
-                />
-              </div>
-              <div style={s.zoomRow}>
-                <span style={s.zoomIcon}>🔍</span>
-                <input
-                  type="range"
-                  min={MIN_ZOOM}
-                  max={MAX_ZOOM}
-                  step={0.01}
-                  value={zoom}
-                  onChange={(e) => handleZoom(parseFloat(e.target.value))}
-                  style={s.zoomSlider}
-                />
-                <span style={s.zoomIcon}>🔎</span>
-              </div>
-              <span style={s.previewLabel}>{loadingExisting ? 'Loading…' : 'Drag to reposition · slide to zoom'}</span>
-            </>
-          ) : (
-            <>
-              <div style={s.previewWrap}>
-                {(hasPendingUrl ? pendingUrl : displayPreview)
-                  ? <img src={(hasPendingUrl ? pendingUrl : displayPreview)!} alt="avatar" style={s.previewImg} onError={() => setDisplayPreview(null)} />
-                  : <div style={s.previewPlaceholder}>?</div>
-                }
-              </div>
-              <span style={s.previewLabel}>
-                {hasPendingUrl ? 'Preview — click Save to confirm' : currentUrl ? 'Current avatar' : 'No avatar set'}
+        {inline ? (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {/* Crop circle */}
+            <div
+              style={{ width: ps, height: ps, borderRadius: '50%', overflow: 'hidden', position: 'relative', border: '2px solid #444', flexShrink: 0, background: '#fff', cursor: hasPendingFile && bitmapSrc ? 'grab' : 'default' }}
+              onMouseDown={hasPendingFile ? onDragStart : undefined}
+              onMouseMove={hasPendingFile ? onDragMove : undefined}
+              onMouseUp={hasPendingFile ? onDragEnd : undefined}
+              onMouseLeave={hasPendingFile ? onDragEnd : undefined}
+              onTouchStart={hasPendingFile ? onDragStart : undefined}
+              onTouchMove={hasPendingFile ? onDragMove : undefined}
+              onTouchEnd={hasPendingFile ? onDragEnd : undefined}
+            >
+              {hasPendingFile && bitmapSrc ? (
+                <img src={bitmapSrc} draggable={false} style={{ position: 'absolute', width: scaledW, height: scaledH, left: (ps - scaledW) / 2 + offsetX, top: (ps - scaledH) / 2 + offsetY, userSelect: 'none', pointerEvents: 'none' }} />
+              ) : (hasPendingUrl ? pendingUrl : displayPreview) ? (
+                <img src={(hasPendingUrl ? pendingUrl : displayPreview)!} alt="avatar" style={{ width: ps, height: ps, objectFit: 'cover' }} onError={() => setDisplayPreview(null)} />
+              ) : (
+                <div style={{ width: ps, height: ps, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 28 }}>?</div>
+              )}
+            </div>
+            {/* Compact controls */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {hasPendingFile && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11 }}>🔍</span>
+                  <input type="range" min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => handleZoom(parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#c8102e' }} />
+                  <span style={{ fontSize: 11 }}>🔎</span>
+                </div>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) prepareFile(f); }} />
+              <button style={s.pickBtn} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {hasPendingFile ? 'Change Image' : 'Choose Image'}
+              </button>
+              {currentUrl && (
+                <button style={s.removeBtn} onClick={removeAvatar} disabled={uploading}>Remove</button>
+              )}
+              <span style={{ color: '#444', fontSize: 10 }}>
+                {hasPendingFile ? 'Drag to reposition' : loadingExisting ? 'Loading…' : ''}
               </span>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div style={s.previewSection}>
+            {hasPendingFile && bitmapSrc ? (
+              <>
+                <div
+                  style={{ ...s.cropCircle, cursor: 'grab' }}
+                  onMouseDown={onDragStart}
+                  onMouseMove={onDragMove}
+                  onMouseUp={onDragEnd}
+                  onMouseLeave={onDragEnd}
+                  onTouchStart={onDragStart}
+                  onTouchMove={onDragMove}
+                  onTouchEnd={onDragEnd}
+                >
+                  <img src={bitmapSrc} draggable={false} style={{ position: 'absolute', width: scaledW, height: scaledH, left: (ps - scaledW) / 2 + offsetX, top: (ps - scaledH) / 2 + offsetY, userSelect: 'none', pointerEvents: 'none' }} />
+                </div>
+                <div style={s.zoomRow}>
+                  <span style={s.zoomIcon}>🔍</span>
+                  <input type="range" min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => handleZoom(parseFloat(e.target.value))} style={s.zoomSlider} />
+                  <span style={s.zoomIcon}>🔎</span>
+                </div>
+                <span style={s.previewLabel}>{loadingExisting ? 'Loading…' : 'Drag to reposition · slide to zoom'}</span>
+              </>
+            ) : (
+              <>
+                <div style={s.previewWrap}>
+                  {(hasPendingUrl ? pendingUrl : displayPreview)
+                    ? <img src={(hasPendingUrl ? pendingUrl : displayPreview)!} alt="avatar" style={s.previewImg} onError={() => setDisplayPreview(null)} />
+                    : <div style={s.previewPlaceholder}>?</div>
+                  }
+                </div>
+                <span style={s.previewLabel}>
+                  {hasPendingUrl ? 'Preview — click Save to confirm' : currentUrl ? 'Current avatar' : 'No avatar set'}
+                </span>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Tabs */}
-        <div style={s.tabs}>
+        {/* Tabs — full modal only */}
+        {!inline && <div style={s.tabs}>
           <button style={{ ...s.tab, ...(tab === 'upload' ? s.tabActive : {}) }} onClick={() => resetTab('upload')}>Upload File</button>
           <button style={{ ...s.tab, ...(tab === 'url' ? s.tabActive : {}) }} onClick={() => resetTab('url')}>Image URL</button>
-        </div>
+        </div>}
 
-        {tab === 'upload' && (
+        {!inline && tab === 'upload' && (
           <div style={s.body}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={(e) => { const f = e.target.files?.[0]; if (f) prepareFile(f); }} />
@@ -288,7 +322,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
           </div>
         )}
 
-        {tab === 'url' && (
+        {!inline && tab === 'url' && (
           <div style={s.body}>
             <input
               style={s.urlInput}
@@ -306,13 +340,13 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
 
         {error && <div style={s.error}>{error}</div>}
 
-        {hasPendingChange && (
+        {!inline && hasPendingChange && (
           <button style={s.saveBtn} onClick={saveChanges} disabled={uploading}>
             {uploading ? 'Saving…' : 'Save Avatar'}
           </button>
         )}
 
-        {currentUrl && (
+        {!inline && currentUrl && (
           <button style={s.removeBtn} onClick={removeAvatar} disabled={uploading}>Remove avatar</button>
         )}
       </div>
@@ -324,7 +358,7 @@ export function AvatarModal({ onClose, currentUrl, inline, onSaved }: Props) {
       {content}
     </div>
   );
-}
+});
 
 const s: Record<string, React.CSSProperties> = {
   backdrop: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },

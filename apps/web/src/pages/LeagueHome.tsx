@@ -10,7 +10,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
-import { AvatarModal } from '../components/AvatarModal';
+import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
 import { MemberAvatar } from '../components/MemberAvatar';
 
 export function LeagueHomePage() {
@@ -25,6 +25,7 @@ export function LeagueHomePage() {
   const [editingTeamName, setEditingTeamName] = useState(false);
   const [teamNameInput, setTeamNameInput] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
+  const avatarRef = useRef<AvatarModalHandle>(null);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTeamName, setSettingsTeamName] = useState('');
@@ -1105,11 +1106,11 @@ export function LeagueHomePage() {
 
               <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Profile Picture</label>
-                <AvatarModal inline currentUrl={myProfile?.avatarUrl} onClose={() => {}} />
+                <AvatarModal ref={avatarRef} inline currentUrl={myProfile?.avatarUrl} onClose={() => {}} />
               </div>
 
               <div style={styles.settingsSection}>
-                <label style={styles.settingsLabel}>Avatar Color</label>
+                <label style={styles.settingsLabel}>Avatar Border Color</label>
                 <div style={styles.colorSwatches}>
                   {['#5555ff','#c8102e','#4caf50','#ff8c42','#ffd700','#00bcd4','#e040fb','#ffffff'].map((c) => (
                     <button
@@ -1126,14 +1127,6 @@ export function LeagueHomePage() {
                   ))}
                 </div>
               </div>
-
-              <button
-                style={{ ...styles.saveSettingsBtn, opacity: saveSettingsMutation.isPending ? 0.6 : 1 }}
-                disabled={saveSettingsMutation.isPending || !settingsTeamName.trim()}
-                onClick={() => saveSettingsMutation.mutate({ teamName: settingsTeamName.trim(), avatarColor: settingsColor })}
-              >
-                {saveSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </button>
 
               <div style={styles.settingsDivider} />
 
@@ -1213,6 +1206,17 @@ export function LeagueHomePage() {
                   </div>
                 )}
               </div>
+
+              <button
+                style={{ ...styles.saveSettingsBtn, opacity: saveSettingsMutation.isPending ? 0.6 : 1 }}
+                disabled={saveSettingsMutation.isPending || !settingsTeamName.trim()}
+                onClick={async () => {
+                  if (avatarRef.current?.hasPendingChange) await avatarRef.current.save();
+                  saveSettingsMutation.mutate({ teamName: settingsTeamName.trim(), avatarColor: settingsColor });
+                }}
+              >
+                {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+              </button>
 
               <div style={styles.settingsDivider} />
 
