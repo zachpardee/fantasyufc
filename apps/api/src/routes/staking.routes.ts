@@ -184,8 +184,7 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
         const isRed = fight.red_fighter_id === bet.fighterId;
         const isBlue = fight.blue_fighter_id === bet.fighterId;
         if (!isRed && !isBlue) throw new AppError(400, `Fighter not in fight ${bet.fightId}`);
-        const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
-        if (odds == null) throw new AppError(400, `No odds for fight ${bet.fightId}`);
+        // Odds may not be available yet — bets are allowed, payout is calculated when odds arrive
       }
 
       // Budget check: existing pending + new bets + pending parlay
@@ -212,9 +211,8 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
       for (const bet of body.bets) {
         const fight = fightMap.get(bet.fightId)!;
         const isRed = fight.red_fighter_id === bet.fighterId;
-        const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
-        const decOdds = toDecimalOdds(odds);
-        const potentialPayout = calcPotentialPayout(bet.stake, decOdds);
+        const odds: number | null = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
+        const potentialPayout = odds != null ? calcPotentialPayout(bet.stake, toDecimalOdds(odds)) : null;
         await client.query(`
           INSERT INTO staking_singles (league_id, event_id, member_id, fight_id, fighter_id, odds, stake, potential_payout)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
@@ -273,17 +271,16 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
       const fightMap = new Map(fights.map((f: any) => [f.id, f]));
 
       let combinedDecOdds = 1;
-      const legDetails: { fightId: string; fighterId: string; odds: number; decOdds: number }[] = [];
+      const legDetails: { fightId: string; fighterId: string; odds: number | null; decOdds: number | null }[] = [];
       for (const leg of body.legs) {
         const fight = fightMap.get(leg.fightId);
         if (!fight) throw new AppError(400, `Fight ${leg.fightId} not valid for this event`);
         const isRed = fight.red_fighter_id === leg.fighterId;
         if (!isRed && fight.blue_fighter_id !== leg.fighterId)
           throw new AppError(400, `Fighter not in fight ${leg.fightId}`);
-        const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
-        if (odds == null) throw new AppError(400, `No odds for fight ${leg.fightId}`);
-        const dec = toDecimalOdds(odds);
-        combinedDecOdds *= dec;
+        const odds: number | null = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
+        const dec = odds != null ? toDecimalOdds(odds) : null;
+        if (dec != null) combinedDecOdds *= dec;
         legDetails.push({ fightId: leg.fightId, fighterId: leg.fighterId, odds, decOdds: dec });
       }
 
@@ -310,19 +307,21 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
         await client.query(`DELETE FROM staking_parlays WHERE id = $1`, [existingParlay.id]);
       }
 
-      const potentialPayout = calcPotentialPayout(body.stake, combinedDecOdds);
+      const hasAllOdds = legDetails.every((l) => l.odds != null);
+      const finalDecOdds = hasAllOdds ? combinedDecOdds : null;
+      const potentialPayout = hasAllOdds ? calcPotentialPayout(body.stake, combinedDecOdds) : null;
       const { rows: [parlay] } = await client.query(`
         INSERT INTO staking_parlays (league_id, event_id, member_id, stake, decimal_odds, potential_payout)
         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
       `, [leagueId, eventId, member.id, body.stake,
-          Math.round(combinedDecOdds * 10000) / 10000, potentialPayout]);
+          finalDecOdds != null ? Math.round(finalDecOdds * 10000) / 10000 : null, potentialPayout]);
 
       for (const leg of legDetails) {
         await client.query(`
           INSERT INTO staking_parlay_legs (parlay_id, fight_id, fighter_id, odds, decimal_odds)
           VALUES ($1,$2,$3,$4,$5)
         `, [parlay.id, leg.fightId, leg.fighterId, leg.odds,
-            Math.round(leg.decOdds * 10000) / 10000]);
+            leg.decOdds != null ? Math.round(leg.decOdds * 10000) / 10000 : null]);
       }
 
       await client.query('COMMIT');
