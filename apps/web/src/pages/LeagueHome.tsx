@@ -1107,7 +1107,7 @@ export function LeagueHomePage() {
               <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Profile Picture</label>
                 <button style={styles.avatarUploadBtn} onClick={() => setShowAvatarModal(true)}>
-                  Change Avatar Photo
+                  Edit Avatar Photo
                 </button>
               </div>
 

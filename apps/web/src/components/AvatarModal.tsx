@@ -23,7 +23,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
   const [urlInput, setUrlInput] = useState('');
   const [displayPreview, setDisplayPreview] = useState<string | null>(currentUrl ?? null);
 
-  // Pending file crop state
+  // Crop state (used for both existing avatar and newly picked file)
   const [pendingBitmap, setPendingBitmap] = useState<ImageBitmap | null>(null);
   const [bitmapSrc, setBitmapSrc] = useState<string | null>(null);
   const [baseScaledW, setBaseScaledW] = useState(0);
@@ -31,6 +31,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
   const [zoom, setZoom] = useState(1);
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -39,6 +40,30 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
   const hasPendingFile = pendingBitmap !== null;
   const hasPendingUrl = pendingUrl !== null;
   const hasPendingChange = hasPendingFile || hasPendingUrl;
+
+  // Load existing avatar into crop UI on open
+  useEffect(() => {
+    if (!currentUrl) return;
+    setLoadingExisting(true);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = async () => {
+      try {
+        const bitmap = await createImageBitmap(img);
+        const scale = Math.max(PREVIEW_SIZE / bitmap.width, PREVIEW_SIZE / bitmap.height);
+        setBaseScaledW(bitmap.width * scale);
+        setBaseScaledH(bitmap.height * scale);
+        setZoom(1);
+        setOffsetX(0);
+        setOffsetY(0);
+        setBitmapSrc(currentUrl);
+        setPendingBitmap(bitmap);
+      } catch { /* CORS blocked — fall back to static preview */ }
+      setLoadingExisting(false);
+    };
+    img.onerror = () => setLoadingExisting(false);
+    img.src = currentUrl + (currentUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+  }, []);// eslint-disable-line react-hooks/exhaustive-deps
 
   const scaledW = baseScaledW * zoom;
   const scaledH = baseScaledH * zoom;
@@ -228,7 +253,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
                 />
                 <span style={s.zoomIcon}>🔎</span>
               </div>
-              <span style={s.previewLabel}>Drag to reposition · slide to zoom</span>
+              <span style={s.previewLabel}>{loadingExisting ? 'Loading…' : 'Drag to reposition · slide to zoom'}</span>
             </>
           ) : (
             <>
@@ -286,7 +311,7 @@ export function AvatarModal({ onClose, currentUrl }: Props) {
           </button>
         )}
 
-        {currentUrl && !hasPendingChange && (
+        {currentUrl && (
           <button style={s.removeBtn} onClick={removeAvatar} disabled={uploading}>Remove avatar</button>
         )}
       </div>
