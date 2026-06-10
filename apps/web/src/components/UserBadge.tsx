@@ -15,22 +15,23 @@ export function UserBadge() {
   });
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  if (!session || isAuthPage || !profile) return null;
+  const isLeaguePage = /^\/league\/[^/]+$/.test(location.pathname);
+  if (!session || isAuthPage || isLeaguePage || !profile) return null;
 
-  const label = (profile.displayName || profile.username || '?').charAt(0).toUpperCase();
+  const email = session.user.email ?? '';
+  const label = email.charAt(0).toUpperCase();
   const color = (profile as any).avatarColor ?? '#5555ff';
-  const name = profile.displayName || profile.username;
 
   return (
     <div style={styles.wrap}>
       {profile.avatarUrl ? (
-        <img src={profile.avatarUrl} alt={name} style={styles.avatarImg} />
+        <img src={profile.avatarUrl} alt={email} style={styles.avatarImg} />
       ) : (
         <div style={{ ...styles.avatar, background: color + '33', borderColor: color, color }}>
           {label}
         </div>
       )}
-      <span style={styles.username}>{name}</span>
+      <span style={styles.email}>{email}</span>
     </div>
   );
 }
@@ -38,17 +39,18 @@ export function UserBadge() {
 const styles: Record<string, React.CSSProperties> = {
   wrap: {
     position: 'fixed',
-    bottom: 24,
-    left: 24,
+    top: 16,
+    right: 20,
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     background: '#111',
     border: '1px solid #222',
     borderRadius: 24,
-    padding: '6px 12px 6px 6px',
+    padding: '5px 12px 5px 5px',
     zIndex: 1000,
     pointerEvents: 'none',
+    maxWidth: 240,
   },
   avatar: {
     width: 28,
@@ -69,10 +71,12 @@ const styles: Record<string, React.CSSProperties> = {
     objectFit: 'cover',
     flexShrink: 0,
   },
-  username: {
+  email: {
     color: '#888',
     fontSize: 12,
     fontWeight: 600,
     whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
 };

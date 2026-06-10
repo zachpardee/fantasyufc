@@ -450,6 +450,17 @@ export function LeagueHomePage() {
           )}
         </div>
         <span style={{ flex: 1 }} />
+        {session?.user.email && (
+          <div style={styles.userPill}>
+            <MemberAvatar
+              teamName={session.user.email}
+              color={(myMember as any)?.avatarColor ?? '#5555ff'}
+              size={26}
+              avatarUrl={(myMember as any)?.avatarUrl}
+            />
+            <span style={styles.userPillEmail}>{session.user.email}</span>
+          </div>
+        )}
         <div style={styles.bellWrap}>
           <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
             🔔
@@ -1506,6 +1517,8 @@ const styles: Record<string, React.CSSProperties> = {
   eventDate: { color: '#888', fontSize: 14, fontWeight: 600 },
   eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 3 },
   eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 14, fontWeight: 600, marginTop: 8 },
+  userPill: { display: 'flex', alignItems: 'center', gap: 7, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: '4px 10px 4px 4px', maxWidth: 200 },
+  userPillEmail: { color: '#888', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   bellWrap: { position: 'relative' as const },
   bellBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '2px 4px', position: 'relative' as const, lineHeight: 1 },
   bellBadge: { position: 'absolute' as const, top: -4, right: -4, background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 4px', minWidth: 14, textAlign: 'center' as const },
