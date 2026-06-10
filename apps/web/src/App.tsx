@@ -20,7 +20,6 @@ import { CommissionerToolsPage } from './pages/CommissionerTools';
 import { StakingPicksPage } from './pages/StakingPicks';
 import { LeagueSubLayout } from './components/LeagueSubLayout';
 import { Footer } from './components/Footer';
-import { UserBadge } from './components/UserBadge';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null };
@@ -106,7 +105,6 @@ export default function App() {
         </Route>
         <Route path="/fighters" element={<RequireAuth><FighterBrowserPage /></RequireAuth>} />
       </Routes>
-      <UserBadge />
       <Footer />
     </BrowserRouter>
     </ErrorBoundary>
