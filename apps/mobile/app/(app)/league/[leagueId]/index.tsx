@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Pressable, Alert, TextInput,
+  Pressable, Alert, TextInput, Share,
 } from 'react-native';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -98,9 +98,15 @@ export default function LeagueHomeScreen() {
   const champion = members.find((m) => m.isChampion);
   const isLive = matchup?.eventStatus === 'live' || currentEvent?.status === 'live';
 
-  function copyInviteCode() {
-    setCopyMsg('Copied!');
-    setTimeout(() => setCopyMsg(''), 2000);
+  async function copyInviteCode() {
+    const code = (league as any)?.inviteCode;
+    if (!code) return;
+    try {
+      await Share.share({ message: `Join my Fantasy UFC league! Code: ${code}` });
+    } catch {
+      setCopyMsg(code);
+      setTimeout(() => setCopyMsg(''), 3000);
+    }
   }
 
   const navItems = [
