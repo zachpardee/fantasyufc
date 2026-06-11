@@ -3,7 +3,6 @@ import { authRouter } from './auth.routes';
 import { leaguesRouter } from './leagues.routes';
 import { fightersRouter } from './fighters.routes';
 import { eventsRouter } from './events.routes';
-import { draftRouter } from './draft.routes';
 import { rosterRouter } from './roster.routes';
 import { matchupsRouter } from './matchups.routes';
 import { notificationsRouter } from './notifications.routes';
@@ -18,7 +17,6 @@ export const apiRouter = Router();
 
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/leagues', leaguesRouter);
-apiRouter.use('/leagues/:leagueId/draft', draftRouter);
 apiRouter.use('/leagues/:leagueId/roster', rosterRouter);
 apiRouter.use('/leagues/:leagueId/matchups', matchupsRouter);
 apiRouter.use('/leagues/:leagueId/standings', matchupsRouter);
