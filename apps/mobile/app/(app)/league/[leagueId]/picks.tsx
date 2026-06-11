@@ -750,17 +750,36 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
         </>
       ) : (
         <>
-          {fights.map((fight) => (
-            <FightCard
-              key={fight.id}
-              fight={fight}
-              picked={localPicks[fight.id]}
-              pickedMethod={localMethods[fight.id]}
-              locked={locked}
-              onPick={(fighterId) => setLocalPicks((p) => ({ ...p, [fight.id]: fighterId }))}
-              onMethod={(method) => setLocalMethods((p) => ({ ...p, [fight.id]: method }))}
-            />
-          ))}
+          {(() => {
+            const earlyPrelims = fights.filter((f: any) => f.cardSegment === 'early_prelims');
+            const prelims = fights.filter((f: any) => f.cardSegment === 'prelims');
+            const mainCard = fights.filter((f: any) => f.cardSegment !== 'early_prelims' && f.cardSegment !== 'prelims');
+            const segments = [
+              { label: 'MAIN CARD', fights: mainCard },
+              { label: 'PRELIMS', fights: prelims },
+              { label: 'EARLY PRELIMS', fights: earlyPrelims },
+            ].filter((seg) => seg.fights.length > 0);
+            return segments.map((seg) => (
+              <View key={seg.label}>
+                {segments.length > 1 && (
+                  <View style={s.segmentHeader}>
+                    <Text style={s.segmentLabel}>{seg.label}</Text>
+                  </View>
+                )}
+                {seg.fights.map((fight: any) => (
+                  <FightCard
+                    key={fight.id}
+                    fight={fight}
+                    picked={localPicks[fight.id]}
+                    pickedMethod={localMethods[fight.id]}
+                    locked={locked}
+                    onPick={(fighterId) => setLocalPicks((p) => ({ ...p, [fight.id]: fighterId }))}
+                    onMethod={(method) => setLocalMethods((p) => ({ ...p, [fight.id]: method }))}
+                  />
+                ))}
+              </View>
+            ));
+          })()}
 
           {allFighters.length > 0 && (
             <View style={s.champSection}>
@@ -828,6 +847,7 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
 }) {
   const winnerId = fight.resultWinnerId;
   const isCompleted = fight.status === 'completed' || winnerId != null;
+  const methodRequired = !!picked && !pickedMethod && !locked && !isCompleted;
   return (
     <View style={s.fightCard}>
       {fight.isTitleFight && <Text style={s.titleTag}>TITLE FIGHT</Text>}
@@ -835,6 +855,10 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
       <View style={s.matchup}>
         <FighterBtn
           name={`${fight.redFirstName} ${fight.redLastName}`}
+          imageUrl={fight.redImageUrl}
+          ranking={fight.redRanking}
+          isChampion={fight.redIsChampion}
+          odds={fight.redFighterOdds}
           corner="red"
           isPicked={picked === fight.redFighterId}
           isWinner={isCompleted && winnerId === fight.redFighterId}
@@ -847,6 +871,10 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
         <Text style={s.vsText}>VS</Text>
         <FighterBtn
           name={`${fight.blueFirstName} ${fight.blueLastName}`}
+          imageUrl={fight.blueImageUrl}
+          ranking={fight.blueRanking}
+          isChampion={fight.blueIsChampion}
+          odds={fight.blueFighterOdds}
           corner="blue"
           isPicked={picked === fight.blueFighterId}
           isWinner={isCompleted && winnerId === fight.blueFighterId}
@@ -859,12 +887,19 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
       </View>
       {picked && (
         <View style={s.methodRow}>
+          {methodRequired && <Text style={s.methodRequired}>Choose method:</Text>}
           {METHODS.map((m) => {
             const isSelected = pickedMethod === m.value;
+            const isOutcomeMatch = fight.resultOutcome && (
+              m.value === 'ko_tko' ? fight.resultOutcome === 'ko_tko' :
+              m.value === 'submission' ? fight.resultOutcome === 'submission' :
+              m.value === 'decision' ? ['decision_unanimous','decision_split','decision_majority'].includes(fight.resultOutcome) :
+              fight.resultOutcome === 'disqualification'
+            );
             return (
               <TouchableOpacity
                 key={m.value}
-                style={[s.methodBtn, isSelected && s.methodBtnSelected]}
+                style={[s.methodBtn, isSelected && s.methodBtnSelected, !!isOutcomeMatch && !isSelected && s.methodBtnMatch]}
                 onPress={() => !locked && onMethod(isSelected ? '' : m.value)}
                 disabled={locked}
               >
@@ -883,8 +918,9 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
   );
 }
 
-function FighterBtn({ name, corner, isPicked, isWinner, isLoser, isCorrect, pointsEarned, locked, onPress }: {
-  name: string; corner: 'red' | 'blue';
+function FighterBtn({ name, imageUrl, ranking, isChampion, odds, corner, isPicked, isWinner, isLoser, isCorrect, pointsEarned, locked, onPress }: {
+  name: string; imageUrl?: string | null; ranking?: number | null; isChampion?: boolean; odds?: number | null;
+  corner: 'red' | 'blue';
   isPicked: boolean; isWinner: boolean; isLoser: boolean;
   isCorrect: boolean | null; pointsEarned?: number; locked: boolean; onPress: () => void;
 }) {
@@ -892,6 +928,8 @@ function FighterBtn({ name, corner, isPicked, isWinner, isLoser, isCorrect, poin
     ? isCorrect === true ? '#4caf50' : isCorrect === false ? '#ff5252' : (corner === 'red' ? '#c8102e' : '#1565c0')
     : isWinner ? '#4caf50'
     : '#2a2a2a';
+  const isFavorite = odds != null && odds < 0;
+  const oddsLabel = odds != null ? (odds > 0 ? `+${odds}` : `${odds}`) : null;
   return (
     <TouchableOpacity
       style={[
@@ -901,12 +939,23 @@ function FighterBtn({ name, corner, isPicked, isWinner, isLoser, isCorrect, poin
       onPress={onPress}
       disabled={locked}
     >
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={s.fighterBtnImg} resizeMode="cover" />
+      ) : (
+        <View style={s.fighterBtnImgPlaceholder} />
+      )}
       <Text
         style={[s.fighterBtnName, { color: corner === 'red' ? '#e05555' : '#5599dd' }]}
         numberOfLines={2}
       >
         {name}
       </Text>
+      <Text style={s.fighterRank}>
+        {isChampion ? 'C' : ranking ? `#${ranking}` : 'NR'}
+      </Text>
+      {oddsLabel && (
+        <Text style={[s.fighterOdds, { color: isFavorite ? '#888' : '#4ade80' }]}>{oddsLabel}</Text>
+      )}
       {isPicked && isCorrect === true && (
         <Text style={s.pickResult}>✓ +{(+(pointsEarned ?? 0)).toFixed(0)}</Text>
       )}
@@ -1045,24 +1094,32 @@ const s = StyleSheet.create({
     backgroundColor: '#111', borderWidth: 1, borderColor: '#1e1e1e',
     borderRadius: 10, padding: 14, margin: 12, marginBottom: 0,
   },
+  segmentHeader: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 6 },
+  segmentLabel: { color: '#c8102e', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   titleTag: { color: '#ffd700', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
   fightMeta: { color: '#555', fontSize: 12, marginBottom: 10 },
   matchup: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   vsText: { color: '#333', fontWeight: '700', fontSize: 12, alignSelf: 'center' },
   fighterBtn: {
-    flex: 1, borderWidth: 2, borderRadius: 8, padding: 12,
-    alignItems: 'center', justifyContent: 'center', minHeight: 60,
+    flex: 1, borderWidth: 2, borderRadius: 8, padding: 10,
+    alignItems: 'center', minHeight: 120,
   },
-  fighterBtnName: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  pickedTag: { color: '#c8102e', fontSize: 11, fontWeight: '800', marginTop: 4, letterSpacing: 0.5 },
+  fighterBtnImg: { width: 56, height: 64, borderRadius: 6, marginBottom: 6 },
+  fighterBtnImgPlaceholder: { width: 56, height: 64, borderRadius: 6, backgroundColor: '#2a2a2a', marginBottom: 6 },
+  fighterBtnName: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 16 },
+  fighterRank: { color: '#555', fontSize: 11, fontWeight: '600', marginTop: 2 },
+  fighterOdds: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  pickedTag: { color: '#c8102e', fontSize: 10, fontWeight: '800', marginTop: 4, letterSpacing: 0.5 },
   pickResult: { color: '#4caf50', fontSize: 11, fontWeight: '700', marginTop: 4 },
-  methodRow: { flexDirection: 'row', gap: 6, marginTop: 12, justifyContent: 'center' },
+  methodRequired: { color: '#c8102e', fontSize: 10, fontWeight: '700', width: '100%', marginBottom: 4, textAlign: 'center' },
+  methodRow: { flexDirection: 'row', gap: 6, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' },
   methodBtn: {
     flex: 1, paddingVertical: 10,
     borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 5,
-    backgroundColor: '#1a1a1a', alignItems: 'center',
+    backgroundColor: '#1a1a1a', alignItems: 'center', minWidth: 60,
   },
   methodBtnSelected: { borderColor: '#c8102e', backgroundColor: '#1a0a0a' },
+  methodBtnMatch: { borderColor: '#4caf5044' },
   methodBtnText: { color: '#666', fontSize: 12, fontWeight: '700' },
   methodBtnTextSelected: { color: '#c8102e' },
   resultOutcome: { color: '#555', fontSize: 11, textAlign: 'center', marginTop: 10 },
