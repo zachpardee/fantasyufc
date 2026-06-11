@@ -33,6 +33,9 @@ export default function LeagueHomeScreen() {
     { label: 'Matchup', icon: 'VS', route: `/(app)/league/${leagueId}/matchup` },
     { label: 'Standings', icon: '#', route: `/(app)/league/${leagueId}/standings` },
     { label: 'Picks', icon: '★', route: `/(app)/league/${leagueId}/picks` },
+    { label: 'Playoffs', icon: '🏆', route: `/(app)/league/${leagueId}/playoffs` },
+    { label: 'Schedule', icon: '📅', route: `/(app)/league/${leagueId}/schedule` },
+    { label: 'Rules', icon: '📋', route: `/(app)/league/${leagueId}/rules` },
   ];
 
   return (
@@ -62,15 +65,19 @@ export default function LeagueHomeScreen() {
       )}
 
       <View style={styles.nav}>
-        {navItems.map((item) => (
-          <TouchableOpacity
-            key={item.label}
-            style={styles.navItem}
-            onPress={() => router.push(item.route as never)}
-          >
-            <Text style={styles.navIcon}>{item.icon}</Text>
-            <Text style={styles.navLabel}>{item.label}</Text>
-          </TouchableOpacity>
+        {[navItems.slice(0, 3), navItems.slice(3)].map((row, ri) => (
+          <View key={ri} style={styles.navRow}>
+            {row.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.navItem}
+                onPress={() => router.push(item.route as never)}
+              >
+                <Text style={styles.navIcon}>{item.icon}</Text>
+                <Text style={styles.navLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         ))}
       </View>
 
@@ -100,13 +107,14 @@ const styles = StyleSheet.create({
   teamName: { fontSize: 13, color: '#999', marginBottom: 4 },
   score: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
   vs: { color: '#666', fontWeight: '700', paddingHorizontal: 16 },
-  nav: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
+  nav: { padding: 8, gap: 8 },
+  navRow: { flexDirection: 'row', gap: 8 },
   navItem: {
-    width: '33.33%', padding: 8, alignItems: 'center',
-    backgroundColor: '#1a1a1a', margin: 4, borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a',
+    flex: 1, padding: 12, alignItems: 'center',
+    backgroundColor: '#1a1a1a', borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a',
   },
-  navIcon: { fontSize: 28, marginBottom: 6 },
-  navLabel: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  navIcon: { fontSize: 24, marginBottom: 6 },
+  navLabel: { color: '#fff', fontSize: 12, fontWeight: '600' },
   info: { padding: 24, flexDirection: 'row', justifyContent: 'space-between' },
   infoText: { color: '#555', fontSize: 13 },
 });

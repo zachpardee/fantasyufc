@@ -1,29 +1,39 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 
 interface StandingsEntry {
-  team_id: string;
-  team_name: string;
-  user_id: string;
+  teamId: string;
+  teamName: string;
+  userId: string;
+  username: string;
   wins: number;
   losses: number;
   ties: number;
   streak: number;
-  total_points: number;
-  waiver_priority: number;
+  totalPoints: number;
+  stakingBalance?: number;
+  waiverPriority: number;
 }
 
 export default function StandingsScreen() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { session } = useAuthStore();
+  const router = useRouter();
+
+  const { data: league } = useQuery<any>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}`),
+  });
 
   const { data: standings = [], isLoading } = useQuery<StandingsEntry[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/standings`),
   });
+
+  const isStaking = league?.leagueFormat === 'staking';
 
   if (isLoading) {
     return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
@@ -46,19 +56,27 @@ export default function StandingsScreen() {
         <Text style={styles.headerCell}>W</Text>
         <Text style={styles.headerCell}>L</Text>
         <Text style={styles.headerCell}>T</Text>
-        <Text style={styles.headerCell}>PTS</Text>
-        <Text style={[styles.headerCell, styles.streakCell]}>STREAK</Text>
+        <Text style={[styles.headerCell, styles.ptsHeader]}>
+          {isStaking ? 'P&L' : 'PTS'}
+        </Text>
+        <Text style={[styles.headerCell, styles.streakCell]}>STK</Text>
       </View>
 
       {standings.map((entry, index) => {
-        const isMe = entry.user_id === session?.user.id;
+        const isMe = entry.userId === session?.user.id;
         const streakStr = formatStreak(entry.streak);
         const streakPositive = entry.streak > 0;
+        const ptsDisplay = isStaking
+          ? (entry.stakingBalance != null
+              ? (entry.stakingBalance >= 0 ? '+$' : '-$') + Math.abs(entry.stakingBalance).toFixed(0)
+              : '—')
+          : (entry.totalPoints ?? 0).toFixed(1);
 
         return (
-          <View
-            key={entry.team_id}
+          <TouchableOpacity
+            key={entry.teamId}
             style={[styles.row, isMe && styles.myRow, index % 2 === 0 && styles.evenRow]}
+            onPress={() => router.push(`/(app)/league/${leagueId}/team/${entry.teamId}` as never)}
           >
             <View style={[styles.cell, styles.rankCell]}>
               {index < 3 ? (
@@ -72,7 +90,7 @@ export default function StandingsScreen() {
 
             <View style={[styles.cell, styles.teamCell]}>
               <Text style={[styles.teamName, isMe && styles.myTeamName]} numberOfLines={1}>
-                {entry.team_name}
+                {entry.teamName}
               </Text>
               {isMe && <Text style={styles.youBadge}>YOU</Text>}
             </View>
@@ -80,18 +98,21 @@ export default function StandingsScreen() {
             <Text style={[styles.cell, styles.statCell]}>{entry.wins}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.losses}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.ties}</Text>
-            <Text style={[styles.cell, styles.ptsCell]}>{(entry.total_points ?? 0).toFixed(1)}</Text>
+            <Text style={[styles.cell, styles.ptsCell,
+              isStaking && (entry.stakingBalance ?? 0) > 0 && styles.ptsPos,
+              isStaking && (entry.stakingBalance ?? 0) < 0 && styles.ptsNeg,
+            ]}>
+              {ptsDisplay}
+            </Text>
             <Text style={[styles.cell, styles.streakCell, streakPositive ? styles.winStreak : styles.lossStreak]}>
               {streakStr}
             </Text>
-          </View>
+          </TouchableOpacity>
         );
       })}
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Waiver priority resets each week · Worst record = highest priority
-        </Text>
+        <Text style={styles.footerText}>Tap a team to view their profile</Text>
       </View>
     </ScrollView>
   );
@@ -114,6 +135,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#333', backgroundColor: '#111',
   },
   headerCell: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, minWidth: 32, textAlign: 'center' },
+  ptsHeader: { minWidth: 48 },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14 },
   evenRow: { backgroundColor: '#080808' },
@@ -122,7 +144,7 @@ const styles = StyleSheet.create({
   cell: { minWidth: 32, textAlign: 'center' },
   rankCell: { minWidth: 36 },
   teamCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  streakCell: { minWidth: 44 },
+  streakCell: { minWidth: 40 },
 
   rank: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
   rankNum: { color: '#666', fontSize: 13, textAlign: 'center' },
@@ -135,7 +157,9 @@ const styles = StyleSheet.create({
   youBadge: { color: '#c8102e', fontSize: 10, fontWeight: '700' },
 
   statCell: { color: '#aaa', fontSize: 14 },
-  ptsCell: { color: '#fff', fontSize: 14, fontWeight: '600', minWidth: 48 },
+  ptsCell: { color: '#fff', fontSize: 14, fontWeight: '600', minWidth: 48, textAlign: 'center' },
+  ptsPos: { color: '#4caf50' },
+  ptsNeg: { color: '#ff5252' },
   winStreak: { color: '#4caf50', fontSize: 13, fontWeight: '700' },
   lossStreak: { color: '#f44336', fontSize: 13, fontWeight: '700' },
 
