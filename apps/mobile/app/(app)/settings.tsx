@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -10,6 +10,11 @@ import { supabase } from '../../src/api/supabase';
 import { useAuthStore } from '../../src/store/auth.store';
 import type { UserProfile } from '@fantasy-ufc/shared';
 
+const AVATAR_COLORS = [
+  '#c8102e', '#1565c0', '#2e7d32', '#6a1b9a',
+  '#e65100', '#00838f', '#4a148c', '#880e4f',
+];
+
 export default function SettingsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -17,6 +22,11 @@ export default function SettingsScreen() {
 
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [editingPassword, setEditingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ['me'],
@@ -25,28 +35,18 @@ export default function SettingsScreen() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (name: string) =>
-      apiClient.patch('/auth/me', { displayName: name }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['me'] });
-      setEditingName(false);
-    },
+    mutationFn: (patch: Partial<{ displayName: string; notificationPrefs: any; avatarColor: string }>) =>
+      apiClient.patch('/auth/me', patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   });
 
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          signOut();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
-  };
+  const notifPrefs = (profile as any)?.notificationPrefs ?? {};
+
+  function toggleNotif(key: string, value: boolean) {
+    updateProfile.mutate({
+      notificationPrefs: { ...notifPrefs, [key]: value },
+    });
+  }
 
   const startEditName = () => {
     setDisplayName(profile?.displayName ?? '');
@@ -56,114 +56,218 @@ export default function SettingsScreen() {
   const submitName = () => {
     const trimmed = displayName.trim();
     if (!trimmed) return;
-    updateProfile.mutate(trimmed);
+    updateProfile.mutate({ displayName: trimmed }, {
+      onSuccess: () => setEditingName(false),
+    });
+  };
+
+  async function submitPassword() {
+    setPasswordError('');
+    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return; }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return; }
+    setPasswordLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordLoading(false);
+    if (error) { setPasswordError(error.message); return; }
+    setNewPassword('');
+    setConfirmPassword('');
+    setEditingPassword(false);
+    Alert.alert('Password Updated', 'Your password has been changed.');
+  }
+
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out', style: 'destructive',
+        onPress: async () => {
+          await supabase.auth.signOut();
+          signOut();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
   };
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
+    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
   }
 
+  const email = session?.user?.email ?? '';
+  const initials = (profile?.displayName ?? profile?.username ?? email ?? '?')[0].toUpperCase();
+  const avatarColor = (profile as any)?.avatarColor ?? '#c8102e';
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(profile?.displayName ?? profile?.email ?? '?')[0].toUpperCase()}
-          </Text>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView style={s.container} keyboardShouldPersistTaps="handled">
+
+        {/* Profile header */}
+        <View style={s.profileSection}>
+          <View style={[s.avatar, { backgroundColor: avatarColor }]}>
+            <Text style={s.avatarText}>{initials}</Text>
+          </View>
+          <View style={s.profileInfo}>
+            {editingName ? (
+              <>
+                <TextInput
+                  style={s.nameInput}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder="Display name"
+                  placeholderTextColor="#555"
+                  autoFocus
+                  onSubmitEditing={submitName}
+                  returnKeyType="done"
+                />
+                <View style={s.nameActions}>
+                  <TouchableOpacity onPress={() => setEditingName(false)}>
+                    <Text style={s.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.saveBtn, updateProfile.isPending && s.disabledBtn]}
+                    onPress={submitName}
+                    disabled={updateProfile.isPending}
+                  >
+                    <Text style={s.saveText}>{updateProfile.isPending ? 'Saving...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <TouchableOpacity onPress={startEditName}>
+                <Text style={s.displayName}>{profile?.displayName ?? profile?.username ?? 'Set display name'}</Text>
+                <Text style={s.tapToEdit}>Tap to edit name</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={s.email}>{email}</Text>
+          </View>
         </View>
 
-        <View style={styles.profileInfo}>
-          {editingName ? (
-            <View style={styles.nameEdit}>
-              <TextInput
-                style={styles.nameInput}
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="Display name"
-                placeholderTextColor="#555"
-                autoFocus
-                onSubmitEditing={submitName}
-                returnKeyType="done"
-              />
-              <View style={styles.nameActions}>
-                <TouchableOpacity onPress={() => setEditingName(false)}>
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveBtn, updateProfile.isPending && styles.disabledBtn]}
-                  onPress={submitName}
-                  disabled={updateProfile.isPending}
-                >
-                  <Text style={styles.saveText}>
-                    {updateProfile.isPending ? 'Saving...' : 'Save'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+        {/* Avatar color */}
+        <SectionHeader title="AVATAR COLOR" />
+        <View style={s.colorPicker}>
+          {AVATAR_COLORS.map(color => (
+            <TouchableOpacity
+              key={color}
+              style={[s.colorSwatch, { backgroundColor: color }, avatarColor === color && s.colorSwatchSelected]}
+              onPress={() => updateProfile.mutate({ avatarColor: color } as any)}
+            />
+          ))}
+        </View>
+
+        {/* Password */}
+        <SectionHeader title="SECURITY" />
+        {editingPassword ? (
+          <View style={s.passwordForm}>
+            <TextInput
+              style={s.input}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="New password"
+              placeholderTextColor="#555"
+              secureTextEntry
+              autoFocus
+            />
+            <TextInput
+              style={[s.input, { marginTop: 10 }]}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Confirm password"
+              placeholderTextColor="#555"
+              secureTextEntry
+            />
+            {!!passwordError && <Text style={s.errorText}>{passwordError}</Text>}
+            <View style={s.nameActions}>
+              <TouchableOpacity onPress={() => { setEditingPassword(false); setPasswordError(''); setNewPassword(''); setConfirmPassword(''); }}>
+                <Text style={s.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.saveBtn, passwordLoading && s.disabledBtn]}
+                onPress={submitPassword}
+                disabled={passwordLoading}
+              >
+                <Text style={s.saveText}>{passwordLoading ? 'Updating...' : 'Update Password'}</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <TouchableOpacity onPress={startEditName}>
-              <Text style={styles.displayName}>{profile?.displayName ?? 'Set display name'}</Text>
-              <Text style={styles.tapToEdit}>Tap to edit</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.email}>{profile?.email}</Text>
+          </View>
+        ) : (
+          <SettingsRow label="Change Password" onPress={() => setEditingPassword(true)} />
+        )}
+
+        {/* Notifications */}
+        <SectionHeader title="NOTIFICATIONS" />
+        <NotifRow
+          label="Fight Results"
+          value={notifPrefs.fightResults ?? true}
+          onToggle={(v) => toggleNotif('fightResults', v)}
+        />
+        <NotifRow
+          label="Event Starting"
+          value={notifPrefs.eventStarting ?? true}
+          onToggle={(v) => toggleNotif('eventStarting', v)}
+        />
+        <NotifRow
+          label="Draft Picks"
+          value={notifPrefs.draftPicks ?? true}
+          onToggle={(v) => toggleNotif('draftPicks', v)}
+        />
+
+        {/* About */}
+        <SectionHeader title="ABOUT" />
+        <View style={s.infoRow}>
+          <Text style={s.infoLabel}>Version</Text>
+          <Text style={s.infoValue}>1.0.0</Text>
         </View>
-      </View>
+        <View style={s.infoRow}>
+          <Text style={s.infoLabel}>User ID</Text>
+          <Text style={s.infoValue} numberOfLines={1}>{session?.user.id?.slice(0, 8)}…</Text>
+        </View>
 
-      <SectionHeader title="ACCOUNT" />
+        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+          <Text style={s.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
 
-      <SettingsRow label="Display Name" value={profile?.displayName ?? '—'} onPress={startEditName} />
-
-      <SectionHeader title="NOTIFICATIONS" />
-
-      <SettingsRow label="Fight Results" value="On" />
-      <SettingsRow label="Waiver Awards" value="On" />
-      <SettingsRow label="Draft Picks" value="On" />
-
-      <SectionHeader title="ABOUT" />
-
-      <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>Version</Text>
-        <Text style={styles.infoValue}>1.0.0</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>User ID</Text>
-        <Text style={styles.infoValue} numberOfLines={1}>{session?.user.id?.slice(0, 8)}…</Text>
-      </View>
-
-      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={s.sectionHeader}>
+      <Text style={s.sectionTitle}>{title}</Text>
     </View>
   );
 }
 
 function SettingsRow({ label, value, onPress }: { label: string; value?: string; onPress?: () => void }) {
   const inner = (
-    <View style={styles.settingsRow}>
-      <Text style={styles.settingsLabel}>{label}</Text>
-      <View style={styles.settingsRight}>
-        {value !== undefined && <Text style={styles.settingsValue}>{value}</Text>}
-        {onPress && <Text style={styles.chevron}>›</Text>}
+    <View style={s.settingsRow}>
+      <Text style={s.settingsLabel}>{label}</Text>
+      <View style={s.settingsRight}>
+        {value !== undefined && <Text style={s.settingsValue}>{value}</Text>}
+        {onPress && <Text style={s.chevron}>›</Text>}
       </View>
     </View>
   );
-
-  if (onPress) {
-    return <TouchableOpacity onPress={onPress}>{inner}</TouchableOpacity>;
-  }
-  return inner;
+  return onPress ? <TouchableOpacity onPress={onPress}>{inner}</TouchableOpacity> : inner;
 }
 
-const styles = StyleSheet.create({
+function NotifRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: (v: boolean) => void }) {
+  return (
+    <View style={s.settingsRow}>
+      <Text style={s.settingsLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ false: '#333', true: '#c8102e' }}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
 
@@ -173,34 +277,45 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#c8102e', justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   avatarText: { color: '#fff', fontSize: 26, fontWeight: '700' },
   profileInfo: { flex: 1 },
   displayName: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 2 },
   tapToEdit: { color: '#555', fontSize: 12, marginBottom: 4 },
-  email: { color: '#666', fontSize: 13 },
+  email: { color: '#444', fontSize: 13, marginTop: 4 },
 
-  nameEdit: { marginBottom: 4 },
   nameInput: {
     color: '#fff', fontSize: 18, fontWeight: '700',
-    borderBottomWidth: 1, borderBottomColor: '#c8102e', paddingVertical: 4, marginBottom: 8,
+    borderBottomWidth: 1, borderBottomColor: '#c8102e',
+    paddingVertical: 4, marginBottom: 8,
   },
-  nameActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  nameActions: { flexDirection: 'row', gap: 12, alignItems: 'center', marginTop: 4 },
   cancelText: { color: '#666', fontSize: 13 },
-  saveBtn: { backgroundColor: '#c8102e', borderRadius: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  saveBtn: { backgroundColor: '#c8102e', borderRadius: 6, paddingHorizontal: 16, paddingVertical: 8 },
   disabledBtn: { opacity: 0.5 },
   saveText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
+  colorPicker: { flexDirection: 'row', gap: 12, padding: 16, flexWrap: 'wrap' },
+  colorSwatch: { width: 36, height: 36, borderRadius: 18 },
+  colorSwatchSelected: { borderWidth: 3, borderColor: '#fff' },
+
+  passwordForm: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#111' },
+  input: {
+    backgroundColor: '#111', borderWidth: 1, borderColor: '#333',
+    borderRadius: 8, color: '#fff', fontSize: 15, padding: 13,
+  },
+  errorText: { color: '#ff5252', fontSize: 13, marginTop: 8 },
+
   sectionHeader: {
-    paddingHorizontal: 16, paddingVertical: 10, marginTop: 16,
+    paddingHorizontal: 16, paddingVertical: 10, marginTop: 8,
     backgroundColor: '#050505',
   },
   sectionTitle: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
   settingsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 15,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: '#111',
   },
   settingsLabel: { color: '#ddd', fontSize: 15 },
@@ -210,14 +325,14 @@ const styles = StyleSheet.create({
 
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 15,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: '#111',
   },
   infoLabel: { color: '#666', fontSize: 14 },
   infoValue: { color: '#444', fontSize: 13, maxWidth: 160 },
 
   signOutBtn: {
-    margin: 24, padding: 16, borderRadius: 10,
+    margin: 24, marginTop: 32, padding: 16, borderRadius: 10,
     backgroundColor: '#1a0000', borderWidth: 1, borderColor: '#c8102e44',
     alignItems: 'center',
   },

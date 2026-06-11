@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../../../src/api/client';
@@ -38,14 +38,23 @@ export default function FighterBrowserScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push(`/(app)/fighters/${item.id}`)}
+            onPress={() => router.push(`/(app)/fighters/${item.id}` as never)}
           >
             <View style={styles.rowLeft}>
-              {item.isChampion && <Text style={styles.champ}>C</Text>}
-              <View>
-                <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
-                {item.nickname && <Text style={styles.nickname}>"{item.nickname}"</Text>}
-                <Text style={styles.meta}>{(item as any).weight_class_name}</Text>
+              {(item as any).imageUrl ? (
+                <Image source={{ uri: (item as any).imageUrl }} style={styles.photo} resizeMode="cover" />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoInitial}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  {item.isChampion && <Text style={styles.champ}>C</Text>}
+                  <Text style={styles.name} numberOfLines={1}>{item.firstName} {item.lastName}</Text>
+                </View>
+                {item.nickname && <Text style={styles.nickname} numberOfLines={1}>"{item.nickname}"</Text>}
+                <Text style={styles.meta}>{(item as any).weightClassName}</Text>
               </View>
             </View>
             <View style={styles.rowRight}>
@@ -74,10 +83,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252525',
   },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  photo: { width: 40, height: 50, borderRadius: 6, backgroundColor: '#1a1a1a', flexShrink: 0 },
+  photoPlaceholder: {
+    width: 40, height: 50, borderRadius: 6, backgroundColor: '#1a1a1a',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  photoInitial: { color: '#555', fontSize: 11, fontWeight: '700' },
   champ: {
     color: '#ffd700', fontWeight: '800', fontSize: 10,
     backgroundColor: '#2a2400', paddingHorizontal: 5, paddingVertical: 2,
-    borderRadius: 3, marginRight: 6,
+    borderRadius: 3,
   },
   name: { color: '#fff', fontSize: 15, fontWeight: '600' },
   nickname: { color: '#666', fontSize: 12, marginTop: 1 },

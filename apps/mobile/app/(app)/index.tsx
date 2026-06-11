@@ -43,17 +43,27 @@ export default function DashboardScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Leagues</Text>
-          <TouchableOpacity onPress={() => router.push('/(app)/league/create')}>
-            <Text style={styles.sectionAction}>+ Create</Text>
-          </TouchableOpacity>
+          <View style={styles.sectionActions}>
+            <TouchableOpacity onPress={() => router.push('/(app)/league/create?tab=join' as never)}>
+              <Text style={styles.sectionAction}>+ Join</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(app)/league/create')}>
+              <Text style={styles.sectionAction}>+ Create</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {leagues?.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No leagues yet</Text>
-            <TouchableOpacity style={styles.button} onPress={() => router.push('/(app)/league/create')}>
-              <Text style={styles.buttonText}>Create or Join a League</Text>
-            </TouchableOpacity>
+            <View style={styles.emptyButtons}>
+              <TouchableOpacity style={styles.button} onPress={() => router.push('/(app)/league/create?tab=join' as never)}>
+                <Text style={styles.buttonText}>Join a League</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={() => router.push('/(app)/league/create')}>
+                <Text style={styles.buttonText}>Create a League</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -91,10 +101,13 @@ const styles = StyleSheet.create({
   section: { padding: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  sectionActions: { flexDirection: 'row', gap: 16 },
   sectionAction: { color: '#c8102e', fontSize: 14, fontWeight: '600' },
   emptyState: { alignItems: 'center', padding: 32 },
   emptyText: { color: '#666', marginBottom: 16 },
-  button: { backgroundColor: '#c8102e', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12 },
+  emptyButtons: { gap: 10, width: '100%' },
+  button: { backgroundColor: '#c8102e', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center' },
+  buttonSecondary: { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333' },
   buttonText: { color: '#fff', fontWeight: '700' },
   leagueCard: {
     backgroundColor: '#1a1a1a', borderRadius: 10, padding: 16, marginBottom: 10,

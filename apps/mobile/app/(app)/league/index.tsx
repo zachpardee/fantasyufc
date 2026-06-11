@@ -43,7 +43,14 @@ export default function LeaguePickerScreen() {
         >
           <View style={styles.cardLeft}>
             <Text style={styles.leagueName}>{league.name}</Text>
-            <Text style={styles.leagueMeta}>{league.memberCount} / {league.maxTeams} teams</Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.leagueMeta}>{league.memberCount} / {league.maxTeams} teams</Text>
+              {(league as any).leagueFormat === 'staking' && (
+                <View style={styles.formatBadge}>
+                  <Text style={styles.formatText}>STAKING</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={[styles.statusBadge, statusStyle[league.status] ?? {}]}>
             <Text style={styles.statusText}>{league.status.toUpperCase()}</Text>
@@ -84,7 +91,10 @@ const styles = StyleSheet.create({
   },
   cardLeft: { flex: 1 },
   leagueName: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 3 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   leagueMeta: { color: '#666', fontSize: 13 },
+  formatBadge: { backgroundColor: '#1a1000', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  formatText: { color: '#ffd700', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   statusBadge: { backgroundColor: '#333', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { color: '#aaa', fontSize: 11, fontWeight: '700' },
 });

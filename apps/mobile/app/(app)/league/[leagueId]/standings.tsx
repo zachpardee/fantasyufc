@@ -80,7 +80,7 @@ export default function StandingsScreen() {
             <Text style={[styles.cell, styles.statCell]}>{entry.wins}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.losses}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.ties}</Text>
-            <Text style={[styles.cell, styles.ptsCell]}>{entry.total_points.toFixed(1)}</Text>
+            <Text style={[styles.cell, styles.ptsCell]}>{(entry.total_points ?? 0).toFixed(1)}</Text>
             <Text style={[styles.cell, styles.streakCell, streakPositive ? styles.winStreak : styles.lossStreak]}>
               {streakStr}
             </Text>

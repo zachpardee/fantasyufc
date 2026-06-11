@@ -3,14 +3,15 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../src/api/client';
 
 type Tab = 'create' | 'join';
 
 export default function CreateLeagueScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('create');
+  const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<Tab>(initialTab === 'join' ? 'join' : 'create');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 

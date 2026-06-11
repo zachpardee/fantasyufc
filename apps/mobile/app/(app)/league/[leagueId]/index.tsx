@@ -4,6 +4,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../../../../src/api/client';
 import type { League, Matchup } from '@fantasy-ufc/shared';
 
+function fmtScore(n: number, isStaking: boolean): string {
+  if (isStaking) {
+    return n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
+  }
+  return n.toFixed(1);
+}
+
 export default function LeagueHomeScreen() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const router = useRouter();
@@ -20,12 +27,12 @@ export default function LeagueHomeScreen() {
 
   if (!league) return null;
 
+  const isStaking = (league as any).leagueFormat === 'staking';
+
   const navItems = [
-    { label: 'My Roster', icon: '👊', route: `/(app)/league/${leagueId}/roster` },
-    { label: 'Standings', icon: '📊', route: `/(app)/league/${leagueId}/standings` },
-    { label: 'Matchup', icon: '⚔️', route: `/(app)/league/${leagueId}/matchup` },
-    { label: 'Event Picks', icon: '★', route: `/(app)/league/${leagueId}/picks` },
-    { label: 'Draft', icon: '📋', route: `/(app)/league/${leagueId}/draft` },
+    { label: 'Matchup', icon: 'VS', route: `/(app)/league/${leagueId}/matchup` },
+    { label: 'Standings', icon: '#', route: `/(app)/league/${leagueId}/standings` },
+    { label: 'Picks', icon: '★', route: `/(app)/league/${leagueId}/picks` },
   ];
 
   return (
@@ -42,13 +49,13 @@ export default function LeagueHomeScreen() {
           <Text style={styles.matchupLabel}>CURRENT MATCHUP</Text>
           <View style={styles.matchupScores}>
             <View style={styles.teamScore}>
-              <Text style={styles.teamName}>{(matchup as any).home_team_name}</Text>
-              <Text style={styles.score}>{matchup.homeScore.toFixed(1)}</Text>
+              <Text style={styles.teamName}>{(matchup as any).homeTeamName}</Text>
+              <Text style={styles.score}>{fmtScore(matchup.homeScore, isStaking)}</Text>
             </View>
             <Text style={styles.vs}>VS</Text>
             <View style={[styles.teamScore, styles.awayTeam]}>
-              <Text style={styles.teamName}>{(matchup as any).away_team_name}</Text>
-              <Text style={styles.score}>{matchup.awayScore.toFixed(1)}</Text>
+              <Text style={styles.teamName}>{(matchup as any).awayTeamName}</Text>
+              <Text style={styles.score}>{fmtScore(matchup.awayScore, isStaking)}</Text>
             </View>
           </View>
         </View>

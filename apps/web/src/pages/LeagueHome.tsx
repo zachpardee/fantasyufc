@@ -687,7 +687,7 @@ export function LeagueHomePage() {
                 {isLive && <span style={styles.livePip}>LIVE</span>}
               </div>
               <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
-              {viewedMatchupIdx === null && currentEvent && (
+              {viewedMatchupIdx === null && currentEvent && isMobile && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 4 }}>
                   {(currentEvent.venue || currentEvent.location) && (
                     <span style={styles.eventCardLocation}>
