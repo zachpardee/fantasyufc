@@ -15,6 +15,7 @@ import { MemberAvatar } from '../components/MemberAvatar';
 import {
   Home, Bell, X, Settings, Target, Swords, BarChart3, Calendar,
   Trophy, ClipboardList, Dumbbell, Gavel, Pencil, ChevronUp, ChevronDown,
+  type LucideIcon,
 } from 'lucide-react';
 
 export function LeagueHomePage() {
@@ -413,16 +414,16 @@ export function LeagueHomePage() {
     }
   }
 
-  const navLinks: { label: string; path?: string; icon: React.ReactNode; external?: boolean; show: boolean; onClick?: () => void }[] = [
-    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: <Target size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Matchup', path: 'matchup', icon: <Swords size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Standings', path: 'standings', icon: <BarChart3 size={15} />, show: league.status !== 'setup' },
-    { label: 'Schedule', path: 'schedule', icon: <Calendar size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Playoffs', path: 'playoffs', icon: <Trophy size={15} />, show: league.status === 'playoffs' || league.status === 'active' },
-    { label: 'Rules', path: 'rules', icon: <ClipboardList size={15} />, show: true },
-    { label: 'Fighters', path: '/fighters', icon: <Dumbbell size={15} />, external: true, show: true },
-    { label: 'Commissioner', path: 'commissioner', icon: <Gavel size={15} />, show: isCommissioner },
-    { label: 'Settings', icon: <Settings size={15} />, show: !!myMember, onClick: () => { setSettingsTeamName(myMember!.teamName); setSettingsColor((myMember as any).avatarColor ?? '#5555ff'); setShowSettings(true); } },
+  const navLinks: { label: string; path?: string; icon: LucideIcon; external?: boolean; show: boolean; onClick?: () => void }[] = [
+    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: Target, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Matchup', path: 'matchup', icon: Swords, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Standings', path: 'standings', icon: BarChart3, show: league.status !== 'setup' },
+    { label: 'Schedule', path: 'schedule', icon: Calendar, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Playoffs', path: 'playoffs', icon: Trophy, show: league.status === 'playoffs' || league.status === 'active' },
+    { label: 'Rules', path: 'rules', icon: ClipboardList, show: true },
+    { label: 'Fighters', path: '/fighters', icon: Dumbbell, external: true, show: true },
+    { label: 'Commissioner', path: 'commissioner', icon: Gavel, show: isCommissioner },
+    { label: 'Settings', icon: Settings, show: !!myMember, onClick: () => { setSettingsTeamName(myMember!.teamName); setSettingsColor((myMember as any).avatarColor ?? '#5555ff'); setShowSettings(true); } },
   ];
 
   return (
@@ -447,7 +448,7 @@ export function LeagueHomePage() {
               {navLinks.filter((l) => l.show).map((item) =>
                 item.onClick ? (
                   <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
-                    <span style={styles.leagueMenuIcon}>{item.icon}</span>{item.label}
+                    <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
                   </button>
                 ) : (
                   <Link
@@ -456,7 +457,7 @@ export function LeagueHomePage() {
                     style={styles.leagueMenuItem}
                     onClick={() => setShowLeagueMenu(false)}
                   >
-                    <span style={styles.leagueMenuIcon}>{item.icon}</span>{item.label}
+                    <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
                   </Link>
                 )
               )}
@@ -957,7 +958,7 @@ export function LeagueHomePage() {
           {navLinks.filter((l) => l.show).map((item) => (
             item.onClick ? (
               <button key={item.label} style={styles.navCardBtn} onClick={item.onClick}>
-                <span style={styles.navIcon}>{item.icon}</span>
+                <span style={styles.navIcon}><item.icon size={26} /></span>
                 <span style={styles.navLabel}>{item.label}</span>
               </button>
             ) : (
@@ -966,7 +967,7 @@ export function LeagueHomePage() {
                 to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
                 style={styles.navCard}
               >
-                <span style={styles.navIcon}>{item.icon}</span>
+                <span style={styles.navIcon}><item.icon size={26} /></span>
                 <span style={styles.navLabel}>{item.label}</span>
               </Link>
             )
@@ -1354,7 +1355,7 @@ const styles: Record<string, React.CSSProperties> = {
   leagueMenuBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: 14, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   leagueMenuDropdown: { position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, minWidth: 180, zIndex: 200, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' },
   leagueMenuItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', color: '#ccc', fontSize: 13, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
-  leagueMenuIcon: { width: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  leagueMenuIcon: { width: 18, color: '#c8102e', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
   logo: { height: 48, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
@@ -1492,15 +1493,15 @@ const styles: Record<string, React.CSSProperties> = {
   navGridMobile: { gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, padding: 16 },
   navCard: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: 24, textDecoration: 'none', display: 'flex', flexDirection: 'column',
+    padding: 24, textDecoration: 'none', color: '#fff', display: 'flex', flexDirection: 'column',
     alignItems: 'center', gap: 12,
   },
   navCardBtn: {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: 24, cursor: 'pointer', display: 'flex', flexDirection: 'column' as const,
+    padding: 24, cursor: 'pointer', color: '#fff', display: 'flex', flexDirection: 'column' as const,
     alignItems: 'center', gap: 12,
   },
-  navIcon: { fontSize: 32 },
+  navIcon: { color: '#c8102e', display: 'flex' },
   navLabel: { color: '#fff', fontWeight: 600, fontSize: 14 },
   memberSection: { padding: '0 24px 20px' },
   memberSectionTitle: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' },

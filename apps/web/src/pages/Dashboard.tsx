@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, Target, Wallet, X } from 'lucide-react';
+import { Zap, Target, Wallet, X, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -149,7 +149,7 @@ export function DashboardPage() {
         <div style={styles.section}>
           <div style={styles.leagueActions}>
             <button style={{ ...styles.leagueActionBtn, ...styles.leagueActionBtnSecondary }} onClick={() => setShowJoin(true)}>
-              <span style={styles.leagueActionIcon}>+</span>
+              <span style={styles.leagueActionIcon}><Plus size={18} /></span>
               <span style={styles.leagueActionLabel}>Join League</span>
               <span style={styles.leagueActionSub}>Enter an invite code</span>
             </button>
@@ -366,7 +366,7 @@ export function DashboardPage() {
                     style={styles.formatPickBtn}
                     onClick={() => { setCreateForm((f) => ({ ...f, leagueFormat: fmt })); setCreateStep(2); }}
                   >
-                    <span style={{ fontSize: 28, marginBottom: 6, display: 'block' }}>{icon}</span>
+                    <span style={{ color: '#c8102e', marginBottom: 6, display: 'flex' }}>{icon}</span>
                     <span style={{ color: '#fff', fontSize: 16, fontWeight: 700, display: 'block', marginBottom: 4 }}>{title}</span>
                     <span style={{ color: '#666', fontSize: 13, lineHeight: 1.5, display: 'block' }}>{desc}</span>
                   </button>
@@ -467,8 +467,8 @@ const styles: Record<string, React.CSSProperties> = {
   leagueActionsMobile: { gridTemplateColumns: '1fr' },
   leagueActionBtn: { background: '#141414', border: '1px solid #2a2a2a', borderRadius: 12, padding: '16px 20px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left', transition: 'border-color 0.15s' },
   leagueActionBtnPrimary: { background: '#1a0508', border: '1px solid #c8102e' },
-  leagueActionBtnSecondary: { background: '#0d0d1f', border: '1px solid #5555ff' },
-  leagueActionIcon: { fontSize: 22, marginBottom: 4, display: 'block' },
+  leagueActionBtnSecondary: { background: '#141414', border: '1px solid #3a3a3a' },
+  leagueActionIcon: { color: '#c8102e', marginBottom: 4, display: 'flex', alignItems: 'center' },
   leagueActionLabel: { color: '#fff', fontSize: 16, fontWeight: 700, display: 'block' },
   leagueActionSub: { color: '#666', fontSize: 13, display: 'block' },
   emptyLeagues: { color: '#444', fontSize: 14, padding: '32px 0', textAlign: 'center' as const },
