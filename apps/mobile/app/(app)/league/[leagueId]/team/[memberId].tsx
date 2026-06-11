@@ -2,19 +2,11 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../../../src/api/client';
+import { MemberAvatar } from '../../../../../src/components/MemberAvatar';
 
 function fmtBankroll(n: number): string {
   const abs = Math.abs(n);
   return (n < 0 ? '-$' : '+$') + abs.toFixed(0);
-}
-
-function MemberAvatar({ name, color, size = 72 }: { name: string; color?: string; size?: number }) {
-  const initials = (name ?? '?')[0].toUpperCase();
-  return (
-    <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color ?? '#5555ff' }]}>
-      <Text style={[s.avatarText, { fontSize: size * 0.38 }]}>{initials}</Text>
-    </View>
-  );
 }
 
 export default function TeamScreen() {
@@ -56,7 +48,7 @@ export default function TeamScreen() {
         {member.isChampion && (
           <Text style={s.champBadge}>🏆 Season Champion</Text>
         )}
-        <MemberAvatar name={member.teamName} color={member.avatarColor} size={80} />
+        <MemberAvatar name={member.teamName} color={member.avatarColor} avatarUrl={member.avatarUrl} size={80} />
         <Text style={s.teamName}>{member.teamName}</Text>
         <Text style={s.username}>@{member.username}</Text>
         {standingRank > 0 && (

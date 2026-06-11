@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { apiClient } from '../../src/api/client';
 import { supabase } from '../../src/api/supabase';
 import { useAuthStore } from '../../src/store/auth.store';
+import { MemberAvatar } from '../../src/components/MemberAvatar';
 import type { UserProfile } from '@fantasy-ufc/shared';
 
 const AVATAR_COLORS = [
@@ -103,9 +104,12 @@ export default function SettingsScreen() {
 
         {/* Profile header */}
         <View style={s.profileSection}>
-          <View style={[s.avatar, { backgroundColor: avatarColor }]}>
-            <Text style={s.avatarText}>{initials}</Text>
-          </View>
+          <MemberAvatar
+            name={profile?.displayName ?? profile?.username ?? email}
+            color={avatarColor}
+            avatarUrl={(profile as any)?.avatarUrl}
+            size={64}
+          />
           <View style={s.profileInfo}>
             {editingName ? (
               <>

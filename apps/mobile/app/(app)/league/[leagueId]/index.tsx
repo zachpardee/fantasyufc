@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
+import { MemberAvatar } from '../../../../src/components/MemberAvatar';
 import type { League, Matchup } from '@fantasy-ufc/shared';
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -34,16 +35,6 @@ function fmtDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
     ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-function MemberAvatar({ name, color, size = 36 }: { name: string; color?: string; size?: number }) {
-  const initials = (name ?? '?')[0].toUpperCase();
-  const bg = color ?? '#5555ff';
-  return (
-    <View style={[s.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: bg }]}>
-      <Text style={[s.avatarText, { fontSize: size * 0.38 }]}>{initials}</Text>
-    </View>
-  );
 }
 
 export default function LeagueHomeScreen() {
@@ -148,7 +139,7 @@ export default function LeagueHomeScreen() {
       {myMember && (
         <View style={s.myTeamCard}>
           <View style={s.myTeamLeft}>
-            <MemberAvatar name={myMember.teamName} color={(myMember as any).avatarColor} size={40} />
+            <MemberAvatar name={myMember.teamName} color={(myMember as any).avatarColor} avatarUrl={(myMember as any).avatarUrl} size={40} />
             <View style={{ flex: 1 }}>
               {editingTeamName ? (
                 <View style={s.teamNameEditRow}>
@@ -299,7 +290,7 @@ export default function LeagueHomeScreen() {
                 style={s.memberItem}
                 onPress={() => router.push(`/(app)/league/${leagueId}/team/${m.id}` as never)}
               >
-                <MemberAvatar name={m.teamName} color={(m as any).avatarColor} size={44} />
+                <MemberAvatar name={m.teamName} color={(m as any).avatarColor} avatarUrl={(m as any).avatarUrl} size={44} />
                 {m.isChampion && <Text style={s.memberChampBadge}>🏆</Text>}
                 <Text style={s.memberTeamName} numberOfLines={1}>{m.teamName}</Text>
                 <Text style={s.memberRecord}>{m.wins}–{m.losses}</Text>

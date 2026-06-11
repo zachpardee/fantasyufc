@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../../src/api/client';
 import { useAuthStore } from '../../src/store/auth.store';
+import { MemberAvatar } from '../../src/components/MemberAvatar';
 import type { UFCEvent, League } from '@fantasy-ufc/shared';
 
 export default function DashboardScreen() {
@@ -34,9 +35,17 @@ export default function DashboardScreen() {
       {/* Header greeting */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hey, {displayName} 👋</Text>
+          <Text style={styles.greeting}>Hey, {displayName}</Text>
           <Text style={styles.subtitle}>Fantasy UFC</Text>
         </View>
+        <TouchableOpacity onPress={() => router.push('/(app)/settings')}>
+          <MemberAvatar
+            name={displayName}
+            color={profile?.avatarColor}
+            avatarUrl={profile?.avatarUrl}
+            size={42}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Next event card */}
@@ -126,7 +135,10 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
 
-  header: { padding: 24, paddingTop: 20, paddingBottom: 16 },
+  header: {
+    padding: 24, paddingTop: 20, paddingBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
   greeting: { fontSize: 22, fontWeight: '700', color: '#fff' },
   subtitle: { fontSize: 13, color: '#555', marginTop: 2 },
 
