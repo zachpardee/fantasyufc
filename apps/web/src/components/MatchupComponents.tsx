@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FighterPhoto } from './FighterPhoto';
+import { Lock } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export type PhotoClickHandler = (url: string, name: string, fighterId?: string) => void;
@@ -282,7 +283,7 @@ export function MatchupBetPanel({ teamName, singles, parlays, isLocked, isOwn, l
       </div>
       {isLocked ? (
         <div style={mb.locked}>
-          <div style={{ fontSize: 20, marginBottom: 6 }}>🔒</div>
+          <div style={{ marginBottom: 6 }}><Lock size={18} color="#444" /></div>
           <div style={{ color: '#333', fontSize: 11, fontStyle: 'italic' }}>Revealed at event start</div>
         </div>
       ) : totalBets === 0 ? (
@@ -350,7 +351,7 @@ export function MatchupPickPanel({ teamName, fights, champion, isLocked, isOwn, 
       </div>
       {isLocked ? (
         <div style={mb.locked}>
-          <div style={{ fontSize: 20, marginBottom: 6 }}>🔒</div>
+          <div style={{ marginBottom: 6 }}><Lock size={18} color="#444" /></div>
           <div style={{ color: '#333', fontSize: 11, fontStyle: 'italic' }}>Revealed at event start</div>
         </div>
       ) : pickedCount === 0 && !champion ? (

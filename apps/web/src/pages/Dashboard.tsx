@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Zap, Target, Wallet, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -153,7 +154,7 @@ export function DashboardPage() {
               <span style={styles.leagueActionSub}>Enter an invite code</span>
             </button>
             <button style={{ ...styles.leagueActionBtn, ...styles.leagueActionBtnPrimary }} onClick={openCreate}>
-              <span style={styles.leagueActionIcon}>⚡</span>
+              <span style={styles.leagueActionIcon}><Zap size={18} /></span>
               <span style={styles.leagueActionLabel}>Create League</span>
               <span style={styles.leagueActionSub}>Start a new league</span>
             </button>
@@ -250,7 +251,7 @@ export function DashboardPage() {
             <div style={styles.sheetHandle} />
             <div style={styles.sheetHeader}>
               <span style={styles.sheetTitle}>{nextEvent?.name ?? 'Fight Card'}</span>
-              <button style={styles.sheetClose} onClick={() => setShowFightCard(false)}>✕</button>
+              <button style={styles.sheetClose} onClick={() => setShowFightCard(false)}><X size={15} /></button>
             </div>
             {nextEvent && (
               <div style={styles.sheetSubtitle}>
@@ -302,7 +303,7 @@ export function DashboardPage() {
           <div style={styles.joinCard} onClick={(e) => e.stopPropagation()}>
             <div style={styles.joinHeader}>
               <h2 style={styles.joinTitle}>Join League</h2>
-              <button style={styles.joinClose} onClick={() => setShowJoin(false)}>✕</button>
+              <button style={styles.joinClose} onClick={() => setShowJoin(false)}><X size={15} /></button>
             </div>
             <form onSubmit={joinLeague} style={styles.joinForm}>
               <div style={styles.joinField}>
@@ -350,15 +351,15 @@ export function DashboardPage() {
                 )}
                 <h2 style={styles.joinTitle}>{createStep === 1 ? 'Choose Format' : 'League Settings'}</h2>
               </div>
-              <button style={styles.joinClose} onClick={() => setShowCreate(false)}>✕</button>
+              <button style={styles.joinClose} onClick={() => setShowCreate(false)}><X size={15} /></button>
             </div>
 
             {createStep === 1 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ color: '#666', fontSize: 13, margin: '0 0 4px' }}>How do you want to play?</p>
                 {([
-                  { fmt: 'pickem', title: "Pick'em", icon: '🎯', desc: 'Pick fight winners & methods each week. Earn points for correct predictions. Compete head-to-head.' },
-                  { fmt: 'staking', title: 'Staking', icon: '💰', desc: 'Bet a weekly budget on fights. Odds-based payouts. Most profit at the end of the season wins.' },
+                  { fmt: 'pickem', title: "Pick'em", icon: <Target size={18} />, desc: 'Pick fight winners & methods each week. Earn points for correct predictions. Compete head-to-head.' },
+                  { fmt: 'staking', title: 'Staking', icon: <Wallet size={18} />, desc: 'Bet a weekly budget on fights. Odds-based payouts. Most profit at the end of the season wins.' },
                 ] as const).map(({ fmt, title, icon, desc }) => (
                   <button
                     key={fmt}
@@ -429,7 +430,7 @@ export function DashboardPage() {
               />
             </div>
             <p style={styles.modalName}>{zoomedFighter.name}</p>
-            <button style={styles.modalClose} onClick={() => setZoomedFighter(null)}>✕</button>
+            <button style={styles.modalClose} onClick={() => setZoomedFighter(null)}><X size={15} /></button>
           </div>
         </div>
       )}

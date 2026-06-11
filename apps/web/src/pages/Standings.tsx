@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import { LoadingInline } from '../components/LoadingScreen';
+import { Medal } from 'lucide-react';
 
 function fmtBankroll(n: number): string {
   const abs = Math.abs(n);
@@ -70,7 +71,7 @@ export function StandingsPage() {
                 >
                   <td style={styles.td}>
                     <span style={i < 3 ? styles.medal : undefined}>
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                      {i < 3 ? <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][i]} /> : i + 1}
                     </span>
                   </td>
                   <td style={styles.tdTeam}>

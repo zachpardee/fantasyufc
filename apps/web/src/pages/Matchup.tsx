@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MemberAvatar } from '../components/MemberAvatar';
+import { Trophy, Calendar } from 'lucide-react';
 import { SkeletonFightRow } from '../components/LoadingScreen';
 import {
   fmtStakeScore, fmtChipScore,
@@ -331,7 +332,7 @@ export function MatchupPage() {
         const isPlayoff = ev?.eventId === league?.playoffSemisEventId || ev?.eventId === league?.playoffFinalsEventId;
         return (
           <div style={styles.empty}>
-            <div style={{ fontSize: 28, marginBottom: 12 }}>{isPlayoff ? '🏆' : '📅'}</div>
+            <div style={{ marginBottom: 12 }}>{isPlayoff ? <Trophy size={28} color="#555" /> : <Calendar size={28} color="#555" />}</div>
             <div style={{ color: '#ccc', fontWeight: 700, marginBottom: 4 }}>
               {ev?.eventName ?? 'Upcoming Event'}
             </div>

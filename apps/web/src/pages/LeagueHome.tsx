@@ -12,6 +12,10 @@ import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/Member
 import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
 import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
 import { MemberAvatar } from '../components/MemberAvatar';
+import {
+  Home, Bell, X, Settings, Target, Swords, BarChart3, Calendar,
+  Trophy, ClipboardList, Dumbbell, Gavel, Pencil, ChevronUp, ChevronDown,
+} from 'lucide-react';
 
 export function LeagueHomePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -335,7 +339,7 @@ export function LeagueHomePage() {
     <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
       <nav style={styles.nav}>
         <Link to="/" style={styles.logoLink}><img src="/logo.jpg" alt="FFL" style={styles.logo} /></Link>
-        <Link to="/" style={styles.homeBtn}>🏠 User Home</Link>
+        <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
       </nav>
       <SkeletonLeagueHeader />
       <div style={{ padding: '0 24px' }}>
@@ -409,16 +413,16 @@ export function LeagueHomePage() {
     }
   }
 
-  const navLinks: { label: string; path?: string; icon: string; external?: boolean; show: boolean; onClick?: () => void }[] = [
-    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: '🎯', show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Matchup', path: 'matchup', icon: '⚔️', show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Standings', path: 'standings', icon: '📊', show: league.status !== 'setup' },
-    { label: 'Schedule', path: 'schedule', icon: '📅', show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Playoffs', path: 'playoffs', icon: '🏆', show: league.status === 'playoffs' || league.status === 'active' },
-    { label: 'Rules', path: 'rules', icon: '📋', show: true },
-    { label: 'Fighters', path: '/fighters', icon: '🥊', external: true, show: true },
-    { label: 'Commissioner', path: 'commissioner', icon: '⚙️', show: isCommissioner },
-    { label: 'Settings', icon: '⚙', show: !!myMember, onClick: () => { setSettingsTeamName(myMember!.teamName); setSettingsColor((myMember as any).avatarColor ?? '#5555ff'); setShowSettings(true); } },
+  const navLinks: { label: string; path?: string; icon: React.ReactNode; external?: boolean; show: boolean; onClick?: () => void }[] = [
+    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: <Target size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Matchup', path: 'matchup', icon: <Swords size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Standings', path: 'standings', icon: <BarChart3 size={15} />, show: league.status !== 'setup' },
+    { label: 'Schedule', path: 'schedule', icon: <Calendar size={15} />, show: league.status === 'active' || league.status === 'playoffs' },
+    { label: 'Playoffs', path: 'playoffs', icon: <Trophy size={15} />, show: league.status === 'playoffs' || league.status === 'active' },
+    { label: 'Rules', path: 'rules', icon: <ClipboardList size={15} />, show: true },
+    { label: 'Fighters', path: '/fighters', icon: <Dumbbell size={15} />, external: true, show: true },
+    { label: 'Commissioner', path: 'commissioner', icon: <Gavel size={15} />, show: isCommissioner },
+    { label: 'Settings', icon: <Settings size={15} />, show: !!myMember, onClick: () => { setSettingsTeamName(myMember!.teamName); setSettingsColor((myMember as any).avatarColor ?? '#5555ff'); setShowSettings(true); } },
   ];
 
   return (
@@ -427,18 +431,18 @@ export function LeagueHomePage() {
         <Link to="/" style={styles.logoLink}>
           <img src="/logo.jpg" alt="FFL" style={styles.logo} />
         </Link>
-        <Link to="/" style={styles.homeBtn}>🏠 User Home</Link>
+        <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
         <div ref={leagueMenuRef} style={{ position: 'relative' }}>
           <button
             style={styles.leagueMenuBtn}
             onClick={() => setShowLeagueMenu((v) => !v)}
           >
-            League {showLeagueMenu ? '▲' : '▼'}
+            League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {showLeagueMenu && (
             <div style={styles.leagueMenuDropdown}>
               <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
-                <span style={styles.leagueMenuIcon}>🏠</span>League Home
+                <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
               </Link>
               {navLinks.filter((l) => l.show).map((item) =>
                 item.onClick ? (
@@ -460,6 +464,21 @@ export function LeagueHomePage() {
           )}
         </div>
         <span style={{ flex: 1 }} />
+        <div style={styles.memberStrip}>
+          {members.map((m) => {
+            const color = (m as any).avatarColor ?? '#5555ff';
+            const isOnline = onlineUsers.some((u) => u.userId === m.userId);
+            return (
+              <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
+                <MemberAvatar teamName={m.teamName} color={color} size={30} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
+                {hasBelt(m, members, league) && <BeltHalo size={30} />}
+                {hasBmfBelt(m, league) && <BeltHalo size={30} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
+                {isOnline && <span style={styles.onlineDot} title="Online" />}
+              </div>
+            );
+          })}
+        </div>
+        <span style={{ flex: 1 }} />
         {session?.user.email && (
           <div style={styles.userPill}>
             <MemberAvatar
@@ -473,7 +492,7 @@ export function LeagueHomePage() {
         )}
         <div style={styles.bellWrap}>
           <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
-            🔔
+            <Bell size={17} />
             {(unreadCount?.count ?? 0) > 0 && (
               <span style={styles.bellBadge}>{unreadCount!.count}</span>
             )}
@@ -482,7 +501,7 @@ export function LeagueHomePage() {
             <div style={styles.notifPanel}>
               <div style={styles.notifHeader}>
                 <span style={styles.notifTitle}>Notifications</span>
-                <button style={styles.notifClose} onClick={() => setShowNotifs(false)}>✕</button>
+                <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
               </div>
               {notifications.length === 0
                 ? <div style={styles.notifEmpty}>No notifications yet</div>
@@ -498,47 +517,10 @@ export function LeagueHomePage() {
           )}
         </div>
         <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
-        {onlineUsers.length > 0 && (
-          <div style={styles.onlineRow}>
-            {onlineUsers.map((u) => {
-              const member = members.find((m) => m.userId === u.userId);
-              const onlineColor = u.userId === session?.user.id ? '#4caf50' : '#5555ff';
-              return (
-                <div key={u.userId} style={{ position: 'relative', display: 'inline-flex' }}>
-                  <MemberAvatar
-                    teamName={u.teamName}
-                    color={onlineColor}
-                    size={28}
-                    avatarUrl={(member as any)?.avatarUrl}
-                    title={u.teamName}
-                    onClick={() => member && setSelectedMember(member)}
-                  />
-                  {member && hasBelt(member, members, league) && <BeltHalo size={28} />}
-                  {member && hasBmfBelt(member, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(member, members, league) ? 'bottom' : 'top'} />}
-                </div>
-              );
-            })}
-            <span style={styles.onlineCount}>{onlineUsers.length} online</span>
-          </div>
-        )}
       </nav>
 
       {/* League name header */}
       <div style={styles.leagueHeader}>
-        {/* Left avatars */}
-        <div style={styles.avatarGroup}>
-          {members.filter((_, i) => i % 2 === 0).map((m) => {
-            const color = (m as any).avatarColor ?? '#5555ff';
-            return (
-              <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                <MemberAvatar teamName={m.teamName} color={color} size={32} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
-                {hasBelt(m, members, league) && <BeltHalo size={32} />}
-                {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
-              </div>
-            );
-          })}
-        </div>
-
         {/* Center: name + meta + my team */}
         <div style={styles.leagueHeaderCenter}>
           {editingName ? (
@@ -560,7 +542,7 @@ export function LeagueHomePage() {
             <div style={styles.leagueNameRow}>
               <span style={styles.leagueName}>{league.name}</span>
               {isCommissioner && (
-                <button style={styles.editNameBtn} onClick={() => { setNameInput(league.name); setEditingName(true); }}>✎</button>
+                <button style={styles.editNameBtn} onClick={() => { setNameInput(league.name); setEditingName(true); }}><Pencil size={13} /></button>
               )}
             </div>
           )}
@@ -598,7 +580,7 @@ export function LeagueHomePage() {
                   <button
                     style={styles.editNameBtn}
                     onClick={() => { setTeamNameInput(myMember.teamName); setEditingTeamName(true); }}
-                  >✎</button>
+                  ><Pencil size={13} /></button>
                   <span style={styles.myTeamDot}>·</span>
                   <span style={styles.myTeamPts}>
                     {isStaking
@@ -611,20 +593,6 @@ export function LeagueHomePage() {
               )}
             </div>
           )}
-        </div>
-
-        {/* Right avatars */}
-        <div style={styles.avatarGroup}>
-          {members.filter((_, i) => i % 2 === 1).map((m) => {
-            const color = (m as any).avatarColor ?? '#5555ff';
-            return (
-              <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                <MemberAvatar teamName={m.teamName} color={color} size={32} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
-                {hasBelt(m, members, league) && <BeltHalo size={32} />}
-                {hasBmfBelt(m, league) && <BeltHalo size={32} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
-              </div>
-            );
-          })}
         </div>
       </div>
 
@@ -799,7 +767,7 @@ export function LeagueHomePage() {
       {/* Champion banner */}
       {showChampionBanner && (
         <div style={styles.championBanner}>
-          <span style={styles.championTrophy}>🏆</span>
+          <span style={styles.championTrophy}><Trophy size={26} color="#ffd700" /></span>
           <div style={styles.championText}>
             <span style={styles.championLabel}>League Champion</span>
             <span style={styles.championName}>{champion!.teamName}</span>
@@ -1047,7 +1015,7 @@ export function LeagueHomePage() {
                           style={styles.msgDelete}
                           onClick={() => deleteMessageMutation.mutate(msg.id)}
                           title="Delete"
-                        >✕</button>
+                        ><X size={15} /></button>
                       )}
                     </div>
                     <div style={styles.msgBody}>{msg.body}</div>
@@ -1089,7 +1057,7 @@ export function LeagueHomePage() {
           <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <span style={styles.modalTitle}>Team Settings</span>
-              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}>✕</button>
+              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}><X size={15} /></button>
             </div>
 
             <div style={styles.modalBody}>
@@ -1271,7 +1239,7 @@ export function LeagueHomePage() {
             <div style={styles.sheetHandle} />
             <div style={styles.sheetHeader}>
               <span style={styles.sheetTitle}>{effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Fight Card'}</span>
-              <button style={styles.modalClose} onClick={() => setShowFightCard(false)}>✕</button>
+              <button style={styles.modalClose} onClick={() => setShowFightCard(false)}><X size={15} /></button>
             </div>
             {viewedMatchupIdx === null && currentEvent && (
               <div style={styles.sheetSubtitle}>
@@ -1386,11 +1354,15 @@ const styles: Record<string, React.CSSProperties> = {
   leagueMenuBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: 14, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
   leagueMenuDropdown: { position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, minWidth: 180, zIndex: 200, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' },
   leagueMenuItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', color: '#ccc', fontSize: 13, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
-  leagueMenuIcon: { fontSize: 14, width: 18, textAlign: 'center' as const },
+  leagueMenuIcon: { width: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
   logo: { height: 48, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
-  avatarGroup: { display: 'flex', gap: 10, alignItems: 'center' },
+  memberStrip: { display: 'flex', gap: 8, alignItems: 'center' },
+  onlineDot: {
+    position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
+    borderRadius: '50%', background: '#4caf50', border: '2px solid #111',
+  },
   memberAvatar: { width: 32, height: 32, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0 },
   settingsBtn: { background: 'none', border: 'none', color: '#555', fontSize: 18, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
   modalOverlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
@@ -1425,9 +1397,6 @@ const styles: Record<string, React.CSSProperties> = {
   myTeamRecord: { color: '#888', fontSize: 14 },
   teamNameForm: { display: 'flex', alignItems: 'center', gap: 6 },
   teamNameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 14, fontWeight: 600, padding: '3px 8px', outline: 'none', width: 160 },
-  onlineRow: { display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 },
-  onlineAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 },
-  onlineCount: { color: '#555', fontSize: 12, whiteSpace: 'nowrap' },
   editNameBtn: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
   nameForm: { display: 'flex', alignItems: 'center', gap: 8, flex: 1 },
   nameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 16, fontWeight: 700, padding: '4px 10px', outline: 'none', flex: 1, maxWidth: 320 },
@@ -1550,7 +1519,7 @@ const styles: Record<string, React.CSSProperties> = {
   userPill: { display: 'flex', alignItems: 'center', gap: 7, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: '4px 10px 4px 4px', maxWidth: 200 },
   userPillEmail: { color: '#888', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   bellWrap: { position: 'relative' as const },
-  bellBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', padding: '2px 4px', position: 'relative' as const, lineHeight: 1 },
+  bellBtn: { background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '2px 4px', position: 'relative' as const, lineHeight: 1, display: 'inline-flex', alignItems: 'center' },
   bellBadge: { position: 'absolute' as const, top: -4, right: -4, background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 4px', minWidth: 14, textAlign: 'center' as const },
   notifPanel: { position: 'absolute' as const, top: 36, right: 0, width: 320, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 100, maxHeight: 400, overflowY: 'auto' as const },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },

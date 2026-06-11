@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { ZoomIn, ZoomOut, X } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/client';
@@ -219,7 +220,7 @@ export const AvatarModal = forwardRef<AvatarModalHandle, Props>(function AvatarM
       {!inline && (
         <div style={s.header}>
           <span style={s.title}>Change Avatar</span>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
+          <button style={s.closeBtn} onClick={onClose}><X size={15} /></button>
         </div>
       )}
 
@@ -249,9 +250,9 @@ export const AvatarModal = forwardRef<AvatarModalHandle, Props>(function AvatarM
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {hasPendingFile && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11 }}>🔍</span>
+                  <ZoomOut size={13} color="#888" />
                   <input type="range" min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => handleZoom(parseFloat(e.target.value))} style={{ flex: 1, accentColor: '#c8102e' }} />
-                  <span style={{ fontSize: 11 }}>🔎</span>
+                  <ZoomIn size={13} color="#888" />
                 </div>
               )}
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) prepareFile(f); }} />
@@ -283,9 +284,9 @@ export const AvatarModal = forwardRef<AvatarModalHandle, Props>(function AvatarM
                   <img src={bitmapSrc} draggable={false} style={{ position: 'absolute', width: scaledW, height: scaledH, left: (ps - scaledW) / 2 + offsetX, top: (ps - scaledH) / 2 + offsetY, userSelect: 'none', pointerEvents: 'none' }} />
                 </div>
                 <div style={s.zoomRow}>
-                  <span style={s.zoomIcon}>🔍</span>
+                  <span style={s.zoomIcon}><ZoomOut size={13} /></span>
                   <input type="range" min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => handleZoom(parseFloat(e.target.value))} style={s.zoomSlider} />
-                  <span style={s.zoomIcon}>🔎</span>
+                  <span style={s.zoomIcon}><ZoomIn size={13} /></span>
                 </div>
                 <span style={s.previewLabel}>{loadingExisting ? 'Loading…' : 'Drag to reposition · slide to zoom'}</span>
               </>

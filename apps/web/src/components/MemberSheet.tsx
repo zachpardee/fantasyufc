@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trophy, Settings, X } from 'lucide-react';
 import { MemberAvatar } from './MemberAvatar';
 
 export function hasBelt(member: any, members: any[], league: any): boolean {
@@ -80,7 +81,7 @@ export function MemberSheet({ member, members, league, onClose, isMe, onSettings
       <div style={styles.sheet} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
           <span style={styles.title}>Player</span>
-          <button style={styles.close} onClick={onClose}>✕</button>
+          <button style={styles.close} onClick={onClose}><X size={15} /></button>
         </div>
         <div style={styles.body}>
           <div style={{ position: 'relative', display: 'inline-flex' }}>
@@ -124,9 +125,9 @@ export function MemberSheet({ member, members, league, onClose, isMe, onSettings
           {(belt || bmf) && (
             <div style={styles.bragRow}>
               {belt && bmf ? (
-                <div style={styles.bragBoth}>🏆 League Champion &amp; BMF Champion</div>
+                <div style={styles.bragBoth}><Trophy size={13} style={{ verticalAlign: -2, marginRight: 5 }} />League Champion &amp; BMF Champion</div>
               ) : belt ? (
-                <div style={styles.bragUfc}>🏆 League Champion</div>
+                <div style={styles.bragUfc}><Trophy size={13} style={{ verticalAlign: -2, marginRight: 5 }} />League Champion</div>
               ) : (
                 <div style={styles.bragBmf}>BMF Champion</div>
               )}
@@ -134,7 +135,7 @@ export function MemberSheet({ member, members, league, onClose, isMe, onSettings
           )}
           {isMe && onSettings && (
             <button style={styles.settingsBtn} onClick={() => { onClose(); onSettings(); }}>
-              ⚙ User Settings
+              <Settings size={13} style={{ verticalAlign: -2, marginRight: 5 }} />User Settings
             </button>
           )}
         </div>

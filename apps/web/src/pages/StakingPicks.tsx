@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Target, ClipboardList } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -589,7 +590,7 @@ function BetSlip({
 
       {isEmpty && (
         <div style={sl.empty}>
-          <div style={sl.emptyIcon}>🎯</div>
+          <div style={sl.emptyIcon}><Target size={22} color="#555" /></div>
           <div style={sl.emptyText}>No bets yet</div>
           <div style={sl.emptyHint}>Click a fighter to add a bet</div>
         </div>
@@ -842,7 +843,7 @@ function SavedBetsPanel({ betsData, locked, onDeleteSingle, onDeleteParlay, onCl
 
       {total === 0 && (
         <div style={sv.empty}>
-          <div style={sv.emptyIcon}>📋</div>
+          <div style={sv.emptyIcon}><ClipboardList size={22} color="#555" /></div>
           <div style={sv.emptyText}>No saved bets</div>
           <div style={sv.emptyHint}>Bets appear here after saving</div>
         </div>

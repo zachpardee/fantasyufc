@@ -1,4 +1,5 @@
 import { Outlet, Link, useParams } from 'react-router-dom';
+import { Home } from 'lucide-react';
 
 export function LeagueSubLayout() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -7,7 +8,7 @@ export function LeagueSubLayout() {
     <>
       <Outlet />
       <Link to={`/league/${leagueId}`} style={styles.homeBtn} title="League Home">
-        ⌂
+        <Home size={20} />
       </Link>
     </>
   );

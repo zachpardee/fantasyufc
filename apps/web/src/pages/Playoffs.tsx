@@ -4,6 +4,7 @@ import { apiClient } from '../api/client';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League } from '@fantasy-ufc/shared';
+import { Crown } from 'lucide-react';
 
 type Seed = { id: string; teamName: string; wins: number; losses: number; totalPoints: number; stakingBalance?: number };
 type PlayoffMatchup = {
@@ -56,7 +57,7 @@ function MatchupCard({ matchup, isStaking, weeklyBudget }: { matchup: PlayoffMat
         <div style={{ ...styles.teamSide, ...(homeWon && scored ? styles.winnerSide : {}) }}>
           <div style={styles.teamTopRow}>
             <span style={styles.seedBadge}>#{matchup.homeSeed}</span>
-            {homeWon && scored && <span style={styles.winnerCrown}>👑</span>}
+            {homeWon && scored && <span style={styles.winnerCrown}><Crown size={14} color="#ffd700" /></span>}
           </div>
           <span style={{ ...styles.teamName, ...(homeWon && scored ? styles.winnerName : {}) }}>
             {matchup.homeTeamName}
@@ -81,7 +82,7 @@ function MatchupCard({ matchup, isStaking, weeklyBudget }: { matchup: PlayoffMat
         {/* Away team */}
         <div style={{ ...styles.teamSide, alignItems: 'flex-end', ...(awayWon && scored ? styles.winnerSide : {}) }}>
           <div style={{ ...styles.teamTopRow, justifyContent: 'flex-end' }}>
-            {awayWon && scored && <span style={styles.winnerCrown}>👑</span>}
+            {awayWon && scored && <span style={styles.winnerCrown}><Crown size={14} color="#ffd700" /></span>}
             <span style={styles.seedBadge}>#{matchup.awaySeed}</span>
           </div>
           <span style={{ ...styles.teamName, textAlign: 'right', ...(awayWon && scored ? styles.winnerName : {}) }}>
