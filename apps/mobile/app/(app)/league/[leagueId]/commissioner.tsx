@@ -302,7 +302,7 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
               <Text style={s.seedStat}>
                 {isStaking
                   ? ((m.stakingBalance ?? 0) >= 0 ? `+$${(+m.stakingBalance).toFixed(0)}` : `-$${Math.abs(+m.stakingBalance).toFixed(0)}`)
-                  : `${(+m.totalPoints ?? 0).toFixed(0)} pts`}
+                  : `${(+(m.totalPoints ?? 0)).toFixed(0)} pts`}
               </Text>
             </View>
           ))}

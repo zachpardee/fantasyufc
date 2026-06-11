@@ -14,7 +14,7 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 apiClient.interceptors.response.use(
-  (res) => transformResponse(res.data),
+  (res) => transformResponse(res.data) as any,
   (err) => Promise.reject(err.response?.data ?? err),
 );
 
