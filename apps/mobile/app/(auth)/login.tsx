@@ -15,6 +15,19 @@ export default function LoginScreen() {
     setLoading(false);
   }
 
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      Alert.alert('Enter your email', 'Type your email address above, then tap Forgot Password.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Check your email', 'Password reset instructions have been sent.');
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Fantasy UFC</Text>
@@ -42,6 +55,10 @@ export default function LoginScreen() {
         <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword}>
+        <Text style={styles.forgotText}>Forgot password?</Text>
+      </TouchableOpacity>
+
       <Link href="/(auth)/register" style={styles.link}>
         <Text style={styles.linkText}>Don't have an account? Sign up</Text>
       </Link>
@@ -57,8 +74,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a', borderRadius: 8, padding: 16,
     color: '#fff', fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#333',
   },
-  button: { backgroundColor: '#c8102e', borderRadius: 8, padding: 16, alignItems: 'center', marginBottom: 16 },
+  button: { backgroundColor: '#c8102e', borderRadius: 8, padding: 16, alignItems: 'center', marginBottom: 12 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotBtn: { alignSelf: 'center', marginBottom: 20 },
+  forgotText: { color: '#555', fontSize: 13 },
   link: { alignSelf: 'center' },
   linkText: { color: '#c8102e', fontSize: 14 },
 });
