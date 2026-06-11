@@ -16,6 +16,8 @@ export default function LeagueDetailLayout() {
       <Stack.Screen name="playoffs" options={{ title: 'Playoffs' }} />
       <Stack.Screen name="schedule" options={{ title: 'Schedule' }} />
       <Stack.Screen name="rules" options={{ title: 'Rules & Scoring' }} />
+      <Stack.Screen name="commissioner" options={{ title: 'Commissioner Tools' }} />
+      <Stack.Screen name="picks-comparison" options={{ title: 'Pick Comparison' }} />
       <Stack.Screen name="team/[memberId]" options={{ title: 'Team' }} />
     </Stack>
   );

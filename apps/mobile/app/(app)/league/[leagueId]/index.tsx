@@ -4,6 +4,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '../../../../src/api/client';
 import type { League, Matchup } from '@fantasy-ufc/shared';
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 function fmtScore(n: number, isStaking: boolean): string {
   if (isStaking) {
     return n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
@@ -36,6 +42,8 @@ export default function LeagueHomeScreen() {
     { label: 'Playoffs', icon: '🏆', route: `/(app)/league/${leagueId}/playoffs` },
     { label: 'Schedule', icon: '📅', route: `/(app)/league/${leagueId}/schedule` },
     { label: 'Rules', icon: '📋', route: `/(app)/league/${leagueId}/rules` },
+    { label: 'Compare', icon: '👁', route: `/(app)/league/${leagueId}/picks-comparison` },
+    { label: 'Manage', icon: '⚙️', route: `/(app)/league/${leagueId}/commissioner` },
   ];
 
   return (
@@ -65,7 +73,7 @@ export default function LeagueHomeScreen() {
       )}
 
       <View style={styles.nav}>
-        {[navItems.slice(0, 3), navItems.slice(3)].map((row, ri) => (
+        {chunk(navItems, 3).map((row, ri) => (
           <View key={ri} style={styles.navRow}>
             {row.map((item) => (
               <TouchableOpacity
@@ -76,6 +84,10 @@ export default function LeagueHomeScreen() {
                 <Text style={styles.navIcon}>{item.icon}</Text>
                 <Text style={styles.navLabel}>{item.label}</Text>
               </TouchableOpacity>
+            ))}
+            {/* Fill empty slots in last row so items don't stretch */}
+            {row.length < 3 && Array.from({ length: 3 - row.length }).map((_, i) => (
+              <View key={`empty-${i}`} style={[styles.navItem, { opacity: 0 }]} />
             ))}
           </View>
         ))}
