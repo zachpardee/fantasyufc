@@ -206,9 +206,9 @@ export default function SettingsScreen() {
           onToggle={(v) => toggleNotif('eventStarting', v)}
         />
         <NotifRow
-          label="Draft Picks"
-          value={notifPrefs.draftPicks ?? true}
-          onToggle={(v) => toggleNotif('draftPicks', v)}
+          label="League Updates"
+          value={notifPrefs.leagueUpdates ?? true}
+          onToggle={(v) => toggleNotif('leagueUpdates', v)}
         />
 
         {/* About */}

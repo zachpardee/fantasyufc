@@ -18,8 +18,8 @@ export default function CreateLeagueScreen() {
   const [name, setName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [maxTeams, setMaxTeams] = useState(10);
-  const [rosterSize, setRosterSize] = useState(10);
-  const [starterSlots, setStarterSlots] = useState(5);
+  const [leagueFormat, setLeagueFormat] = useState<'pickem' | 'staking'>('pickem');
+  const [weeklyBudget, setWeeklyBudget] = useState<50 | 100 | 500>(100);
 
   const [inviteCode, setInviteCode] = useState('');
   const [joinTeamName, setJoinTeamName] = useState('');
@@ -33,9 +33,8 @@ export default function CreateLeagueScreen() {
         name: name.trim(),
         teamName: teamName.trim() || 'My Team',
         maxTeams,
-        rosterSize,
-        starterSlots,
-        draftPickTimeSeconds: 90,
+        leagueFormat,
+        ...(leagueFormat === 'staking' ? { weeklyBudget } : {}),
       });
       router.replace(`/(app)/league/${league.id}`);
     } catch (e: any) {
@@ -117,33 +116,42 @@ export default function CreateLeagueScreen() {
               </View>
             </Field>
 
-            <Field label="Roster Size">
-              <View style={styles.optionRow}>
-                {[6, 8, 10, 12, 15].map((n) => (
+            <Field label="Format">
+              <View style={styles.formatRow}>
+                {(['pickem', 'staking'] as const).map((fmt) => (
                   <TouchableOpacity
-                    key={n}
-                    style={[styles.optBtn, rosterSize === n && styles.optBtnActive]}
-                    onPress={() => setRosterSize(n)}
+                    key={fmt}
+                    style={[styles.formatBtn, leagueFormat === fmt && styles.formatBtnActive]}
+                    onPress={() => setLeagueFormat(fmt)}
                   >
-                    <Text style={[styles.optText, rosterSize === n && styles.optTextActive]}>{n}</Text>
+                    <Text style={[styles.formatTitle, leagueFormat === fmt && styles.formatTitleActive]}>
+                      {fmt === 'pickem' ? "Pick'em" : 'Staking'}
+                    </Text>
+                    <Text style={styles.formatDesc}>
+                      {fmt === 'pickem'
+                        ? 'Score points for correct picks'
+                        : 'Bet a weekly budget on fights'}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </Field>
 
-            <Field label="Starter Slots">
-              <View style={styles.optionRow}>
-                {[3, 4, 5, 6, 7].map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[styles.optBtn, starterSlots === n && styles.optBtnActive]}
-                    onPress={() => setStarterSlots(n)}
-                  >
-                    <Text style={[styles.optText, starterSlots === n && styles.optTextActive]}>{n}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </Field>
+            {leagueFormat === 'staking' && (
+              <Field label="Weekly Budget">
+                <View style={styles.optionRow}>
+                  {([50, 100, 500] as const).map((n) => (
+                    <TouchableOpacity
+                      key={n}
+                      style={[styles.optBtn, weeklyBudget === n && styles.optBtnActive]}
+                      onPress={() => setWeeklyBudget(n)}
+                    >
+                      <Text style={[styles.optText, weeklyBudget === n && styles.optTextActive]}>${n}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
+            )}
 
             {!!err && <Text style={styles.errMsg}>{err}</Text>}
 
@@ -230,6 +238,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 8,
     color: '#fff', fontSize: 15, padding: 13,
   },
+
+  formatRow: { flexDirection: 'row', gap: 10 },
+  formatBtn: {
+    flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#333',
+    backgroundColor: '#111', padding: 14,
+  },
+  formatBtnActive: { borderColor: '#c8102e', backgroundColor: '#1a0808' },
+  formatTitle: { color: '#888', fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  formatTitleActive: { color: '#fff' },
+  formatDesc: { color: '#555', fontSize: 12, lineHeight: 16 },
 
   optionRow: { flexDirection: 'row', gap: 8 },
   optBtn: {
