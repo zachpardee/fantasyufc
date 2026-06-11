@@ -1,7 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { apiClient } from '../../../../src/api/client';
+import { useAuthStore } from '../../../../src/store/auth.store';
 import { useRealtimeScoring } from '../../../../src/hooks/useRealtimeScoring';
 
 function fmtScore(n: number, isStaking: boolean): string {
@@ -13,17 +17,52 @@ function fmtScore(n: number, isStaking: boolean): string {
   return n.toFixed(1);
 }
 
+function fmtChip(n: number, isStaking: boolean): string {
+  if (isStaking) {
+    const abs = Math.abs(n);
+    return (n < 0 ? '-$' : '+$') + abs.toFixed(0);
+  }
+  return n.toFixed(0);
+}
+
 export default function MatchupScreen() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+  const { session } = useAuthStore();
+  const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
+  const { data: members = [] } = useQuery<any[]>({
+    queryKey: ['league-members', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
+  });
+
+  const { data: allMatchups = [] } = useQuery<any[]>({
+    queryKey: ['matchups-all', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
+  });
+
+  const { data: seasonEvents = [] } = useQuery<any[]>({
+    queryKey: ['season-events', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/season-events`),
+  });
+
+  const myMember = members.find((m) => m.userId === session?.user?.id);
+
+  const myMatchupByEvent = new Map<string, any>();
+  for (const m of allMatchups) {
+    if (m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id) {
+      myMatchupByEvent.set(m.eventId, m);
+    }
+  }
+
   const { data: matchup, isLoading } = useQuery<any>({
-    queryKey: ['matchup', 'current', leagueId, 'detail'],
+    queryKey: ['matchup-detail', leagueId, selectedMatchupId],
     queryFn: async () => {
+      if (selectedMatchupId) return apiClient.get(`/leagues/${leagueId}/matchups/${selectedMatchupId}`);
       const m = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!m) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${m.id}`);
@@ -34,104 +73,203 @@ export default function MatchupScreen() {
   const homeTeamId = matchup?.homeTeamId;
   const awayTeamId = matchup?.awayTeamId;
   const isStaking = league?.leagueFormat === 'staking';
+  const isLive = matchup?.eventStatus === 'live';
+
+  const liveInterval = isLive ? 30_000 : false;
 
   const { data: homePicks } = useQuery<any>({
     queryKey: ['matchup-picks-home', leagueId, eventId, homeTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}?memberId=${homeTeamId}`),
     enabled: !isStaking && !!eventId && !!homeTeamId,
+    refetchInterval: liveInterval,
   });
 
   const { data: awayPicks } = useQuery<any>({
     queryKey: ['matchup-picks-away', leagueId, eventId, awayTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}?memberId=${awayTeamId}`),
     enabled: !isStaking && !!eventId && !!awayTeamId,
+    refetchInterval: liveInterval,
   });
 
   const { data: homeChampion } = useQuery<any>({
     queryKey: ['matchup-champion-home', leagueId, eventId, homeTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${homeTeamId}`),
     enabled: !isStaking && !!eventId && !!homeTeamId,
+    refetchInterval: liveInterval,
   });
 
   const { data: awayChampion } = useQuery<any>({
     queryKey: ['matchup-champion-away', leagueId, eventId, awayTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${awayTeamId}`),
     enabled: !isStaking && !!eventId && !!awayTeamId,
+    refetchInterval: liveInterval,
   });
 
   const { data: homeStaking } = useQuery<any>({
     queryKey: ['matchup-staking-home', leagueId, eventId, homeTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${eventId}?memberId=${homeTeamId}`),
     enabled: isStaking && !!eventId && !!homeTeamId,
+    refetchInterval: liveInterval,
   });
 
   const { data: awayStaking } = useQuery<any>({
     queryKey: ['matchup-staking-away', leagueId, eventId, awayTeamId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${eventId}?memberId=${awayTeamId}`),
     enabled: isStaking && !!eventId && !!awayTeamId,
+    refetchInterval: liveInterval,
   });
 
   useRealtimeScoring(matchup?.id);
 
-  if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
-  }
+  const homeScore: number = +(matchup?.homeScore ?? 0);
+  const awayScore: number = +(matchup?.awayScore ?? 0);
+  const homeSeasonPoints: number = +(matchup?.homeSeasonPoints ?? 0);
+  const awaySeasonPoints: number = +(matchup?.awaySeasonPoints ?? 0);
 
-  if (!matchup) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.empty}>No upcoming matchup found</Text>
-      </View>
-    );
-  }
-
-  const homeScore: number = +(matchup.homeScore ?? 0);
-  const awayScore: number = +(matchup.awayScore ?? 0);
-  const homeSeasonPoints: number = +(matchup.homeSeasonPoints ?? 0);
-  const awaySeasonPoints: number = +(matchup.awaySeasonPoints ?? 0);
-  const isLive = matchup.eventStatus === 'live';
+  const isViewingHistory = !!selectedMatchupId;
 
   return (
     <ScrollView style={styles.container}>
-      {/* Scoreboard */}
-      <View style={styles.scoreboard}>
-        <View style={styles.team}>
-          <Text style={styles.teamName} numberOfLines={1}>{matchup.homeTeamName}</Text>
-          <Text style={[styles.totalScore, homeScore > awayScore && styles.winScore]}>
-            {fmtScore(homeScore, isStaking)}
-          </Text>
-          <Text style={styles.seasonPts}>Season: {fmtScore(homeSeasonPoints, isStaking)}</Text>
-        </View>
-        <View style={styles.vsBlock}>
-          <Text style={styles.vs}>VS</Text>
-          {isLive && <View style={styles.liveDot} />}
-        </View>
-        <View style={[styles.team, styles.awayTeam]}>
-          <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>{matchup.awayTeamName}</Text>
-          <Text style={[styles.totalScore, { textAlign: 'right' }, awayScore > homeScore && styles.winScore]}>
-            {fmtScore(awayScore, isStaking)}
-          </Text>
-          <Text style={[styles.seasonPts, { textAlign: 'right' }]}>Season: {fmtScore(awaySeasonPoints, isStaking)}</Text>
-        </View>
-      </View>
+      {/* Season event strip */}
+      {seasonEvents.length > 0 && (
+        <View>
+          {isViewingHistory && (
+            <TouchableOpacity style={styles.currentBtn} onPress={() => setSelectedMatchupId(null)}>
+              <Text style={styles.currentBtnText}>← Current Matchup</Text>
+            </TouchableOpacity>
+          )}
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[...seasonEvents].reverse()}
+            keyExtractor={(ev) => ev.eventId}
+            contentContainerStyle={styles.stripContent}
+            style={styles.strip}
+            renderItem={({ item: ev }) => {
+              const myM = myMatchupByEvent.get(ev.eventId);
+              const isMeHome = myM?.homeTeamId === myMember?.id;
+              const isCompleted = ev.eventStatus === 'completed';
+              const isLiveEv = ev.eventStatus === 'live';
+              const myScore = myM ? +(isMeHome ? myM.homeScore : myM.awayScore) : null;
+              const oppScore = myM ? +(isMeHome ? myM.awayScore : myM.homeScore) : null;
+              const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
+              const isWin = isCompleted && myM?.winnerId && myM.winnerId === myMember?.id;
+              const isLoss = isCompleted && myM?.winnerId && myM.winnerId !== myMember?.id;
+              const isActive = myM?.id === selectedMatchupId || (!selectedMatchupId && ev.eventStatus !== 'completed' && myMatchupByEvent.has(ev.eventId) && myM?.id === allMatchups.find(m => m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id)?.id);
+              const isCurrent = ev.eventStatus === 'live' || ev.eventStatus === 'scheduled';
+              const shortName = ev.eventName
+                ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
+                .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
+              const dateStr = ev.scheduledAt
+                ? new Date(ev.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : null;
 
-      {/* Event badge */}
-      <View style={styles.eventBadge}>
-        <Text style={styles.eventName}>{matchup.eventName}</Text>
-        {isLive && <Text style={styles.liveBadge}>LIVE</Text>}
-      </View>
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.chip,
+                    isActive && styles.chipActive,
+                    isCurrent && !isActive && styles.chipCurrent,
+                    !myM && styles.chipNoMatchup,
+                  ]}
+                  onPress={() => {
+                    if (!myM) return;
+                    setSelectedMatchupId(myM.id === matchup?.id && !selectedMatchupId ? null : myM.id);
+                  }}
+                >
+                  {isLiveEv && <Text style={styles.chipLive}>LIVE</Text>}
+                  {isCurrent && !isLiveEv && <Text style={styles.chipNext}>NEXT</Text>}
+                  <Text style={styles.chipEvent} numberOfLines={1}>{shortName}</Text>
+                  {dateStr && <Text style={styles.chipDate}>{dateStr}</Text>}
+                  {myM ? (
+                    isCompleted && myScore !== null ? (
+                      <>
+                        <Text style={styles.chipOpp} numberOfLines={1}>vs {oppName}</Text>
+                        <Text style={styles.chipScore}>
+                          {fmtChip(myScore, isStaking)}–{fmtChip(oppScore!, isStaking)}
+                        </Text>
+                        {(isWin || isLoss) && (
+                          <Text style={[styles.chipResult, { color: isWin ? '#4caf50' : '#ff5252' }]}>
+                            {isWin ? 'W' : 'L'}
+                          </Text>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.chipOpp} numberOfLines={1}>vs {oppName}</Text>
+                        <Text style={styles.chipPending}>Upcoming</Text>
+                      </>
+                    )
+                  ) : (
+                    <Text style={styles.chipPending}>TBD</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      )}
 
-      {/* Picks / Bets */}
-      {isStaking ? (
-        <StakingColumns homeStaking={homeStaking} awayStaking={awayStaking} />
+      {isLoading ? (
+        <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>
+      ) : !matchup ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyIcon}>⚔️</Text>
+          <Text style={styles.emptyTitle}>No matchup yet</Text>
+          <Text style={styles.emptyText}>Matchups are generated when the commissioner starts the season.</Text>
+        </View>
       ) : (
-        <PicksColumns
-          homePicks={homePicks?.fights ?? []}
-          awayPicks={awayPicks?.fights ?? []}
-          homeChampion={homeChampion}
-          awayChampion={awayChampion}
-          locked={homePicks?.locked ?? false}
-        />
+        <>
+          {/* Scoreboard */}
+          <View style={styles.scoreboard}>
+            <View style={styles.team}>
+              <Text style={styles.teamName} numberOfLines={1}>{matchup.homeTeamName}</Text>
+              <Text style={[styles.totalScore, homeScore > awayScore && styles.winScore]}>
+                {fmtScore(homeScore, isStaking)}
+              </Text>
+              <Text style={styles.seasonPts}>Season: {fmtScore(homeSeasonPoints, isStaking)}</Text>
+            </View>
+            <View style={styles.vsBlock}>
+              <Text style={styles.vs}>VS</Text>
+              {isLive && <View style={styles.liveDot} />}
+            </View>
+            <View style={[styles.team, styles.awayTeam]}>
+              <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>{matchup.awayTeamName}</Text>
+              <Text style={[styles.totalScore, { textAlign: 'right' }, awayScore > homeScore && styles.winScore]}>
+                {fmtScore(awayScore, isStaking)}
+              </Text>
+              <Text style={[styles.seasonPts, { textAlign: 'right' }]}>Season: {fmtScore(awaySeasonPoints, isStaking)}</Text>
+            </View>
+          </View>
+
+          {/* Event badge */}
+          <View style={styles.eventBadge}>
+            <Text style={styles.eventName}>{matchup.eventName}</Text>
+            {isLive && <Text style={styles.liveBadge}>LIVE</Text>}
+          </View>
+
+          {/* Record strip */}
+          {matchup.homeRecord != null && (
+            <View style={styles.recordStrip}>
+              <Text style={styles.recordText}>{matchup.homeRecord ?? '—'}</Text>
+              <Text style={styles.recordLabel}>Season Record</Text>
+              <Text style={styles.recordText}>{matchup.awayRecord ?? '—'}</Text>
+            </View>
+          )}
+
+          {/* Picks / Bets */}
+          {isStaking ? (
+            <StakingColumns homeStaking={homeStaking} awayStaking={awayStaking} />
+          ) : (
+            <PicksColumns
+              homePicks={homePicks?.fights ?? []}
+              awayPicks={awayPicks?.fights ?? []}
+              homeChampion={homeChampion}
+              awayChampion={awayChampion}
+              locked={homePicks?.locked ?? false}
+            />
+          )}
+        </>
       )}
     </ScrollView>
   );
@@ -157,11 +295,6 @@ function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked
 
   return (
     <>
-      <View style={styles.columnsHeader}>
-        <Text style={styles.columnHeaderText}>{/* home label */}</Text>
-        <Text style={styles.columnHeaderText}>{/* away label */}</Text>
-      </View>
-
       {fights.map((fight: any, i: number) => {
         const homePick = homePicks[i];
         const awayPick = awayPicks[i];
@@ -328,8 +461,32 @@ function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right'
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
-  empty: { color: '#666', fontSize: 16 },
+  center: { padding: 48, alignItems: 'center' },
+  emptyIcon: { fontSize: 32, marginBottom: 12 },
+  emptyTitle: { color: '#ccc', fontWeight: '700', fontSize: 16, marginBottom: 6 },
+  emptyText: { color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 18 },
+
+  currentBtn: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  currentBtnText: { color: '#c8102e', fontSize: 13, fontWeight: '600' },
+
+  strip: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
+  stripContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  chip: {
+    minWidth: 90, maxWidth: 130, paddingHorizontal: 10, paddingVertical: 8,
+    borderRadius: 8, backgroundColor: '#111', borderWidth: 1, borderColor: '#222',
+    alignItems: 'center',
+  },
+  chipActive: { borderColor: '#c8102e', backgroundColor: '#1a0808' },
+  chipCurrent: { borderColor: '#444' },
+  chipNoMatchup: { opacity: 0.5 },
+  chipLive: { color: '#c8102e', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
+  chipNext: { color: '#888', fontSize: 8, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
+  chipEvent: { color: '#ddd', fontSize: 10, fontWeight: '700', textAlign: 'center' },
+  chipDate: { color: '#444', fontSize: 9, marginTop: 2 },
+  chipOpp: { color: '#666', fontSize: 9, marginTop: 3, textAlign: 'center' },
+  chipScore: { color: '#aaa', fontSize: 11, fontWeight: '700', marginTop: 1 },
+  chipResult: { fontSize: 11, fontWeight: '800', marginTop: 1 },
+  chipPending: { color: '#444', fontSize: 9, marginTop: 3 },
 
   scoreboard: {
     flexDirection: 'row', alignItems: 'center',
@@ -356,11 +513,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2,
   },
 
+  recordStrip: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#111',
+    backgroundColor: '#0d0d0d',
+  },
+  recordText: { color: '#aaa', fontSize: 13, fontWeight: '700' },
+  recordLabel: { color: '#333', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+
   emptyPicks: { padding: 32, alignItems: 'center' },
   emptyPicksText: { color: '#444', fontSize: 13, textAlign: 'center' },
-
-  columnsHeader: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 12 },
-  columnHeaderText: { flex: 1, color: '#444', fontSize: 10, fontWeight: '700' },
 
   fightRow: {
     flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10,

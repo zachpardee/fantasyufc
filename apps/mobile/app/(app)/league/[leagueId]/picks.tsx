@@ -107,7 +107,7 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
   const liveUsed = serverUsed + localSinglesTotal + localParlayTotal;
   const liveAvailable = weeklyBudget - liveUsed;
 
-  const eventStart = currentEvent?.prelims_at ?? currentEvent?.scheduled_at;
+  const eventStart = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
   const locked = currentEvent?.status === 'live' || currentEvent?.status === 'completed' ||
     (!!eventStart && Date.now() >= new Date(eventStart).getTime() - 10 * 60 * 1000);
 
@@ -116,7 +116,7 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
   const parlayDecOdds = parlayLegEntries.reduce((prod, [fightId, fighterId]) => {
     const fight = fights.find(f => f.id === fightId);
     if (!fight) return prod;
-    const odds = fight.red_fighter_id === fighterId ? fight.red_fighter_odds : fight.blue_fighter_odds;
+    const odds = fight.redFighterId === fighterId ? fight.redFighterOdds : fight.blueFighterOdds;
     return odds != null ? prod * toDecimalOdds(odds) : prod;
   }, 1);
   const parlayLegCount = parlayLegEntries.length;
@@ -253,8 +253,8 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
         </View>
 
         {fights.map(fight => {
-          const redBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.red_fighter_id).length;
-          const blueBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.blue_fighter_id).length;
+          const redBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.redFighterId).length;
+          const blueBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.blueFighterId).length;
           return (
             <StakingFightCard
               key={fight.id}
@@ -262,8 +262,8 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
               redBetCount={redBets}
               blueBetCount={blueBets}
               locked={locked}
-              onPickRed={() => addSingle(fight.id, fight.red_fighter_id)}
-              onPickBlue={() => addSingle(fight.id, fight.blue_fighter_id)}
+              onPickRed={() => addSingle(fight.id, fight.redFighterId)}
+              onPickBlue={() => addSingle(fight.id, fight.blueFighterId)}
             />
           );
         })}
@@ -287,9 +287,9 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                 {parlayLegEntries.map(([fightId, fighterId]) => {
                   const fight = fights.find(f => f.id === fightId);
                   if (!fight) return null;
-                  const isRed = fighterId === fight.red_fighter_id;
-                  const name = isRed ? `${fight.red_first_name} ${fight.red_last_name}` : `${fight.blue_first_name} ${fight.blue_last_name}`;
-                  const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
+                  const isRed = fighterId === fight.redFighterId;
+                  const name = isRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`;
+                  const odds = isRed ? fight.redFighterOdds : fight.blueFighterOdds;
                   return (
                     <View key={fightId} style={st.legRow}>
                       {!locked && (
@@ -299,7 +299,7 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={st.legName}>{name}</Text>
-                        <Text style={st.legMatchup}>{fight.red_last_name} vs {fight.blue_last_name}</Text>
+                        <Text style={st.legMatchup}>{fight.redLastName} vs {fight.blueLastName}</Text>
                       </View>
                       {odds != null && (
                         <Text style={[st.legOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>{fmtOdds(odds)}</Text>
@@ -337,9 +337,9 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                 {activeSingles.map(bet => {
                   const fight = fights.find(f => f.id === bet.fightId);
                   if (!fight) return null;
-                  const isRed = bet.fighterId === fight.red_fighter_id;
-                  const name = isRed ? `${fight.red_first_name} ${fight.red_last_name}` : `${fight.blue_first_name} ${fight.blue_last_name}`;
-                  const odds = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
+                  const isRed = bet.fighterId === fight.redFighterId;
+                  const name = isRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`;
+                  const odds = isRed ? fight.redFighterOdds : fight.blueFighterOdds;
                   const stake = parseFloat(bet.stake) || 0;
                   const payout = odds != null && stake > 0 ? calcPayout(stake, toDecimalOdds(odds)) : null;
                   return (
@@ -351,7 +351,7 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={st.legName}>{name}</Text>
-                        <Text style={st.legMatchup}>{fight.red_last_name} vs {fight.blue_last_name}</Text>
+                        <Text style={st.legMatchup}>{fight.redLastName} vs {fight.blueLastName}</Text>
                         <View style={st.stakeRow}>
                           {!locked ? (
                             <View style={st.stakeInputWrap}>
@@ -450,18 +450,18 @@ function StakingFightCard({ fight, redBetCount, blueBetCount, locked, onPickRed,
 }) {
   return (
     <View style={st.fightCard}>
-      <Text style={st.fightCardMeta}>{fight.weight_class_name}</Text>
+      <Text style={st.fightCardMeta}>{fight.weightClassName}</Text>
       <View style={st.fightCardRow}>
         <TouchableOpacity style={st.stakeFighterBtn} onPress={onPickRed} disabled={locked}>
-          {fight.red_image_url ? (
-            <Image source={{ uri: fight.red_image_url }} style={st.fighterImg} resizeMode="cover" />
+          {fight.redImageUrl ? (
+            <Image source={{ uri: fight.redImageUrl }} style={st.fighterImg} resizeMode="cover" />
           ) : (
             <View style={st.fighterImgPlaceholder} />
           )}
-          <Text style={st.stakeFighterName} numberOfLines={2}>{fight.red_first_name} {fight.red_last_name}</Text>
-          {fight.red_fighter_odds != null && (
-            <Text style={[st.oddsText, { color: fight.red_fighter_odds < 0 ? '#999' : '#4caf50' }]}>
-              {fmtOdds(fight.red_fighter_odds)}
+          <Text style={st.stakeFighterName} numberOfLines={2}>{fight.redFirstName} {fight.redLastName}</Text>
+          {fight.redFighterOdds != null && (
+            <Text style={[st.oddsText, { color: fight.redFighterOdds < 0 ? '#999' : '#4caf50' }]}>
+              {fmtOdds(fight.redFighterOdds)}
             </Text>
           )}
           {redBetCount > 0 && <Text style={st.betPill}>{redBetCount} bet{redBetCount !== 1 ? 's' : ''}</Text>}
@@ -470,15 +470,15 @@ function StakingFightCard({ fight, redBetCount, blueBetCount, locked, onPickRed,
         <Text style={st.vsText}>VS</Text>
 
         <TouchableOpacity style={[st.stakeFighterBtn, { alignItems: 'flex-end' }]} onPress={onPickBlue} disabled={locked}>
-          {fight.blue_image_url ? (
-            <Image source={{ uri: fight.blue_image_url }} style={st.fighterImg} resizeMode="cover" />
+          {fight.blueImageUrl ? (
+            <Image source={{ uri: fight.blueImageUrl }} style={st.fighterImg} resizeMode="cover" />
           ) : (
             <View style={st.fighterImgPlaceholder} />
           )}
-          <Text style={[st.stakeFighterName, { textAlign: 'right' }]} numberOfLines={2}>{fight.blue_first_name} {fight.blue_last_name}</Text>
-          {fight.blue_fighter_odds != null && (
-            <Text style={[st.oddsText, { color: fight.blue_fighter_odds < 0 ? '#999' : '#4caf50' }]}>
-              {fmtOdds(fight.blue_fighter_odds)}
+          <Text style={[st.stakeFighterName, { textAlign: 'right' }]} numberOfLines={2}>{fight.blueFirstName} {fight.blueLastName}</Text>
+          {fight.blueFighterOdds != null && (
+            <Text style={[st.oddsText, { color: fight.blueFighterOdds < 0 ? '#999' : '#4caf50' }]}>
+              {fmtOdds(fight.blueFighterOdds)}
             </Text>
           )}
           {blueBetCount > 0 && <Text style={st.betPill}>{blueBetCount} bet{blueBetCount !== 1 ? 's' : ''}</Text>}
@@ -491,7 +491,7 @@ function StakingFightCard({ fight, redBetCount, blueBetCount, locked, onPickRed,
 function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boolean; onDelete: () => void }) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds ?? null;
-  const pl = parseFloat(bet.profit_loss ?? bet.profitLoss ?? '0');
+  const pl = parseFloat(bet.profitLoss ?? '0');
   const isPending = bet.status === 'pending';
   const payout = odds != null && stake > 0 ? calcPayout(stake, toDecimalOdds(odds)) : null;
   return (
@@ -502,7 +502,7 @@ function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boo
         </TouchableOpacity>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={st.savedName}>{bet.fighter_first_name ?? bet.fighterFirstName} {bet.fighter_last_name ?? bet.fighterLastName}</Text>
+        <Text style={st.savedName}>{bet.fighterFirstName} {bet.fighterLastName}</Text>
         {odds != null && <Text style={[st.savedOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>{fmtOdds(odds)}</Text>}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
@@ -522,8 +522,8 @@ function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelet
   const [open, setOpen] = useState(false);
   const legs: any[] = parlay.legs ?? [];
   const stake = parseFloat(parlay.stake) || 0;
-  const decOdds = parseFloat(parlay.decimal_odds ?? parlay.decimalOdds ?? '1') || 1;
-  const pl = parseFloat(parlay.profit_loss ?? parlay.profitLoss ?? '0');
+  const decOdds = parseFloat(parlay.decimalOdds ?? '1') || 1;
+  const pl = parseFloat(parlay.profitLoss ?? '0');
   const isPending = parlay.status === 'pending';
   const americanOdds = decOdds <= 1 ? null : decOdds >= 2 ? Math.round((decOdds - 1) * 100) : Math.round(-100 / (decOdds - 1));
   const payout = stake > 0 && decOdds > 1 ? calcPayout(stake, decOdds) : 0;
@@ -547,7 +547,7 @@ function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelet
             <Text style={{ color: leg.result === 'won' ? '#4caf50' : leg.result === 'lost' ? '#ff5252' : '#444' }}>
               {leg.result === 'won' ? '✓ ' : leg.result === 'lost' ? '✗ ' : '· '}
             </Text>
-            {leg.fighter_first_name ?? leg.fighterFirstName} {leg.fighter_last_name ?? leg.fighterLastName}
+            {leg.fighterFirstName} {leg.fighterLastName}
           </Text>
         ))}
       </View>
@@ -644,11 +644,11 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   const totalComplete = fights.filter(f => localPicks[f.id] && localMethods[f.id]).length;
 
   const allFighters = fights.flatMap((fight: any) => [
-    { id: fight.redFighterId, firstName: fight.redFirstName, lastName: fight.redLastName, fightId: fight.id, corner: 'red' as const },
-    { id: fight.blueFighterId, firstName: fight.blueFirstName, lastName: fight.blueLastName, fightId: fight.id, corner: 'blue' as const },
+    { id: fight.redFighterId, firstName: fight.redFirstName, lastName: fight.redLastName, imageUrl: fight.redImageUrl, fightId: fight.id, corner: 'red' as const },
+    { id: fight.blueFighterId, firstName: fight.blueFirstName, lastName: fight.blueLastName, imageUrl: fight.blueImageUrl, fightId: fight.id, corner: 'blue' as const },
   ]);
 
-  const eventDate = currentEvent.scheduledAt ?? currentEvent.scheduled_at;
+  const eventDate = currentEvent.scheduledAt;
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
@@ -781,6 +781,11 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
                       }}
                       disabled={locked}
                     >
+                      {fighter.imageUrl ? (
+                        <Image source={{ uri: fighter.imageUrl }} style={s.champFighterImg} resizeMode="cover" />
+                      ) : (
+                        <View style={s.champFighterImgPlaceholder} />
+                      )}
                       <Text
                         style={[
                           s.champFighterName,
@@ -791,7 +796,7 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
                       >
                         {fighter.firstName} {fighter.lastName}
                       </Text>
-                      {isSelected && <Text style={s.champSelectedTag}>★</Text>}
+                      {isSelected && <Text style={s.champSelectedTag}>★ CHAMP</Text>}
                     </TouchableOpacity>
                   );
                 })}
@@ -1068,12 +1073,14 @@ const s = StyleSheet.create({
   champFighterBtn: {
     width: '31%', padding: 8, borderRadius: 8,
     backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a',
-    alignItems: 'center', justifyContent: 'center', minHeight: 48,
+    alignItems: 'center', justifyContent: 'center', minHeight: 80,
   },
   champFighterBtnSelected: { borderColor: '#ffd700', backgroundColor: '#1a1600' },
-  champFighterName: { fontSize: 11, fontWeight: '700', textAlign: 'center', lineHeight: 15 },
+  champFighterImg: { width: 44, height: 44, borderRadius: 22, marginBottom: 6 },
+  champFighterImgPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2a2a2a', marginBottom: 6 },
+  champFighterName: { fontSize: 10, fontWeight: '700', textAlign: 'center', lineHeight: 13, color: '#bbb' },
   champFighterNameSelected: { color: '#ffd700' },
-  champSelectedTag: { color: '#ffd700', fontSize: 11, fontWeight: '800', marginTop: 2 },
+  champSelectedTag: { color: '#ffd700', fontSize: 9, fontWeight: '800', marginTop: 2 },
   champSummaryCard: {
     margin: 12, marginTop: 8, backgroundColor: '#111',
     borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#2a2000',
