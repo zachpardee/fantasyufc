@@ -4,6 +4,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { Swords } from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { useRealtimeScoring } from '../../../../src/hooks/useRealtimeScoring';
@@ -121,10 +122,22 @@ export default function MatchupScreen() {
 
   useRealtimeScoring(matchup?.id);
 
-  const homeScore: number = +(matchup?.homeScore ?? 0);
-  const awayScore: number = +(matchup?.awayScore ?? 0);
-  const homeSeasonPoints: number = +(matchup?.homeSeasonPoints ?? 0);
-  const awaySeasonPoints: number = +(matchup?.awaySeasonPoints ?? 0);
+  // Always show the logged-in user on the left
+  const flip = !!myMember && myMember.id === matchup?.awayTeamId;
+  const leftTeamName: string = flip ? matchup?.awayTeamName : matchup?.homeTeamName;
+  const rightTeamName: string = flip ? matchup?.homeTeamName : matchup?.awayTeamName;
+  const leftScore: number = +((flip ? matchup?.awayScore : matchup?.homeScore) ?? 0);
+  const rightScore: number = +((flip ? matchup?.homeScore : matchup?.awayScore) ?? 0);
+  const leftSeasonPoints: number = +((flip ? matchup?.awaySeasonPoints : matchup?.homeSeasonPoints) ?? 0);
+  const rightSeasonPoints: number = +((flip ? matchup?.homeSeasonPoints : matchup?.awaySeasonPoints) ?? 0);
+  const leftRecord = flip ? matchup?.awayRecord : matchup?.homeRecord;
+  const rightRecord = flip ? matchup?.homeRecord : matchup?.awayRecord;
+  const leftPicks = flip ? awayPicks : homePicks;
+  const rightPicks = flip ? homePicks : awayPicks;
+  const leftChampion = flip ? awayChampion : homeChampion;
+  const rightChampion = flip ? homeChampion : awayChampion;
+  const leftStaking = flip ? awayStaking : homeStaking;
+  const rightStaking = flip ? homeStaking : awayStaking;
 
   const isViewingHistory = !!selectedMatchupId;
 
@@ -214,7 +227,7 @@ export default function MatchupScreen() {
         <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>
       ) : !matchup ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>⚔️</Text>
+          <Swords size={32} color="#555" style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No matchup yet</Text>
           <Text style={styles.emptyText}>Matchups are generated when the commissioner starts the season.</Text>
         </View>
@@ -223,22 +236,22 @@ export default function MatchupScreen() {
           {/* Scoreboard */}
           <View style={styles.scoreboard}>
             <View style={styles.team}>
-              <Text style={styles.teamName} numberOfLines={1}>{matchup.homeTeamName}</Text>
-              <Text style={[styles.totalScore, homeScore > awayScore && styles.winScore]}>
-                {fmtScore(homeScore, isStaking)}
+              <Text style={styles.teamName} numberOfLines={1}>{leftTeamName}</Text>
+              <Text style={[styles.totalScore, leftScore > rightScore && styles.winScore]}>
+                {fmtScore(leftScore, isStaking)}
               </Text>
-              <Text style={styles.seasonPts}>Season: {fmtScore(homeSeasonPoints, isStaking)}</Text>
+              <Text style={styles.seasonPts}>Season: {fmtScore(leftSeasonPoints, isStaking)}</Text>
             </View>
             <View style={styles.vsBlock}>
               <Text style={styles.vs}>VS</Text>
               {isLive && <View style={styles.liveDot} />}
             </View>
             <View style={[styles.team, styles.awayTeam]}>
-              <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>{matchup.awayTeamName}</Text>
-              <Text style={[styles.totalScore, { textAlign: 'right' }, awayScore > homeScore && styles.winScore]}>
-                {fmtScore(awayScore, isStaking)}
+              <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>{rightTeamName}</Text>
+              <Text style={[styles.totalScore, { textAlign: 'right' }, rightScore > leftScore && styles.winScore]}>
+                {fmtScore(rightScore, isStaking)}
               </Text>
-              <Text style={[styles.seasonPts, { textAlign: 'right' }]}>Season: {fmtScore(awaySeasonPoints, isStaking)}</Text>
+              <Text style={[styles.seasonPts, { textAlign: 'right' }]}>Season: {fmtScore(rightSeasonPoints, isStaking)}</Text>
             </View>
           </View>
 
@@ -251,22 +264,22 @@ export default function MatchupScreen() {
           {/* Record strip */}
           {matchup.homeRecord != null && (
             <View style={styles.recordStrip}>
-              <Text style={styles.recordText}>{matchup.homeRecord ?? '—'}</Text>
+              <Text style={styles.recordText}>{leftRecord ?? '—'}</Text>
               <Text style={styles.recordLabel}>Season Record</Text>
-              <Text style={styles.recordText}>{matchup.awayRecord ?? '—'}</Text>
+              <Text style={styles.recordText}>{rightRecord ?? '—'}</Text>
             </View>
           )}
 
-          {/* Picks / Bets */}
+          {/* Picks / Bets — logged-in user on the left */}
           {isStaking ? (
-            <StakingColumns homeStaking={homeStaking} awayStaking={awayStaking} />
+            <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
           ) : (
             <PicksColumns
-              homePicks={homePicks?.fights ?? []}
-              awayPicks={awayPicks?.fights ?? []}
-              homeChampion={homeChampion}
-              awayChampion={awayChampion}
-              locked={homePicks?.locked ?? false}
+              homePicks={leftPicks?.fights ?? []}
+              awayPicks={rightPicks?.fights ?? []}
+              homeChampion={leftChampion}
+              awayChampion={rightChampion}
+              locked={leftPicks?.locked ?? false}
             />
           )}
         </>
@@ -462,7 +475,7 @@ function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right'
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
   center: { padding: 48, alignItems: 'center' },
-  emptyIcon: { fontSize: 32, marginBottom: 12 },
+  emptyIcon: { marginBottom: 12 },
   emptyTitle: { color: '#ccc', fontWeight: '700', fontSize: 16, marginBottom: 6 },
   emptyText: { color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 18 },
 

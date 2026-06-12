@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { Plus, Trophy } from 'lucide-react-native';
 import { apiClient } from '../../src/api/client';
 import { useAuthStore } from '../../src/store/auth.store';
 import { MemberAvatar } from '../../src/components/MemberAvatar';
@@ -74,18 +75,20 @@ export default function DashboardScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Leagues</Text>
           <View style={styles.sectionActions}>
-            <TouchableOpacity onPress={() => router.push('/(app)/league/create?tab=join' as never)}>
-              <Text style={styles.sectionAction}>+ Join</Text>
+            <TouchableOpacity style={styles.sectionActionRow} onPress={() => router.push('/(app)/league/create?tab=join' as never)}>
+              <Plus size={14} color="#c8102e" />
+              <Text style={styles.sectionAction}>Join</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(app)/league/create')}>
-              <Text style={styles.sectionAction}>+ Create</Text>
+            <TouchableOpacity style={styles.sectionActionRow} onPress={() => router.push('/(app)/league/create')}>
+              <Plus size={14} color="#c8102e" />
+              <Text style={styles.sectionAction}>Create</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {leagues?.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🥋</Text>
+            <Trophy size={36} color="#444" style={styles.emptyIcon} />
             <Text style={styles.emptyTitle}>No leagues yet</Text>
             <Text style={styles.emptyText}>Join a league with an invite code or create your own.</Text>
             <View style={styles.emptyButtons}>
@@ -159,10 +162,11 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   sectionActions: { flexDirection: 'row', gap: 16 },
+  sectionActionRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   sectionAction: { color: '#c8102e', fontSize: 14, fontWeight: '600' },
 
   emptyState: { alignItems: 'center', padding: 32 },
-  emptyIcon: { fontSize: 36, marginBottom: 12 },
+  emptyIcon: { marginBottom: 12 },
   emptyTitle: { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 8 },
   emptyText: { color: '#666', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   emptyButtons: { gap: 10, width: '100%' },

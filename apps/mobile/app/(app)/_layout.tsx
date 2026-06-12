@@ -1,9 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
-
-function Icon({ emoji, color }: { emoji: string; color: string }) {
-  return <Text style={{ fontSize: 20, opacity: color === '#c8102e' ? 1 : 0.45 }}>{emoji}</Text>;
-}
+import { Home, Trophy, Dumbbell, Settings } from 'lucide-react-native';
 
 export default function AppLayout() {
   return (
@@ -18,19 +14,19 @@ export default function AppLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarLabel: 'Home', tabBarIcon: ({ color }) => <Icon emoji="🏠" color={color} /> }}
+        options={{ title: 'Home', tabBarLabel: 'Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
         name="league"
-        options={{ title: 'Leagues', tabBarLabel: 'Leagues', headerShown: false, tabBarIcon: ({ color }) => <Icon emoji="🥋" color={color} /> }}
+        options={{ title: 'Leagues', tabBarLabel: 'Leagues', headerShown: false, tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
         name="fighters"
-        options={{ title: 'Fighters', tabBarLabel: 'Fighters', headerShown: false, tabBarIcon: ({ color }) => <Icon emoji="👊" color={color} /> }}
+        options={{ title: 'Fighters', tabBarLabel: 'Fighters', headerShown: false, tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarLabel: 'Settings', tabBarIcon: ({ color }) => <Icon emoji="⚙️" color={color} /> }}
+        options={{ title: 'Settings', tabBarLabel: 'Settings', tabBarIcon: ({ color, size }) => <Settings color={color} size={size ?? 22} /> }}
       />
     </Tabs>
   );

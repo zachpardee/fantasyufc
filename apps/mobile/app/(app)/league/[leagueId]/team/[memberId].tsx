@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { Trophy } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../../../src/api/client';
@@ -46,7 +47,10 @@ export default function TeamScreen() {
       {/* Profile header */}
       <View style={s.profileHeader}>
         {member.isChampion && (
-          <Text style={s.champBadge}>🏆 Season Champion</Text>
+          <View style={s.champBadgeRow}>
+            <Trophy size={13} color="#ffd700" />
+            <Text style={s.champBadge}>Season Champion</Text>
+          </View>
         )}
         <MemberAvatar name={member.teamName} color={member.avatarColor} avatarUrl={member.avatarUrl} size={80} />
         <Text style={s.teamName}>{member.teamName}</Text>
@@ -118,7 +122,8 @@ const s = StyleSheet.create({
   emptyText: { color: '#666', fontSize: 16 },
 
   profileHeader: { alignItems: 'center', padding: 28, borderBottomWidth: 1, borderBottomColor: '#1a1a1a', gap: 8 },
-  champBadge: { color: '#ffd700', fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  champBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  champBadge: { color: '#ffd700', fontSize: 13, fontWeight: '700' },
   avatar: { justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#fff', fontWeight: '800' },
   teamName: { color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 4 },

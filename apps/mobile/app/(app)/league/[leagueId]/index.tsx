@@ -1,14 +1,31 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Pressable, Alert, TextInput, Share,
+  Pressable, Alert, TextInput, Share, Animated,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Target, Swords, BarChart3, Calendar, Trophy, Eye, ClipboardList, Gavel,
+} from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { MemberAvatar } from '../../../../src/components/MemberAvatar';
+import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import type { League, Matchup } from '@fantasy-ufc/shared';
+
+function LiveDot() {
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(opacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={[s.liveDot, { opacity }]} />;
+}
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -101,14 +118,14 @@ export default function LeagueHomeScreen() {
   }
 
   const navItems = [
-    { label: isStaking ? 'Bets' : 'Picks', icon: '🎯', route: `/(app)/league/${leagueId}/picks`, show: isActive },
-    { label: 'Matchup', icon: '⚔️', route: `/(app)/league/${leagueId}/matchup`, show: isActive },
-    { label: 'Standings', icon: '📊', route: `/(app)/league/${leagueId}/standings`, show: league.status !== 'setup' },
-    { label: 'Schedule', icon: '📅', route: `/(app)/league/${leagueId}/schedule`, show: isActive },
-    { label: 'Playoffs', icon: '🏆', route: `/(app)/league/${leagueId}/playoffs`, show: isActive },
-    { label: 'Compare', icon: '👁', route: `/(app)/league/${leagueId}/picks-comparison`, show: isActive },
-    { label: 'Rules', icon: '📋', route: `/(app)/league/${leagueId}/rules`, show: true },
-    { label: 'Manage', icon: '⚙️', route: `/(app)/league/${leagueId}/commissioner`, show: isCommissioner },
+    { label: isStaking ? 'Bets' : 'Picks', icon: Target, route: `/(app)/league/${leagueId}/picks`, show: isActive },
+    { label: 'Matchup', icon: Swords, route: `/(app)/league/${leagueId}/matchup`, show: isActive },
+    { label: 'Standings', icon: BarChart3, route: `/(app)/league/${leagueId}/standings`, show: league.status !== 'setup' },
+    { label: 'Schedule', icon: Calendar, route: `/(app)/league/${leagueId}/schedule`, show: isActive },
+    { label: 'Playoffs', icon: Trophy, route: `/(app)/league/${leagueId}/playoffs`, show: isActive },
+    { label: 'Compare', icon: Eye, route: `/(app)/league/${leagueId}/picks-comparison`, show: isActive },
+    { label: 'Rules', icon: ClipboardList, route: `/(app)/league/${leagueId}/rules`, show: true },
+    { label: 'Manage', icon: Gavel, route: `/(app)/league/${leagueId}/commissioner`, show: isCommissioner },
   ].filter((n) => n.show);
 
   return (
@@ -119,7 +136,13 @@ export default function LeagueHomeScreen() {
         <View style={{ flex: 1 }}>
           <Text style={s.leagueName} numberOfLines={1}>{league.name}</Text>
           <Text style={s.leagueMeta}>
-            {(league as any).seasonYear ? `Season ${(league as any).seasonYear} · ` : ''}{league.memberCount} / {league.maxTeams} teams
+            {(() => {
+              const seasonLabel = (league as any).seasonEndsAt
+                ? seasonByRegularEnd(new Date((league as any).seasonEndsAt))?.label
+                : null;
+              const label = seasonLabel ?? ((league as any).seasonYear ? `Season ${(league as any).seasonYear}` : null);
+              return label ? `${label} · ` : '';
+            })()}{league.memberCount} / {league.maxTeams} teams
             {isStaking ? ' · Staking' : ''}
           </Text>
         </View>
@@ -131,7 +154,8 @@ export default function LeagueHomeScreen() {
       {/* ── Champion banner ── */}
       {league.status === 'completed' && champion && (
         <View style={s.champBanner}>
-          <Text style={s.champBannerText}>🏆 Season Champion: {champion.teamName}</Text>
+          <Trophy size={15} color="#ffd700" />
+          <Text style={s.champBannerText}>Season Champion: {champion.teamName}</Text>
         </View>
       )}
 
@@ -240,44 +264,75 @@ export default function LeagueHomeScreen() {
         </View>
       )}
 
-      {/* ── Current matchup card ── */}
-      {matchup && isActive && (
-        <TouchableOpacity
-          style={s.matchupCard}
-          onPress={() => router.push(`/(app)/league/${leagueId}/matchup` as never)}
-        >
-          <View style={s.matchupLabelRow}>
-            <Text style={s.matchupLabel}>CURRENT MATCHUP</Text>
-            {isLive && <View style={s.livePipSmall}><Text style={s.livePipText}>LIVE</Text></View>}
-            <Text style={s.matchupEventName} numberOfLines={1}>{matchup.eventName}</Text>
-          </View>
-          <View style={s.matchupScores}>
-            <View style={s.teamSide}>
-              <Text style={s.teamSideName} numberOfLines={1}>{matchup.homeTeamName}</Text>
-              <Text style={[
-                s.teamSideScore,
-                +matchup.homeScore > +matchup.awayScore && s.scoreLeading,
-                +matchup.homeScore < +matchup.awayScore && s.scoreTrailing,
-              ]}>
-                {fmtMatchupScore(+matchup.homeScore, isStaking)}
-              </Text>
+      {/* ── Current matchup scoreboard ── */}
+      {matchup && isActive && (() => {
+        // Always show the logged-in user on the left
+        const flip = !!myMember && myMember.id === matchup.awayTeamId;
+        const leftName = flip ? matchup.awayTeamName : matchup.homeTeamName;
+        const rightName = flip ? matchup.homeTeamName : matchup.awayTeamName;
+        const leftScore = +(flip ? matchup.awayScore : matchup.homeScore);
+        const rightScore = +(flip ? matchup.homeScore : matchup.awayScore);
+        const leftMember = members.find((m) => m.id === (flip ? matchup.awayTeamId : matchup.homeTeamId));
+        const rightMember = members.find((m) => m.id === (flip ? matchup.homeTeamId : matchup.awayTeamId));
+        const leftColor = (leftMember as any)?.avatarColor ?? '#5555ff';
+        const rightColor = (rightMember as any)?.avatarColor ?? '#5555ff';
+        const leader = leftScore > rightScore ? leftName : rightScore > leftScore ? rightName : null;
+        const diff = Math.abs(leftScore - rightScore);
+        const hasScores = leftScore !== 0 || rightScore !== 0;
+        return (
+          <TouchableOpacity
+            style={s.matchupCard}
+            activeOpacity={0.85}
+            onPress={() => router.push(`/(app)/league/${leagueId}/matchup` as never)}
+          >
+            <View style={[s.matchupEdge, { left: 0, backgroundColor: leftColor }]} />
+            <View style={[s.matchupEdge, { right: 0, backgroundColor: rightColor }]} />
+            <View style={s.matchupLabelRow}>
+              {isLive ? (
+                <View style={s.livePill}>
+                  <LiveDot />
+                  <Text style={s.livePipText}>LIVE</Text>
+                </View>
+              ) : (
+                <Text style={s.matchupLabel}>CURRENT MATCHUP</Text>
+              )}
+              <Text style={s.matchupEventName} numberOfLines={1}>{matchup.eventName}</Text>
             </View>
-            <Text style={s.vs}>VS</Text>
-            <View style={[s.teamSide, s.teamSideRight]}>
-              <Text style={[s.teamSideName, { textAlign: 'right' }]} numberOfLines={1}>{matchup.awayTeamName}</Text>
-              <Text style={[
-                s.teamSideScore,
-                { textAlign: 'right' },
-                +matchup.awayScore > +matchup.homeScore && s.scoreLeading,
-                +matchup.awayScore < +matchup.homeScore && s.scoreTrailing,
-              ]}>
-                {fmtMatchupScore(+matchup.awayScore, isStaking)}
-              </Text>
+            <View style={s.matchupScores}>
+              <View style={s.teamSide}>
+                <MemberAvatar name={leftName} color={leftColor} avatarUrl={(leftMember as any)?.avatarUrl} size={36} />
+                <Text style={s.teamSideName} numberOfLines={1}>{leftName}</Text>
+                <Text style={[
+                  s.teamSideScore,
+                  leftScore >= rightScore ? s.scoreLeading : s.scoreTrailing,
+                ]}>
+                  {fmtMatchupScore(leftScore, isStaking)}
+                </Text>
+              </View>
+              <Text style={s.vs}>VS</Text>
+              <View style={s.teamSide}>
+                <MemberAvatar name={rightName} color={rightColor} avatarUrl={(rightMember as any)?.avatarUrl} size={36} />
+                <Text style={s.teamSideName} numberOfLines={1}>{rightName}</Text>
+                <Text style={[
+                  s.teamSideScore,
+                  rightScore >= leftScore ? s.scoreLeading : s.scoreTrailing,
+                ]}>
+                  {fmtMatchupScore(rightScore, isStaking)}
+                </Text>
+              </View>
             </View>
-          </View>
-          <Text style={s.matchupTap}>Tap for details →</Text>
-        </TouchableOpacity>
-      )}
+            {hasScores && (
+              <View style={s.leadChip}>
+                <Text style={s.leadChipText}>
+                  {leader
+                    ? `${leader} leads by ${isStaking ? `$${diff.toFixed(0)}` : diff.toFixed(1)}`
+                    : 'Tied'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })()}
 
       {/* ── Members row ── */}
       {members.length > 0 && (
@@ -291,7 +346,7 @@ export default function LeagueHomeScreen() {
                 onPress={() => router.push(`/(app)/league/${leagueId}/team/${m.id}` as never)}
               >
                 <MemberAvatar name={m.teamName} color={(m as any).avatarColor} avatarUrl={(m as any).avatarUrl} size={44} />
-                {m.isChampion && <Text style={s.memberChampBadge}>🏆</Text>}
+                {m.isChampion && <View style={s.memberChampBadge}><Trophy size={12} color="#ffd700" /></View>}
                 <Text style={s.memberTeamName} numberOfLines={1}>{m.teamName}</Text>
                 <Text style={s.memberRecord}>{m.wins}–{m.losses}</Text>
               </TouchableOpacity>
@@ -310,7 +365,7 @@ export default function LeagueHomeScreen() {
                 style={s.navItem}
                 onPress={() => router.push(item.route as never)}
               >
-                <Text style={s.navIcon}>{item.icon}</Text>
+                <item.icon size={22} color="#c8102e" style={s.navIcon} />
                 <Text style={s.navLabel}>{item.label}</Text>
               </TouchableOpacity>
             ))}
@@ -360,7 +415,7 @@ const s = StyleSheet.create({
   statusText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
   // Champion banner
-  champBanner: { backgroundColor: '#1a1400', borderBottomWidth: 1, borderBottomColor: '#3a3000', padding: 14, alignItems: 'center' },
+  champBanner: { backgroundColor: '#1a1400', borderBottomWidth: 1, borderBottomColor: '#3a3000', padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   champBannerText: { color: '#ffd700', fontSize: 14, fontWeight: '700' },
 
   // My Team
@@ -416,36 +471,47 @@ const s = StyleSheet.create({
   eventCardMeta: { color: '#555', fontSize: 12 },
   eventCardDate: { color: '#666', fontSize: 12 },
   livePip: { backgroundColor: '#c8102e', borderRadius: 4, paddingHorizontal: 7, paddingVertical: 3 },
-  livePipSmall: { backgroundColor: '#c8102e', borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2 },
   livePipText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   picksBtn: { marginTop: 4, backgroundColor: '#c8102e22', borderRadius: 6, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#c8102e44' },
   picksBtnText: { color: '#c8102e', fontWeight: '700', fontSize: 13 },
 
-  // Matchup card
+  // Matchup scoreboard
   matchupCard: {
     marginHorizontal: 16, marginBottom: 12,
-    backgroundColor: '#141414', borderRadius: 12,
-    borderWidth: 1, borderColor: '#c8102e33', padding: 16,
+    backgroundColor: '#16161d', borderRadius: 14,
+    borderWidth: 1, borderColor: '#26262e',
+    padding: 16, paddingHorizontal: 20, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  matchupLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  matchupEdge: { position: 'absolute', top: 0, bottom: 0, width: 4, opacity: 0.9 },
+  matchupLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   matchupLabel: { color: '#c8102e', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   matchupEventName: { flex: 1, color: '#444', fontSize: 11, textAlign: 'right' },
-  matchupScores: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  teamSide: { flex: 1 },
-  teamSideRight: { alignItems: 'flex-end' },
-  teamSideName: { color: '#888', fontSize: 12, marginBottom: 4 },
-  teamSideScore: { fontSize: 30, fontWeight: '800', color: '#666' },
+  matchupScores: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  teamSide: { flex: 1, alignItems: 'center', gap: 4 },
+  teamSideName: { color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, maxWidth: 120 },
+  teamSideScore: { fontSize: 32, fontWeight: '800', color: '#666', fontVariant: ['tabular-nums'], letterSpacing: -1 },
   scoreLeading: { color: '#fff' },
-  scoreTrailing: { color: '#333' },
-  vs: { color: '#333', fontWeight: '700', paddingHorizontal: 14, fontSize: 12 },
-  matchupTap: { color: '#333', fontSize: 11, textAlign: 'right' },
+  scoreTrailing: { color: '#555' },
+  vs: { color: '#333', fontWeight: '700', paddingHorizontal: 10, fontSize: 12, alignSelf: 'center' },
+  livePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#c8102e', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  leadChip: {
+    alignSelf: 'center', borderWidth: 1, borderColor: '#2e2e36',
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
+  },
+  leadChipText: { color: '#999', fontSize: 11, fontWeight: '700' },
 
   // Members
   membersSection: { marginBottom: 8 },
   sectionLabel: { color: '#444', fontSize: 10, fontWeight: '700', letterSpacing: 1, paddingHorizontal: 16, marginBottom: 10, marginTop: 4 },
   membersRow: { paddingHorizontal: 16, gap: 16 },
   memberItem: { alignItems: 'center', gap: 4, position: 'relative' },
-  memberChampBadge: { position: 'absolute', top: -4, right: -4, fontSize: 12 },
+  memberChampBadge: { position: 'absolute', top: -4, right: -4 },
   memberTeamName: { color: '#888', fontSize: 10, fontWeight: '600', maxWidth: 56, textAlign: 'center' },
   memberRecord: { color: '#444', fontSize: 10 },
 
@@ -456,7 +522,7 @@ const s = StyleSheet.create({
     flex: 1, padding: 12, alignItems: 'center',
     backgroundColor: '#141414', borderRadius: 10, borderWidth: 1, borderColor: '#242424',
   },
-  navIcon: { fontSize: 22, marginBottom: 5 },
+  navIcon: { marginBottom: 6 },
   navLabel: { color: '#ddd', fontSize: 11, fontWeight: '600' },
 
   // Invite footer
