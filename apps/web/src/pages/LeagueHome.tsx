@@ -937,44 +937,58 @@ export function LeagueHomePage() {
               </span>
               {homePicks?.locked && <span style={{ background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 }}>LOCKED</span>}
             </div>
-            {isStaking ? (
-              <StakingBetsSection
-                fights={fights}
-                homeStaking={homeStaking}
-                awayStaking={awayStaking}
-                homeTeamName={effectiveMatchup.homeTeamName}
-                awayTeamName={effectiveMatchup.awayTeamName}
-                isMeHome={isMeHome}
-                isMeAway={isMeAway}
-                isEventLive={eventIsLive}
-                leagueId={leagueId}
-                onPhotoClick={openPhoto}
-              />
-            ) : (
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />
-                <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-                  <MatchupPickPanel
-                    teamName={effectiveMatchup.homeTeamName}
-                    fights={homePicks?.fights ?? []}
-                    champion={homeChampion}
-                    isLocked={!isMeHome && !eventIsLive}
-                    isOwn={isMeHome}
-                    leagueId={leagueId}
-                    locked={homePicks?.locked}
-                  />
-                  <MatchupPickPanel
-                    teamName={effectiveMatchup.awayTeamName}
-                    fights={awayPicks?.fights ?? []}
-                    champion={awayChampion}
-                    isLocked={!isMeAway && !eventIsLive}
-                    isOwn={isMeAway}
-                    leagueId={leagueId}
-                    locked={awayPicks?.locked}
-                  />
+            {(() => {
+              // Show logged-in user's picks/bets on the left
+              const flipSides = isMeAway;
+              const leftTeamName = flipSides ? effectiveMatchup.awayTeamName : effectiveMatchup.homeTeamName;
+              const rightTeamName = flipSides ? effectiveMatchup.homeTeamName : effectiveMatchup.awayTeamName;
+              const leftPicks = flipSides ? awayPicks : homePicks;
+              const rightPicks = flipSides ? homePicks : awayPicks;
+              const leftChampion = flipSides ? awayChampion : homeChampion;
+              const rightChampion = flipSides ? homeChampion : awayChampion;
+              const leftStaking = flipSides ? awayStaking : homeStaking;
+              const rightStaking = flipSides ? homeStaking : awayStaking;
+              const leftIsOwn = flipSides ? isMeAway : isMeHome;
+              const rightIsOwn = flipSides ? isMeHome : isMeAway;
+              return isStaking ? (
+                <StakingBetsSection
+                  fights={fights}
+                  homeStaking={leftStaking}
+                  awayStaking={rightStaking}
+                  homeTeamName={leftTeamName}
+                  awayTeamName={rightTeamName}
+                  isMeHome={leftIsOwn}
+                  isMeAway={rightIsOwn}
+                  isEventLive={eventIsLive}
+                  leagueId={leagueId}
+                  onPhotoClick={openPhoto}
+                />
+              ) : (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+                    <MatchupPickPanel
+                      teamName={leftTeamName}
+                      fights={leftPicks?.fights ?? []}
+                      champion={leftChampion}
+                      isLocked={!leftIsOwn && !eventIsLive}
+                      isOwn={leftIsOwn}
+                      leagueId={leagueId}
+                      locked={leftPicks?.locked}
+                    />
+                    <MatchupPickPanel
+                      teamName={rightTeamName}
+                      fights={rightPicks?.fights ?? []}
+                      champion={rightChampion}
+                      isLocked={!rightIsOwn && !eventIsLive}
+                      isOwn={rightIsOwn}
+                      leagueId={leagueId}
+                      locked={rightPicks?.locked}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         );
       })()}
