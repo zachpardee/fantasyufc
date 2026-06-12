@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fantasy-ufc/shared": "*",
+    "@sentry/node": "^10.57.0",
     "@supabase/supabase-js": "^2.43.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

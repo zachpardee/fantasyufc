@@ -1,4 +1,5 @@
 import express from 'express';
+import * as Sentry from '@sentry/node';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -27,4 +28,5 @@ app.use('/api/v1', apiRouter);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);

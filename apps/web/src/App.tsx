@@ -1,4 +1,5 @@
 import { useEffect, Component, type ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 function ScrollToTop() {
@@ -31,6 +32,7 @@ import { UserBadge } from './components/UserBadge';
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null };
   static getDerivedStateFromError(err: Error) { return { error: err.message }; }
+  componentDidCatch(err: Error) { Sentry.captureException(err); }
   render() {
     if (this.state.error) {
       return (

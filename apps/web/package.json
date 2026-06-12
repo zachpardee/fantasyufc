@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@fantasy-ufc/shared": "*",
+    "@sentry/react": "^10.57.0",
     "@supabase/supabase-js": "^2.43.0",
     "@tanstack/react-query": "^5.45.0",
     "axios": "^1.7.2",
