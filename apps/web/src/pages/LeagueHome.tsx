@@ -489,7 +489,7 @@ export function LeagueHomePage() {
               size={26}
               avatarUrl={(myMember as any)?.avatarUrl}
             />
-            <span style={styles.userPillEmail}>{myMember?.teamName ?? session.user.email}</span>
+            <span style={styles.userPillEmail}>{session.user.email}</span>
           </div>
         )}
         <div style={styles.bellWrap}>
