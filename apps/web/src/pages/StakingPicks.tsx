@@ -192,13 +192,13 @@ export function StakingPicksPage() {
 
   const deleteSavedSingleMutation = useMutation({
     mutationFn: (betId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent!.id}/singles/${betId}`),
-    onSuccess: () => refetchBets(),
+    onSuccess: () => { setSaveError(''); refetchBets(); },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to delete bet'),
   });
 
   const deleteSavedParlayMutation = useMutation({
     mutationFn: (parlayId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent!.id}/parlays/${parlayId}`),
-    onSuccess: () => refetchBets(),
+    onSuccess: () => { setSaveError(''); refetchBets(); },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to delete parlay'),
   });
 
@@ -492,6 +492,7 @@ export function StakingPicksPage() {
                 onDeleteSingle={(id) => deleteSavedSingleMutation.mutate(id)}
                 onDeleteParlay={(id) => deleteSavedParlayMutation.mutate(id)}
                 onClearAll={async () => {
+                  setSaveError('');
                   const pending = (betsData?.singles ?? []).filter((s: any) => s.status === 'pending');
                   const parlays = (betsData?.parlays ?? []).filter((p: any) => p.status === 'pending');
                   for (const s of pending) await deleteSavedSingleMutation.mutateAsync(s.id);
