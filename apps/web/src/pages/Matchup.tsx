@@ -170,10 +170,22 @@ export function MatchupPage() {
     return budget - pendingStake + settledPnl;
   }
 
-  // Orient so the current user's bets are always on the left
+  // Orient so the current user's side is always on the left
   const isMeHome = !!myMember && myMember.id === matchup?.homeTeamId;
   const isMeAway = !!myMember && myMember.id === matchup?.awayTeamId;
+  const flipSides = isMeAway; // swap left/right when user is the away team
   const myStaking = isMeHome ? homeStaking : isMeAway ? awayStaking : homeStaking;
+
+  const leftTeamId   = flipSides ? matchup?.awayTeamId   : matchup?.homeTeamId;
+  const rightTeamId  = flipSides ? matchup?.homeTeamId   : matchup?.awayTeamId;
+  const leftTeamName = flipSides ? matchup?.awayTeamName : matchup?.homeTeamName;
+  const rightTeamName= flipSides ? matchup?.homeTeamName : matchup?.awayTeamName;
+  const leftPicks    = flipSides ? awayPicks    : homePicks;
+  const rightPicks   = flipSides ? homePicks    : awayPicks;
+  const leftChampion = flipSides ? awayChampion : homeChampion;
+  const rightChampion= flipSides ? homeChampion : awayChampion;
+  const leftStaking  = flipSides ? awayStaking  : homeStaking;
+  const rightStaking = flipSides ? homeStaking  : awayStaking;
 
   // Compute scores directly from each side's staking data.
   // The API hides opponent bets pre-event (returns empty arrays), so we check whether bets
@@ -201,6 +213,11 @@ export function MatchupPage() {
     awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
     awayPicks != null ? null : +matchup?.awayScore,
   );
+
+  const leftPicksScore    = flipSides ? awayPicksScore    : homePicksScore;
+  const rightPicksScore   = flipSides ? homePicksScore    : awayPicksScore;
+  const leftStakingScore  = flipSides ? awayStakingScore  : homeStakingScore;
+  const rightStakingScore = flipSides ? homeStakingScore  : awayStakingScore;
 
   const fights: any[] = homePicks?.fights ?? [];
   const awayPickMap: Record<string, any> = {};
@@ -373,39 +390,39 @@ export function MatchupPage() {
 
           {/* Scoreboard */}
           {(() => {
-            const homeMember = members.find((m: any) => m.id === matchup.homeTeamId);
-            const awayMember = members.find((m: any) => m.id === matchup.awayTeamId);
-            const homeColor = homeMember?.avatarColor ?? '#5555ff';
-            const awayColor = awayMember?.avatarColor ?? '#5555ff';
-            const homeHasBelt = !!homeMember && hasBelt(homeMember, members, league);
-            const homeHasBmf = !!homeMember && hasBmfBelt(homeMember, league);
-            const awayHasBelt = !!awayMember && hasBelt(awayMember, members, league);
-            const awayHasBmf = !!awayMember && hasBmfBelt(awayMember, league);
+            const leftMember  = members.find((m: any) => m.id === leftTeamId);
+            const rightMember = members.find((m: any) => m.id === rightTeamId);
+            const leftColor  = leftMember?.avatarColor  ?? '#5555ff';
+            const rightColor = rightMember?.avatarColor ?? '#5555ff';
+            const leftHasBelt  = !!leftMember  && hasBelt(leftMember,  members, league);
+            const leftHasBmf   = !!leftMember  && hasBmfBelt(leftMember,  league);
+            const rightHasBelt = !!rightMember && hasBelt(rightMember, members, league);
+            const rightHasBmf  = !!rightMember && hasBmfBelt(rightMember, league);
             return (
           <div style={{ ...styles.scoreboard, ...(isMobile ? styles.scoreboardMobile : {}) }}>
             <div style={styles.teamBlock}>
               <div style={styles.teamLabelRow}>
-                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => homeMember && setSelectedMember(homeMember)}>
-                  <MemberAvatar teamName={matchup.homeTeamName ?? ''} color={homeColor} size={32} avatarUrl={homeMember?.avatarUrl} onClick={() => homeMember && setSelectedMember(homeMember)} />
-                  {homeHasBelt && <BeltHalo size={32} />}
-                  {homeHasBmf && <BeltHalo size={32} variant="bmf" position={homeHasBelt ? 'bottom' : 'top'} />}
+                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => leftMember && setSelectedMember(leftMember)}>
+                  <MemberAvatar teamName={leftTeamName ?? ''} color={leftColor} size={32} avatarUrl={leftMember?.avatarUrl} onClick={() => leftMember && setSelectedMember(leftMember)} />
+                  {leftHasBelt && <BeltHalo size={32} />}
+                  {leftHasBmf && <BeltHalo size={32} variant="bmf" position={leftHasBelt ? 'bottom' : 'top'} />}
                 </div>
-                <div style={styles.teamLabel}>{matchup.homeTeamName}</div>
+                <div style={styles.teamLabel}>{leftTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
-                color: matchup.winnerId === matchup.homeTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(homeStakingScore) : homePicksScore.toFixed(0)}</div>
+                color: matchup.winnerId === leftTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
+              }}>{isStaking ? fmtStakeScore(leftStakingScore) : leftPicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
             <div style={{ ...styles.vsBlock, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
               {matchup.winnerId && !isLive ? (
                 <div style={styles.resultBadge}>
-                  {matchup.winnerId === matchup.homeTeamId
-                    ? `${matchup.homeTeamName} wins`
-                    : `${matchup.awayTeamName} wins`}
+                  {matchup.winnerId === leftTeamId
+                    ? `${leftTeamName} wins`
+                    : `${rightTeamName} wins`}
                 </div>
               ) : (
                 <div style={styles.vsText}>VS</div>
@@ -415,18 +432,18 @@ export function MatchupPage() {
 
             <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
               <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
-                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => awayMember && setSelectedMember(awayMember)}>
-                  <MemberAvatar teamName={matchup.awayTeamName ?? ''} color={awayColor} size={32} avatarUrl={awayMember?.avatarUrl} onClick={() => awayMember && setSelectedMember(awayMember)} />
-                  {awayHasBelt && <BeltHalo size={32} />}
-                  {awayHasBmf && <BeltHalo size={32} variant="bmf" position={awayHasBelt ? 'bottom' : 'top'} />}
+                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => rightMember && setSelectedMember(rightMember)}>
+                  <MemberAvatar teamName={rightTeamName ?? ''} color={rightColor} size={32} avatarUrl={rightMember?.avatarUrl} onClick={() => rightMember && setSelectedMember(rightMember)} />
+                  {rightHasBelt && <BeltHalo size={32} />}
+                  {rightHasBmf && <BeltHalo size={32} variant="bmf" position={rightHasBelt ? 'bottom' : 'top'} />}
                 </div>
-                <div style={styles.teamLabel}>{matchup.awayTeamName}</div>
+                <div style={styles.teamLabel}>{rightTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
-                color: matchup.winnerId === matchup.awayTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
-              }}>{isStaking ? fmtStakeScore(awayStakingScore) : awayPicksScore.toFixed(0)}</div>
+                color: matchup.winnerId === rightTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
+              }}>{isStaking ? fmtStakeScore(rightStakingScore) : rightPicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
           </div>
@@ -453,19 +470,19 @@ export function MatchupPage() {
                 <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
                   {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={isLive} />}
                   <MatchupPickPanel
-                    teamName={isMeHome ? matchup.homeTeamName : isMeAway ? matchup.awayTeamName : matchup.homeTeamName}
-                    fights={isMeHome ? (homePicks?.fights ?? []) : isMeAway ? (awayPicks?.fights ?? []) : (homePicks?.fights ?? [])}
-                    champion={isMeHome ? homeChampion : isMeAway ? awayChampion : homeChampion}
+                    teamName={leftTeamName ?? ''}
+                    fights={leftPicks?.fights ?? []}
+                    champion={leftChampion}
                     isLocked={!(isMeHome || isMeAway) && !eventIsLive}
                     isOwn={isMeHome || isMeAway}
                     leagueId={leagueId}
-                    locked={homePicks?.locked}
+                    locked={leftPicks?.locked}
                   />
                   {!isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={isLive} />}
                   <MatchupPickPanel
-                    teamName={isMeHome ? matchup.awayTeamName : isMeAway ? matchup.homeTeamName : matchup.awayTeamName}
-                    fights={isMeHome ? (awayPicks?.fights ?? []) : isMeAway ? (homePicks?.fights ?? []) : (awayPicks?.fights ?? [])}
-                    champion={isMeHome ? awayChampion : isMeAway ? homeChampion : awayChampion}
+                    teamName={rightTeamName ?? ''}
+                    fights={rightPicks?.fights ?? []}
+                    champion={rightChampion}
                     isLocked={!eventIsLive}
                   />
                 </div>
@@ -473,16 +490,16 @@ export function MatchupPage() {
             </div>
           )}
 
-          {/* Staking bets — home on left, away on right, matching the scoreboard */}
+          {/* Staking bets — user always on left */}
           {isStaking && (
             <StakingBetsSection
-              fights={homeStaking?.fights ?? awayStaking?.fights ?? []}
-              homeStaking={homeStaking}
-              awayStaking={awayStaking}
-              homeTeamName={matchup.homeTeamName}
-              awayTeamName={matchup.awayTeamName}
-              isMeHome={isMeHome}
-              isMeAway={isMeAway}
+              fights={leftStaking?.fights ?? rightStaking?.fights ?? []}
+              homeStaking={leftStaking}
+              awayStaking={rightStaking}
+              homeTeamName={leftTeamName ?? ''}
+              awayTeamName={rightTeamName ?? ''}
+              isMeHome={isMeHome || isMeAway}
+              isMeAway={false}
               isEventLive={eventIsLive}
               leagueId={leagueId}
               onPhotoClick={openPhoto}
@@ -493,17 +510,17 @@ export function MatchupPage() {
           {!isStaking && (
             <div style={{ ...styles.totalsBar, ...(isMobile ? { padding: '16px', flexDirection: 'column', gap: 24 } : {}) }}>
               <ScoreBreakdown
-                label={matchup.homeTeamName}
-                picks={homePicks?.fights ?? []}
-                matchupPts={homePicksScore}
-                championPts={homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0}
+                label={leftTeamName ?? ''}
+                picks={leftPicks?.fights ?? []}
+                matchupPts={leftPicksScore}
+                championPts={leftChampion?.pointsEarned ? +leftChampion.pointsEarned : 0}
               />
               <div style={styles.totalsDivider} />
               <ScoreBreakdown
-                label={matchup.awayTeamName}
-                picks={awayPicks?.fights ?? []}
-                matchupPts={awayPicksScore}
-                championPts={awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0}
+                label={rightTeamName ?? ''}
+                picks={rightPicks?.fights ?? []}
+                matchupPts={rightPicksScore}
+                championPts={rightChampion?.pointsEarned ? +rightChampion.pointsEarned : 0}
               />
             </div>
           )}
