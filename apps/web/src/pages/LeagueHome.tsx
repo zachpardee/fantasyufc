@@ -635,13 +635,24 @@ export function LeagueHomePage() {
         const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
         const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
 
+        // Always show the logged-in user on the left
+        const leftIsHome = !effectiveMatchup || effectiveMatchup.homeTeamId === myMemberId;
+        const leftMember = leftIsHome ? homeMember : awayMember;
+        const rightMember = leftIsHome ? awayMember : homeMember;
+        const leftColor = leftIsHome ? homeColor : awayColor;
+        const rightColor = leftIsHome ? awayColor : homeColor;
+        const leftScore = leftIsHome ? home : away;
+        const rightScore = leftIsHome ? away : home;
+        const leftTeamName = leftIsHome ? effectiveMatchup?.homeTeamName : effectiveMatchup?.awayTeamName;
+        const rightTeamName = leftIsHome ? effectiveMatchup?.awayTeamName : effectiveMatchup?.homeTeamName;
+
         return (
           <>
             <div style={{ ...styles.matchupBanner, position: 'relative', overflow: 'hidden', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 40px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
               {effectiveMatchup && (
                 <>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${homeColor}, transparent)` }} />
-                  <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${awayColor}, transparent)` }} />
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${leftColor}, transparent)` }} />
+                  <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${rightColor}, transparent)` }} />
                 </>
               )}
               {/* Previous matchup arrow (left) */}
@@ -698,23 +709,23 @@ export function LeagueHomePage() {
                 const scoreFontSize = isMobile ? (isStaking ? 22 : 28) : 34;
                 const beltGap = Math.ceil(avatarSize * 0.45) + 6;
                 const baseGap = isMobile ? 6 : 12;
-                const homeHasBeltOrBmf = !!(homeMember && (hasBelt(homeMember, members, league) || hasBmfBelt(homeMember, league)));
-                const awayHasBeltOrBmf = !!(awayMember && (hasBelt(awayMember, members, league) || hasBmfBelt(awayMember, league)));
-                const homeTeamGap = homeHasBeltOrBmf ? beltGap : baseGap;
-                const awayTeamGap = awayHasBeltOrBmf ? beltGap : baseGap;
+                const leftHasBeltOrBmf = !!(leftMember && (hasBelt(leftMember, members, league) || hasBmfBelt(leftMember, league)));
+                const rightHasBeltOrBmf = !!(rightMember && (hasBelt(rightMember, members, league) || hasBmfBelt(rightMember, league)));
+                const homeTeamGap = leftHasBeltOrBmf ? beltGap : baseGap;
+                const awayTeamGap = rightHasBeltOrBmf ? beltGap : baseGap;
                 return (
                   <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
                     <div style={{ ...styles.matchupTeam, gap: homeTeamGap, overflow: 'hidden', justifyContent: 'center' }}>
                       {effectiveMatchup && (
                         <>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <MemberAvatar teamName={effectiveMatchup.homeTeamName ?? ''} color={homeColor} size={avatarSize} avatarUrl={(homeMember as any)?.avatarUrl} onClick={() => homeMember && setSelectedMember(homeMember)} />
-                            {homeMember && hasBelt(homeMember, members, league) && <BeltHalo size={avatarSize} />}
-                            {homeMember && hasBmfBelt(homeMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(homeMember, members, league) ? 'bottom' : 'top'} />}
+                            <MemberAvatar teamName={leftTeamName ?? ''} color={leftColor} size={avatarSize} avatarUrl={(leftMember as any)?.avatarUrl} onClick={() => leftMember && setSelectedMember(leftMember)} />
+                            {leftMember && hasBelt(leftMember, members, league) && <BeltHalo size={avatarSize} />}
+                            {leftMember && hasBmfBelt(leftMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(leftMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{effectiveMatchup.homeTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: home > away ? '#fff' : '#666' }}>{fmtScore(home)}</div>
+                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{leftTeamName}</div>
+                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: leftScore > rightScore ? '#fff' : '#666' }}>{fmtScore(leftScore)}</div>
                           </div>
                         </>
                       )}
@@ -753,13 +764,13 @@ export function LeagueHomePage() {
                       {effectiveMatchup && (
                         <>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{effectiveMatchup.awayTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: away > home ? '#fff' : '#666' }}>{fmtScore(away)}</div>
+                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{rightTeamName}</div>
+                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: rightScore > leftScore ? '#fff' : '#666' }}>{fmtScore(rightScore)}</div>
                           </div>
                           <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <MemberAvatar teamName={effectiveMatchup.awayTeamName ?? ''} color={awayColor} size={avatarSize} avatarUrl={(awayMember as any)?.avatarUrl} onClick={() => awayMember && setSelectedMember(awayMember)} />
-                            {awayMember && hasBelt(awayMember, members, league) && <BeltHalo size={avatarSize} />}
-                            {awayMember && hasBmfBelt(awayMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(awayMember, members, league) ? 'bottom' : 'top'} />}
+                            <MemberAvatar teamName={rightTeamName ?? ''} color={rightColor} size={avatarSize} avatarUrl={(rightMember as any)?.avatarUrl} onClick={() => rightMember && setSelectedMember(rightMember)} />
+                            {rightMember && hasBelt(rightMember, members, league) && <BeltHalo size={avatarSize} />}
+                            {rightMember && hasBmfBelt(rightMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(rightMember, members, league) ? 'bottom' : 'top'} />}
                           </div>
                         </>
                       )}
