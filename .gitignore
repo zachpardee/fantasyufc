@@ -16,3 +16,4 @@ android/
 *.tsbuildinfo
 .vercel
 .dev-db-password
+supabase/.temp/
