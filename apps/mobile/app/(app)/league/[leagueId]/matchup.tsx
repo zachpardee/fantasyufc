@@ -170,6 +170,8 @@ export default function MatchupScreen() {
               const isLoss = isCompleted && myM?.winnerId && myM.winnerId !== myMember?.id;
               const isActive = myM?.id === selectedMatchupId || (!selectedMatchupId && ev.eventStatus !== 'completed' && myMatchupByEvent.has(ev.eventId) && myM?.id === allMatchups.find(m => m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id)?.id);
               const isCurrent = ev.eventStatus === 'live' || ev.eventStatus === 'scheduled';
+              const isSemis = ev.eventId === league?.playoffSemisEventId;
+              const isFinals = ev.eventId === league?.playoffFinalsEventId;
               const shortName = ev.eventName
                 ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
                 .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
@@ -192,6 +194,8 @@ export default function MatchupScreen() {
                 >
                   {isLiveEv && <Text style={styles.chipLive}>LIVE</Text>}
                   {isCurrent && !isLiveEv && <Text style={styles.chipNext}>NEXT</Text>}
+                  {isFinals && <Text style={styles.chipFinals}>FINALS</Text>}
+                  {isSemis && <Text style={styles.chipSemis}>SEMIS</Text>}
                   <Text style={styles.chipEvent} numberOfLines={1}>{shortName}</Text>
                   {dateStr && <Text style={styles.chipDate}>{dateStr}</Text>}
                   {myM ? (
@@ -493,7 +497,9 @@ const styles = StyleSheet.create({
   chipCurrent: { borderColor: '#444' },
   chipNoMatchup: { opacity: 0.5 },
   chipLive: { color: '#c8102e', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
-  chipNext: { color: '#888', fontSize: 8, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
+  chipNext: { color: '#ffd700', fontSize: 8, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
+  chipFinals: { color: '#ffd700', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
+  chipSemis: { color: '#ff8c42', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
   chipEvent: { color: '#ddd', fontSize: 10, fontWeight: '700', textAlign: 'center' },
   chipDate: { color: '#444', fontSize: 9, marginTop: 2 },
   chipOpp: { color: '#666', fontSize: 9, marginTop: 3, textAlign: 'center' },

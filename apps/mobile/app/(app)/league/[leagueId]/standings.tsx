@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Medal } from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 
@@ -28,12 +29,19 @@ export default function StandingsScreen() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: standings = [], isLoading } = useQuery<StandingsEntry[]>({
+  const { data: rawStandings = [], isLoading } = useQuery<StandingsEntry[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/standings`),
   });
 
   const isStaking = league?.leagueFormat === 'staking';
+
+  // Same ordering as the web: by bankroll for staking, season points otherwise
+  const standings = [...rawStandings].sort((a, b) =>
+    isStaking
+      ? (b.stakingBalance ?? 0) - (a.stakingBalance ?? 0)
+      : (b.totalPoints ?? 0) - (a.totalPoints ?? 0),
+  );
 
   if (isLoading) {
     return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
@@ -78,11 +86,9 @@ export default function StandingsScreen() {
             style={[styles.row, isMe && styles.myRow, index % 2 === 0 && styles.evenRow]}
             onPress={() => router.push(`/(app)/league/${leagueId}/team/${entry.teamId}` as never)}
           >
-            <View style={[styles.cell, styles.rankCell]}>
+            <View style={[styles.cell, styles.rankCell, { alignItems: 'center' }]}>
               {index < 3 ? (
-                <Text style={[styles.rank, index === 0 && styles.gold, index === 1 && styles.silver, index === 2 && styles.bronze]}>
-                  {index === 0 ? '1st' : index === 1 ? '2nd' : '3rd'}
-                </Text>
+                <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][index]} />
               ) : (
                 <Text style={styles.rankNum}>{index + 1}</Text>
               )}
@@ -146,11 +152,7 @@ const styles = StyleSheet.create({
   teamCell: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   streakCell: { minWidth: 40 },
 
-  rank: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
   rankNum: { color: '#666', fontSize: 13, textAlign: 'center' },
-  gold: { color: '#ffd700' },
-  silver: { color: '#c0c0c0' },
-  bronze: { color: '#cd7f32' },
 
   teamName: { color: '#ddd', fontSize: 14, fontWeight: '500', flex: 1 },
   myTeamName: { color: '#fff', fontWeight: '700' },
