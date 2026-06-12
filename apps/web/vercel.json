@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "fantasy-ufc.vercel.app" }],
+      "destination": "https://fantasyfightingleague.vercel.app/$1",
+      "permanent": true
+    }
+  ]
+}
