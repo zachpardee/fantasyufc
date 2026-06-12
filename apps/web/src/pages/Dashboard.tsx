@@ -440,8 +440,8 @@ export function DashboardPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { background: '#111', borderBottom: '1px solid #222', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { height: 48 },
+  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  logo: { height: 30 },
   navRight: { display: 'flex', alignItems: 'center', gap: 16 },
   navLink: { color: '#aaa', textDecoration: 'none', fontSize: 14 },
   navEmail: { color: '#555', fontSize: 14 },

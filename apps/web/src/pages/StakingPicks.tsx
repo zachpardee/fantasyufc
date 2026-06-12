@@ -970,7 +970,7 @@ function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelet
 
 const s: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a', paddingBottom: 40 },
-  nav: { background: '#111', borderBottom: '1px solid #222', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
+  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
   lockedBadge: { background: '#222', color: '#555', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
@@ -1004,7 +1004,7 @@ const s: Record<string, React.CSSProperties> = {
   eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
   eventDate: { color: '#555', fontSize: 12, marginTop: 2 },
 
-  balanceBar: { display: 'flex', background: '#111', borderBottom: '1px solid #1e1e1e', padding: '14px 24px', position: 'sticky', top: 0, zIndex: 50 },
+  balanceBar: { display: 'flex', background: '#111', borderBottom: '1px solid #1e1e1e', padding: '14px 24px', position: 'sticky', top: 52, zIndex: 50 },
   balanceStat: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 },
   balanceVal: { color: '#fff', fontSize: 18, fontWeight: 700 },
   balanceLabel: { color: '#444', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
