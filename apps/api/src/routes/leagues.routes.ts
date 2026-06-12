@@ -2,12 +2,11 @@ import { Router } from 'express';
 import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
-import { DEFAULT_SCORING_SETTINGS } from '@fantasy-ufc/shared';
+import { DEFAULT_SCORING_SETTINGS, currentOrNextSeason } from '@fantasy-ufc/shared';
 import { generateMatchupsForLeague } from '../services/matchup.service';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { redis } from '../config/redis';
-import { nextHolidayTarget } from '../utils/playoffs';
 
 export const leaguesRouter = Router();
 
@@ -285,83 +284,50 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
     if (activeMembers.length < 2) throw new AppError(400, 'Need at least 2 members to start the season');
     if (activeMembers.length % 2 !== 0) throw new AppError(400, `Need an even number of members for head-to-head scheduling (currently ${activeMembers.length})`);
 
-    // Calculate season window
+    // Static season calendar: the league joins the current season if enough
+    // of it remains, otherwise the next one (Winter / Summer / Fall).
     const now = new Date();
-    let seasonEndsAt: Date;
-    let semisEventId: string;
-    let finalsEventId: string;
-    let regularEvents: { id: string }[];
+    const season = currentOrNextSeason(now);
+    const seasonEndsAt = season.regularEndsAt;
+    const regStart = now > season.startsAt ? now : season.startsAt;
 
-    if (league.season_length_months === 6) {
-      // Semis: event nearest to the next upcoming Jul 4 or Jan 1.
-      // Finals: the very next event after semis.
-      // Season start: 6 months before the semis target (so Jan leagues cover Jan–Jul).
-      const semisTarget = nextHolidayTarget(now);
-      const seasonStart = new Date(semisTarget);
-      seasonStart.setMonth(seasonStart.getMonth() - 6);
-
-      const { rows: [semisCandidate] } = await db.query(`
-        SELECT id, scheduled_at FROM ufc_events
-        WHERE scheduled_at > $1 AND status != 'cancelled'
-        ORDER BY ABS(EXTRACT(EPOCH FROM (scheduled_at - $2::timestamptz))) ASC
-        LIMIT 1
-      `, [now.toISOString(), semisTarget.toISOString()]);
-
-      if (!semisCandidate) throw new AppError(400, 'No upcoming events found for playoffs. Check that UFC events are loaded.');
-
-      const { rows: [finalsCandidate] } = await db.query(`
-        SELECT id FROM ufc_events
-        WHERE scheduled_at > $1 AND status != 'cancelled'
-        ORDER BY scheduled_at ASC
-        LIMIT 1
-      `, [new Date(semisCandidate.scheduled_at).toISOString()]);
-
-      if (!finalsCandidate) throw new AppError(400, 'No upcoming events found for finals. Check that UFC events are loaded.');
-
-      semisEventId = semisCandidate.id;
-      finalsEventId = finalsCandidate.id;
-      seasonEndsAt = new Date(semisCandidate.scheduled_at);
-
-      // Regular season: all events from 6 months before semis target to semis event
-      const { rows: regEvents } = await db.query(`
-        SELECT id FROM ufc_events
-        WHERE scheduled_at >= $1 AND scheduled_at < $2 AND status != 'cancelled'
-        ORDER BY scheduled_at ASC
-      `, [seasonStart.toISOString(), seasonEndsAt.toISOString()]);
-
-      regularEvents = regEvents;
-    } else {
-      // 4-month leagues: regular season runs from now to now+4months,
-      // playoffs are the next 2 events after the season ends.
-      seasonEndsAt = new Date(now);
-      seasonEndsAt.setMonth(seasonEndsAt.getMonth() + league.season_length_months);
-
-      const { rows: regEvents } = await db.query(`
-        SELECT id FROM ufc_events
-        WHERE scheduled_at >= $1 AND scheduled_at <= $2 AND status != 'cancelled'
-        ORDER BY scheduled_at ASC
-      `, [now.toISOString(), seasonEndsAt.toISOString()]);
-
-      regularEvents = regEvents;
-
-      const { rows: fallback } = await db.query(`
-        SELECT id FROM ufc_events
-        WHERE scheduled_at > $1 AND status != 'cancelled'
-        ORDER BY scheduled_at ASC LIMIT 2
-      `, [seasonEndsAt.toISOString()]);
-
-      if (fallback.length < 2) throw new AppError(400, 'Not enough upcoming events after the season end date for playoffs. Try a shorter season length.');
-
-      semisEventId = fallback[0].id;
-      finalsEventId = fallback[1].id;
-    }
+    const { rows: regularEvents } = await db.query(`
+      SELECT id FROM ufc_events
+      WHERE scheduled_at >= $1 AND scheduled_at <= $2 AND status != 'cancelled'
+      ORDER BY scheduled_at ASC
+    `, [regStart.toISOString(), seasonEndsAt.toISOString()]);
 
     if (regularEvents.length === 0) {
-      throw new AppError(400, 'No events found in the season window. Check that UFC events are loaded.');
+      throw new AppError(400,
+        `No UFC events are announced yet for the ${season.label} season (starts ${season.startsAt.toISOString().slice(0, 10)}). Try again closer to the season.`);
     }
 
-    // Add all events to league schedule (regular season + both playoff events)
-    const allEventIds = [...regularEvents.map((e: any) => e.id), semisEventId, finalsEventId];
+    // Playoffs: semis = the event right before the finals; finals = the PPV
+    // nearest the season's anchor date. UFC announces events ~2 months out,
+    // so these may not exist yet — eventSync assigns them later when they do.
+    let semisEventId: string | null = null;
+    let finalsEventId: string | null = null;
+    const { rows: postSeason } = await db.query<{ id: string; name: string; scheduled_at: string }>(`
+      SELECT id, name, scheduled_at FROM ufc_events
+      WHERE scheduled_at > $1 AND scheduled_at <= $2 AND status != 'cancelled'
+      ORDER BY scheduled_at ASC
+    `, [seasonEndsAt.toISOString(), new Date(seasonEndsAt.getTime() + 45 * 86400_000).toISOString()]);
+
+    if (postSeason.length >= 2) {
+      const ppvs = postSeason.filter((e, i) => i >= 1 && !/^UFC Fight Night/i.test(e.name));
+      const finals = ppvs.length
+        ? ppvs.reduce((a, b) =>
+            Math.abs(new Date(a.scheduled_at).getTime() - season.finalsTarget.getTime()) <=
+            Math.abs(new Date(b.scheduled_at).getTime() - season.finalsTarget.getTime()) ? a : b)
+        : postSeason[1];
+      const finalsIdx = postSeason.findIndex((e) => e.id === finals.id);
+      semisEventId = postSeason[finalsIdx - 1].id;
+      finalsEventId = finals.id;
+    }
+
+    // Add all events to league schedule (regular season + any known playoff events)
+    const allEventIds = [...regularEvents.map((e: any) => e.id), semisEventId, finalsEventId]
+      .filter((id): id is string => id != null);
     for (const eventId of allEventIds) {
       await db.query(
         `INSERT INTO league_events (league_id, event_id, is_scoring) VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
@@ -386,16 +352,17 @@ leaguesRouter.post('/:leagueId/activate', requireAuth, async (req: AuthRequest, 
         AND m.winner_id IS NULL
     `, [req.params.leagueId]);
 
-    // Activate and store playoff event IDs
+    // Activate and store playoff event IDs (may be null until UFC announces them)
     await db.query(`
       UPDATE leagues SET
         status = 'active',
         season_ends_at = $1,
-        playoff_semis_event_id = $2,
-        playoff_finals_event_id = $3,
-        bmf_belt_holder_id = (SELECT id FROM league_members WHERE league_id = $4 ORDER BY joined_at DESC LIMIT 1)
-      WHERE id = $4
-    `, [seasonEndsAt.toISOString(), semisEventId, finalsEventId, req.params.leagueId]);
+        season_year = $2,
+        playoff_semis_event_id = $3,
+        playoff_finals_event_id = $4,
+        bmf_belt_holder_id = (SELECT id FROM league_members WHERE league_id = $5 ORDER BY joined_at DESC LIMIT 1)
+      WHERE id = $5
+    `, [seasonEndsAt.toISOString(), season.year, semisEventId, finalsEventId, req.params.leagueId]);
 
     const { rows: [updated] } = await db.query(`SELECT * FROM leagues WHERE id = $1`, [req.params.leagueId]);
     res.json(updated);

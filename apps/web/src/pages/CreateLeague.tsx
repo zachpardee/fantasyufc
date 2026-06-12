@@ -1,41 +1,21 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { currentOrNextSeason } from '@fantasy-ufc/shared';
 
-function nextHolidayTarget(after: Date): Date {
-  const y = after.getFullYear();
-  const candidates = [
-    new Date(Date.UTC(y,     0, 1)),
-    new Date(Date.UTC(y,     6, 4)),
-    new Date(Date.UTC(y + 1, 0, 1)),
-    new Date(Date.UTC(y + 1, 6, 4)),
-  ].filter((d) => d > after);
-  return candidates.sort((a, b) => a.getTime() - b.getTime())[0];
-}
-
-function getPlayoffHint(months: number): string {
-  const end = new Date();
-  end.setMonth(end.getMonth() + months);
-  const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  if (months === 6) {
-    const holiday = nextHolidayTarget(end);
-    const holidayStr = holiday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `Season runs until ~${endStr}. Finals target the UFC event nearest ${holidayStr}; semis are the event just before it.`;
-  }
-
-  return `Season runs until ~${endStr}. Playoffs are the next 2 UFC events after the season ends (semis + finals).`;
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function CreateLeaguePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const season = currentOrNextSeason(new Date());
   const [form, setForm] = useState({
     name: '',
     teamName: '',
     maxTeams: '10',
-    seasonLengthMonths: '6',
     leagueFormat: 'pickem' as 'pickem' | 'staking',
     weeklyBudget: '100' as '50' | '100' | '500',
   });
@@ -53,7 +33,6 @@ export function CreateLeaguePage() {
         name: form.name,
         teamName: form.teamName || 'My Team',
         maxTeams: parseInt(form.maxTeams),
-        seasonLengthMonths: parseInt(form.seasonLengthMonths) as 4 | 6,
         leagueFormat: form.leagueFormat,
         ...(form.leagueFormat === 'staking' ? { weeklyBudget: parseInt(form.weeklyBudget) } : {}),
       });
@@ -89,11 +68,10 @@ export function CreateLeaguePage() {
                 {[4,6,8,10,12].map((n) => <option key={n} value={n}>{n} teams</option>)}
               </select>
             </Field>
-            <Field label="Season Length">
-              <select style={styles.input} value={form.seasonLengthMonths} onChange={(e) => set('seasonLengthMonths', e.target.value)}>
-                <option value="4">4 months</option>
-                <option value="6">6 months</option>
-              </select>
+            <Field label="Season">
+              <div style={{ ...styles.input, display: 'flex', alignItems: 'center', color: '#ccc' }}>
+                {season.label}
+              </div>
             </Field>
           </div>
 
@@ -126,7 +104,7 @@ export function CreateLeaguePage() {
           )}
 
           <div style={styles.hint}>
-            {getPlayoffHint(parseInt(form.seasonLengthMonths))}
+            {`The ${season.label} season runs ${fmtDate(season.startsAt)} – ${fmtDate(season.regularEndsAt)}, with playoffs at the PPV near ${fmtDate(season.finalsTarget)}. Leagues created early wait in the lobby until the season opens.`}
           </div>
 
           {error && <p style={styles.error}>{error}</p>}

@@ -4,6 +4,7 @@ import { fetchUpcomingEvents, fetchEventsByDate, type EspnFight } from '../servi
 import { redis } from '../config/redis';
 import { sendNotification } from '../services/notification.service';
 import { nextHolidayTarget } from '../utils/playoffs';
+import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import { generateMatchupsForLeague } from '../services/matchup.service';
 
 // Runs daily at 6am UTC — syncs upcoming UFC events and their fight cards
@@ -146,7 +147,27 @@ async function refreshLeaguePlayoffs() {
 
     // Determine finals event if missing
     if (!finalsId) {
-      if (league.season_length_months === 6) {
+      const staticSeason = seasonByRegularEnd(seasonEndsAt);
+      if (staticSeason) {
+        // Static-calendar league: finals = the PPV nearest the season anchor,
+        // keeping at least one event before it after the regular season (semis).
+        const { rows: postSeason } = await db.query<{ id: string; name: string; scheduled_at: string }>(`
+          SELECT id, name, scheduled_at FROM ufc_events
+          WHERE scheduled_at > $1 AND scheduled_at <= $2 AND status != 'cancelled'
+          ORDER BY scheduled_at ASC
+        `, [seasonEndsAt.toISOString(), new Date(seasonEndsAt.getTime() + 45 * 86400_000).toISOString()]);
+        if (postSeason.length >= 2) {
+          const ppvs = postSeason.filter((e, i) => i >= 1 && !/^UFC Fight Night/i.test(e.name));
+          const finals = ppvs.length
+            ? ppvs.reduce((a, b) =>
+                Math.abs(new Date(a.scheduled_at).getTime() - staticSeason.finalsTarget.getTime()) <=
+                Math.abs(new Date(b.scheduled_at).getTime() - staticSeason.finalsTarget.getTime()) ? a : b)
+            : postSeason[1];
+          const finalsIdx = postSeason.findIndex((e) => e.id === finals.id);
+          semisId = semisId ?? postSeason[finalsIdx - 1].id;
+          finalsId = finals.id;
+        }
+      } else if (league.season_length_months === 6) {
         const target = nextHolidayTarget(seasonEndsAt);
         const { rows: [closest] } = await db.query(`
           SELECT id FROM ufc_events

@@ -79,7 +79,7 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
     // Only commissioner can modify schedule
     const { rows: [league] } = await db.query(
-      `SELECT commissioner_id, status, season_year FROM leagues WHERE id = $1`,
+      `SELECT commissioner_id, status, season_year, season_ends_at FROM leagues WHERE id = $1`,
       [req.params.leagueId],
     );
     if (!league) throw new AppError(404, 'League not found');
@@ -93,11 +93,17 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
     );
     if (!event) throw new AppError(404, 'Event not found or cancelled');
 
-    // Enforce season window: Jan 1 – Jun 30
-    const { start, end } = seasonWindow(league.season_year);
+    // Enforce the league's own season window when set; legacy Jan-Jun otherwise
     const eventDate = new Date(event.scheduled_at);
-    if (eventDate < start || eventDate > end) {
-      throw new AppError(400, `Events must fall within the season window (Jan 1 – Jun 30 ${league.season_year})`);
+    if (league.season_ends_at) {
+      if (eventDate > new Date(league.season_ends_at)) {
+        throw new AppError(400, `Events must fall before the season end (${new Date(league.season_ends_at).toLocaleDateString()})`);
+      }
+    } else {
+      const { start, end } = seasonWindow(league.season_year);
+      if (eventDate < start || eventDate > end) {
+        throw new AppError(400, `Events must fall within the season window (Jan 1 – Jun 30 ${league.season_year})`);
+      }
     }
 
     await db.query(`

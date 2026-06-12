@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { currentOrNextSeason } from '@fantasy-ufc/shared';
 import type { League, UFCEvent, Fighter } from '@fantasy-ufc/shared';
 import { SkeletonEventCard, SkeletonLeagueCard, SkeletonFightRow } from '../components/LoadingScreen';
 import { FighterPhoto } from '../components/FighterPhoto';
@@ -22,7 +23,7 @@ export function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2>(1);
   const [createForm, setCreateForm] = useState({
-    name: '', teamName: '', maxTeams: '10', seasonLengthMonths: '6',
+    name: '', teamName: '', maxTeams: '10',
     leagueFormat: '' as 'pickem' | 'staking' | '', weeklyBudget: '100' as '50' | '100' | '500',
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -66,7 +67,7 @@ export function DashboardPage() {
   });
 
   function openCreate() {
-    setCreateForm({ name: '', teamName: '', maxTeams: '10', seasonLengthMonths: '6', leagueFormat: '', weeklyBudget: '100' });
+    setCreateForm({ name: '', teamName: '', maxTeams: '10', leagueFormat: '', weeklyBudget: '100' });
     setCreateStep(1);
     setCreateError('');
     setShowCreate(true);
@@ -81,7 +82,6 @@ export function DashboardPage() {
         name: createForm.name,
         teamName: createForm.teamName || 'My Team',
         maxTeams: parseInt(createForm.maxTeams),
-        seasonLengthMonths: parseInt(createForm.seasonLengthMonths) as 4 | 6,
         leagueFormat: createForm.leagueFormat,
         ...(createForm.leagueFormat === 'staking' ? { weeklyBudget: parseInt(createForm.weeklyBudget) } : {}),
       });
@@ -392,11 +392,10 @@ export function DashboardPage() {
                     </select>
                   </div>
                   <div style={{ ...styles.joinField, flex: 1 }}>
-                    <label style={styles.joinLabel}>Season Length</label>
-                    <select style={styles.joinInput} value={createForm.seasonLengthMonths} onChange={(e) => setCreateForm((f) => ({ ...f, seasonLengthMonths: e.target.value }))}>
-                      <option value="4">4 months</option>
-                      <option value="6">6 months</option>
-                    </select>
+                    <label style={styles.joinLabel}>Season</label>
+                    <div style={{ ...styles.joinInput, display: 'flex', alignItems: 'center', color: '#ccc' }}>
+                      {currentOrNextSeason(new Date()).label}
+                    </div>
                   </div>
                 </div>
                 {createForm.leagueFormat === 'staking' && (

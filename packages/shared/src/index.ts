@@ -8,3 +8,4 @@ export * from './types/trade.types';
 export * from './types/notification.types';
 export * from './constants/scoring.constants';
 export * from './constants/weight-classes';
+export * from './utils/seasons';

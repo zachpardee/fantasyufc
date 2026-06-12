@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { db } from '../config/database';
+import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import { generateMatchupsForLeague } from '../services/matchup.service';
 
 // The fantasy season runs January 1 – June 30 of each year.
@@ -23,16 +24,18 @@ export async function autoScheduleNextEvents() {
 
   await completeElapsedSeasons();
 
-  // Active leagues whose latest scheduled event was 2+ days ago
-  // (and don't already have a future event on their schedule)
+  // Active leagues whose latest scheduled event was 2+ days ago — or that have
+  // no events yet at all (league activated before its season's schedule was
+  // announced). LEFT JOIN keeps the zero-event leagues in the result.
   const { rows: leagues } = await db.query(`
-    SELECT l.id, l.season_year, MAX(e.scheduled_at) AS last_event_at
+    SELECT l.id, l.season_year, l.season_ends_at,
+           COALESCE(MAX(e.scheduled_at), l.created_at) AS last_event_at
     FROM leagues l
-    JOIN league_events le ON le.league_id = l.id AND le.is_scoring = true
-    JOIN ufc_events e ON e.id = le.event_id
+    LEFT JOIN league_events le ON le.league_id = l.id AND le.is_scoring = true
+    LEFT JOIN ufc_events e ON e.id = le.event_id
     WHERE l.status = 'active'
     GROUP BY l.id
-    HAVING MAX(e.scheduled_at) < NOW() - INTERVAL '2 days'
+    HAVING COALESCE(MAX(e.scheduled_at), l.created_at) < NOW() - INTERVAL '2 days'
   `);
 
   if (!leagues.length) {
@@ -42,21 +45,30 @@ export async function autoScheduleNextEvents() {
 
   for (const league of leagues) {
     try {
-      await scheduleNextEventForLeague(league.id, league.season_year, league.last_event_at);
+      await scheduleNextEventForLeague(league.id, league.season_year, league.last_event_at, league.season_ends_at);
     } catch (err) {
       console.error('[AutoSchedule] Error scheduling for league', league.id, err);
     }
   }
 }
 
-async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, lastEventAt: Date) {
-  const { end: seasonEnd } = seasonWindow(seasonYear);
+async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, lastEventAt: Date, seasonEndsAt: Date | null) {
+  // Per-league season end set at season start (covers static-calendar leagues
+  // running outside the legacy Jan-Jun window). Legacy window is the fallback.
+  const seasonEnd = seasonEndsAt ? new Date(seasonEndsAt) : seasonWindow(seasonYear).end;
 
   // Season window has passed — nothing to schedule
   if (new Date() > seasonEnd) {
     console.log(`[AutoSchedule] Season window closed for league ${leagueId} (${seasonYear})`);
     return;
   }
+
+  // For static-calendar leagues, never schedule events before the season's
+  // opening day (a league can be activated during the preseason).
+  const staticSeason = seasonEndsAt ? seasonByRegularEnd(new Date(seasonEndsAt)) : null;
+  const lowerBound = staticSeason && staticSeason.startsAt > new Date(lastEventAt)
+    ? staticSeason.startsAt
+    : new Date(lastEventAt);
 
   // Next UFC scoring event within the season window that isn't already scheduled
   const { rows: [nextEvent] } = await db.query(`
@@ -71,7 +83,7 @@ async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, 
       )
     ORDER BY e.scheduled_at ASC
     LIMIT 1
-  `, [lastEventAt, seasonEnd, leagueId]);
+  `, [lowerBound, seasonEnd, leagueId]);
 
   if (!nextEvent) {
     console.log(`[AutoSchedule] No upcoming event in season window for league ${leagueId}`);
@@ -95,7 +107,12 @@ async function completeElapsedSeasons() {
     SELECT l.id, l.season_year
     FROM leagues l
     WHERE l.status = 'active'
-      AND NOW() > (DATE_TRUNC('year', MAKE_DATE(l.season_year::int, 1, 1)) + INTERVAL '6 months' - INTERVAL '1 second')
+      AND NOW() > COALESCE(
+        l.season_ends_at,
+        DATE_TRUNC('year', MAKE_DATE(l.season_year::int, 1, 1)) + INTERVAL '6 months' - INTERVAL '1 second'
+      )
+      -- never complete a league still waiting for its playoff events to be assigned
+      AND (l.season_ends_at IS NULL OR l.playoff_finals_event_id IS NOT NULL)
   `);
 
   for (const league of leagues) {

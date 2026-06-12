@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { SkeletonLeagueHeader, SkeletonFightRow } from '../components/LoadingScreen';
 import { FighterPhoto } from '../components/FighterPhoto';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
@@ -548,7 +549,10 @@ export function LeagueHomePage() {
             </div>
           )}
           <div style={styles.leagueMeta}>
-            <span>Season {league.seasonYear}</span>
+            <span>
+              {((league as any).seasonEndsAt && seasonByRegularEnd(new Date((league as any).seasonEndsAt))?.label)
+                ?? `Season ${league.seasonYear}`}
+            </span>
             <span style={styles.metaDot}>·</span>
             <span>{league.memberCount} / {league.maxTeams} teams</span>
             {league.status === 'setup' && (
@@ -626,9 +630,20 @@ export function LeagueHomePage() {
           : effectiveIdx < currentMatchupIdx ? 'UPCOMING MATCHUP'
           : 'VIEWING PREVIOUS MATCHUP';
 
+        const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
+        const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
+        const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
+        const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
+
         return (
           <>
-            <div style={{ ...styles.matchupBanner, position: 'relative', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 40px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
+            <div style={{ ...styles.matchupBanner, position: 'relative', overflow: 'hidden', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 40px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
+              {effectiveMatchup && (
+                <>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${homeColor}, transparent)` }} />
+                  <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${awayColor}, transparent)` }} />
+                </>
+              )}
               {/* Previous matchup arrow (left) */}
               <button
                 onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
@@ -653,7 +668,12 @@ export function LeagueHomePage() {
 
               <div style={styles.matchupLabelRow}>
                 <span style={styles.matchupLabel}>{bannerLabel}</span>
-                {isLive && <span style={styles.livePip}>LIVE</span>}
+                {isLive && (
+                  <span style={styles.livePip}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', animation: 'livePulse 1.2s ease-in-out infinite' }} />
+                    LIVE
+                  </span>
+                )}
               </div>
               <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
               {viewedMatchupIdx === null && currentEvent && isMobile && (
@@ -674,10 +694,6 @@ export function LeagueHomePage() {
                 </div>
               )}
               {(() => {
-                const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
-                const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
-                const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
-                const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
                 const avatarSize = isMobile ? 32 : 50;
                 const scoreFontSize = isMobile ? (isStaking ? 22 : 28) : 34;
                 const beltGap = Math.ceil(avatarSize * 0.45) + 6;
@@ -1404,23 +1420,30 @@ const styles: Record<string, React.CSSProperties> = {
   nameSaveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   nameCancelBtn: { background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: 6, padding: '5px 12px', fontSize: 14, cursor: 'pointer' },
   matchupBanner: {
-    margin: '0 24px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a',
-    borderRadius: 10, padding: '20px 24px', display: 'flex', flexDirection: 'column',
+    margin: '0 24px 16px', background: 'linear-gradient(180deg, #1d1d21 0%, #121215 100%)',
+    border: '1px solid #2c2c31', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
+    padding: '18px 24px 16px', display: 'flex', flexDirection: 'column',
     alignItems: 'center', gap: 5, textAlign: 'center',
   },
-  matchupLabelRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  matchupLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
-  livePip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3, letterSpacing: 0.5 },
-  matchupEventTitle: { color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer' },
+  matchupLabelRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  matchupLabel: { color: '#777', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: 1.4 },
+  livePip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 999, letterSpacing: 0.8, display: 'inline-flex', alignItems: 'center', gap: 4 },
+  matchupEventTitle: { color: '#fff', fontSize: 17, fontWeight: 800, letterSpacing: -0.2, cursor: 'pointer' },
   matchupScoreRow: { display: 'flex', alignItems: 'center', width: '100%' },
   matchupTeam: { flex: 1, display: 'flex', flexDirection: 'row' as const, alignItems: 'center', gap: 12 },
   matchupCenter: { flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1 },
   matchupAvatar: { width: 50, height: 50, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff', flexShrink: 0 },
-  matchupTeamName: { color: '#888', fontSize: 12, fontWeight: 600 },
-  matchupScore: { fontSize: 34, fontWeight: 700, lineHeight: 1 },
-  matchupLeadLabel: { color: '#aaa', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' as const },
-  matchupTiedLabel: { color: '#ffd700', fontSize: 12, fontWeight: 700 },
-  matchupSubRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 24px 0' },
+  matchupTeamName: { color: '#999', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.6 },
+  matchupScore: { fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' as const },
+  matchupLeadLabel: {
+    color: '#bbb', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' as const,
+    background: '#16161a', border: '1px solid #26262b', borderRadius: 999, padding: '4px 14px',
+  },
+  matchupTiedLabel: {
+    color: '#ffd700', fontSize: 12, fontWeight: 700,
+    background: '#16161a', border: '1px solid #26262b', borderRadius: 999, padding: '4px 14px',
+  },
+  matchupSubRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 24px 0' },
   matchupDetailsLink: { color: '#c8102e', textDecoration: 'none', fontSize: 14, fontWeight: 600 },
   lobbyCard: { margin: 24, background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
   lobbyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
