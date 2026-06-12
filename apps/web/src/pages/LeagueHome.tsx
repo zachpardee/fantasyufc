@@ -480,7 +480,6 @@ export function LeagueHomePage() {
             );
           })}
         </div>
-        <span style={{ flex: 1 }} />
         {session?.user.email && (
           <div style={styles.userPill}>
             <MemberAvatar
@@ -1390,7 +1389,7 @@ function statusStyle(status: string): React.CSSProperties {
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   loading: { color: '#888', padding: 40 },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16, overflow: 'visible' },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
   homeBtn: { color: '#aaa', textDecoration: 'none', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 },
   leagueMenuBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: 14, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
@@ -1400,7 +1399,7 @@ const styles: Record<string, React.CSSProperties> = {
   logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
-  memberStrip: { display: 'flex', gap: 8, alignItems: 'center' },
+  memberStrip: { position: 'absolute' as const, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8, alignItems: 'center', pointerEvents: 'auto' },
   onlineDot: {
     position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
     borderRadius: '50%', background: '#4caf50', border: '2px solid #111',
