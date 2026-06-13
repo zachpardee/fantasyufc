@@ -48,7 +48,7 @@ export default function CommissionerScreen() {
         <OddsSection eventId={currentEvent.id} eventName={currentEvent.name} qc={qc} />
       )}
       <ScheduleSection league={league} leagueId={leagueId!} qc={qc} />
-      <DangerSection leagueId={leagueId!} qc={qc} onDeleted={() => router.replace('/(app)/')} />
+      <DangerSection leagueId={leagueId!} qc={qc} onDeleted={() => router.replace('/(app)')} />
       <View style={{ height: 40 }} />
     </ScrollView>
   );
