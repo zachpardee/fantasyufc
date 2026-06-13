@@ -3,11 +3,12 @@ import {
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Swords } from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { useRealtimeScoring } from '../../../../src/hooks/useRealtimeScoring';
+import { PicksColumns, StakingColumns } from '../../../../src/components/MatchupPickColumns';
 
 function fmtScore(n: number, isStaking: boolean): string {
   if (isStaking) {
@@ -60,10 +61,23 @@ export default function MatchupScreen() {
     }
   }
 
+  // seasonEvents is newest-first from the API.
+  // The most recent event the user has a matchup in — the default anchor when nothing is selected.
+  const mostRecentMyMatchup = seasonEvents.find((ev) => myMatchupByEvent.has(ev.eventId));
+  const mostRecentMyMatchupId = mostRecentMyMatchup
+    ? myMatchupByEvent.get(mostRecentMyMatchup.eventId)?.id ?? null
+    : null;
+  // The single current/next event — earliest live or scheduled event (gets the NEXT badge).
+  const currentUpcomingEventId = [...seasonEvents].reverse()
+    .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
+
+  // Anchor the displayed matchup on the chosen chip, defaulting to the most recent one.
+  const effectiveMatchupId = selectedMatchupId ?? mostRecentMyMatchupId;
+
   const { data: matchup, isLoading } = useQuery<any>({
-    queryKey: ['matchup-detail', leagueId, selectedMatchupId],
+    queryKey: ['matchup-detail', leagueId, effectiveMatchupId],
     queryFn: async () => {
-      if (selectedMatchupId) return apiClient.get(`/leagues/${leagueId}/matchups/${selectedMatchupId}`);
+      if (effectiveMatchupId) return apiClient.get(`/leagues/${leagueId}/matchups/${effectiveMatchupId}`);
       const m = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!m) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${m.id}`);
@@ -139,7 +153,20 @@ export default function MatchupScreen() {
   const leftStaking = flip ? awayStaking : homeStaking;
   const rightStaking = flip ? homeStaking : awayStaking;
 
-  const isViewingHistory = !!selectedMatchupId;
+  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== mostRecentMyMatchupId;
+
+  // Oldest-first for left→right display (API gives newest-first).
+  const stripData = [...seasonEvents].reverse();
+  const currentChipIndex = stripData.findIndex((ev) => ev.eventId === currentUpcomingEventId);
+
+  const stripRef = useRef<FlatList<any>>(null);
+  useEffect(() => {
+    if (currentChipIndex < 0 || !stripRef.current) return;
+    const t = setTimeout(() => {
+      stripRef.current?.scrollToIndex({ index: currentChipIndex, viewPosition: 0.5, animated: false });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [currentChipIndex, seasonEvents.length]);
 
   return (
     <ScrollView style={styles.container}>
@@ -152,12 +179,16 @@ export default function MatchupScreen() {
             </TouchableOpacity>
           )}
           <FlatList
+            ref={stripRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            data={[...seasonEvents].reverse()}
+            data={stripData}
             keyExtractor={(ev) => ev.eventId}
             contentContainerStyle={styles.stripContent}
             style={styles.strip}
+            onScrollToIndexFailed={({ averageItemLength, index }) => {
+              stripRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+            }}
             renderItem={({ item: ev }) => {
               const myM = myMatchupByEvent.get(ev.eventId);
               const isMeHome = myM?.homeTeamId === myMember?.id;
@@ -168,8 +199,12 @@ export default function MatchupScreen() {
               const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
               const isWin = isCompleted && myM?.winnerId && myM.winnerId === myMember?.id;
               const isLoss = isCompleted && myM?.winnerId && myM.winnerId !== myMember?.id;
-              const isActive = myM?.id === selectedMatchupId || (!selectedMatchupId && ev.eventStatus !== 'completed' && myMatchupByEvent.has(ev.eventId) && myM?.id === allMatchups.find(m => m.homeTeamId === myMember?.id || m.awayTeamId === myMember?.id)?.id);
-              const isCurrent = ev.eventStatus === 'live' || ev.eventStatus === 'scheduled';
+              // Highlight the selected chip, or the default anchor when nothing is selected.
+              const isActive = selectedMatchupId
+                ? myM?.id === selectedMatchupId
+                : myM?.id === mostRecentMyMatchupId;
+              // Only the single current/next event gets the NEXT badge + outline.
+              const isCurrentEvent = ev.eventId === currentUpcomingEventId;
               const isSemis = ev.eventId === league?.playoffSemisEventId;
               const isFinals = ev.eventId === league?.playoffFinalsEventId;
               const shortName = ev.eventName
@@ -184,16 +219,16 @@ export default function MatchupScreen() {
                   style={[
                     styles.chip,
                     isActive && styles.chipActive,
-                    isCurrent && !isActive && styles.chipCurrent,
+                    isCurrentEvent && !isActive && styles.chipCurrent,
                     !myM && styles.chipNoMatchup,
                   ]}
                   onPress={() => {
                     if (!myM) return;
-                    setSelectedMatchupId(myM.id === matchup?.id && !selectedMatchupId ? null : myM.id);
+                    setSelectedMatchupId(myM.id === mostRecentMyMatchupId ? null : myM.id);
                   }}
                 >
                   {isLiveEv && <Text style={styles.chipLive}>LIVE</Text>}
-                  {isCurrent && !isLiveEv && <Text style={styles.chipNext}>NEXT</Text>}
+                  {isCurrentEvent && !isLiveEv && <Text style={styles.chipNext}>NEXT</Text>}
                   {isFinals && <Text style={styles.chipFinals}>FINALS</Text>}
                   {isSemis && <Text style={styles.chipSemis}>SEMIS</Text>}
                   <Text style={styles.chipEvent} numberOfLines={1}>{shortName}</Text>
@@ -291,190 +326,6 @@ export default function MatchupScreen() {
     </ScrollView>
   );
 }
-
-// ── Pickem columns ────────────────────────────────────────────────────────────
-
-function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked }: {
-  homePicks: any[]; awayPicks: any[];
-  homeChampion: any; awayChampion: any;
-  locked: boolean;
-}) {
-  const fights = homePicks.length > 0 ? homePicks : awayPicks;
-  if (fights.length === 0) {
-    return (
-      <View style={styles.emptyPicks}>
-        <Text style={styles.emptyPicksText}>
-          {locked ? 'No picks for this event' : 'Picks hidden until event starts'}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <>
-      {fights.map((fight: any, i: number) => {
-        const homePick = homePicks[i];
-        const awayPick = awayPicks[i];
-        return (
-          <FightPickRow key={fight.id} fight={fight} homePick={homePick} awayPick={awayPick} locked={locked} />
-        );
-      })}
-
-      {(homeChampion || awayChampion) && (
-        <View style={styles.champCard}>
-          <Text style={styles.champCardLabel}>★ Event Champion</Text>
-          <View style={styles.champCardRow}>
-            <View style={styles.champSide}>
-              <ChampionDisplay champion={homeChampion} />
-            </View>
-            <Text style={styles.champVs}>vs</Text>
-            <View style={[styles.champSide, styles.champSideRight]}>
-              <ChampionDisplay champion={awayChampion} align="right" />
-            </View>
-          </View>
-        </View>
-      )}
-    </>
-  );
-}
-
-function FightPickRow({ fight, homePick, awayPick, locked }: {
-  fight: any; homePick: any; awayPick: any; locked: boolean;
-}) {
-  return (
-    <View style={styles.fightRow}>
-      <PickCell pick={homePick} align="left" locked={locked} />
-      <View style={styles.fightCenter}>
-        <Text style={styles.fightCenterWeight} numberOfLines={1}>{fight.weightClassName}</Text>
-        <Text style={styles.fightCenterVs}>vs</Text>
-      </View>
-      <PickCell pick={awayPick} align="right" locked={locked} />
-    </View>
-  );
-}
-
-function PickCell({ pick, align, locked }: { pick: any; align: 'left' | 'right'; locked: boolean }) {
-  if (!pick) return <View style={styles.pickCell} />;
-
-  const pickedId = pick.pickedFighterId;
-  if (!pickedId) {
-    return (
-      <View style={[styles.pickCell, align === 'right' && styles.pickCellRight]}>
-        <Text style={styles.noPick}>—</Text>
-      </View>
-    );
-  }
-
-  const isRed = pickedId === pick.redFighterId;
-  const name = isRed ? `${pick.redFirstName} ${pick.redLastName}` : `${pick.blueFirstName} ${pick.blueLastName}`;
-  const isCorrect = pick.isCorrect;
-  const pts = +(pick.pointsEarned ?? 0);
-
-  return (
-    <View style={[styles.pickCell, align === 'right' && styles.pickCellRight]}>
-      <Text
-        style={[styles.pickName, { textAlign: align }, isCorrect === false && styles.pickNameWrong]}
-        numberOfLines={2}
-      >
-        {name}
-      </Text>
-      {locked && isCorrect === true && <Text style={[styles.pickPts, { textAlign: align }]}>+{pts.toFixed(0)}</Text>}
-      {locked && isCorrect === false && <Text style={[styles.pickWrong, { textAlign: align }]}>✗</Text>}
-      {locked && isCorrect === null && <Text style={[styles.pickPending, { textAlign: align }]}>–</Text>}
-    </View>
-  );
-}
-
-function ChampionDisplay({ champion, align = 'left' }: { champion: any; align?: 'left' | 'right' }) {
-  if (!champion) return <Text style={styles.champNoPick}>—</Text>;
-  return (
-    <>
-      <Text style={[styles.champName, { textAlign: align }]}>
-        {champion.firstName} {champion.lastName}
-      </Text>
-      {champion.pointsEarned > 0
-        ? <Text style={[styles.champWon, { textAlign: align }]}>+30 pts</Text>
-        : champion.resultWinnerId === null
-          ? <Text style={[styles.champPending, { textAlign: align }]}>Pending</Text>
-          : <Text style={[styles.champLost, { textAlign: align }]}>✗</Text>}
-    </>
-  );
-}
-
-// ── Staking columns ───────────────────────────────────────────────────────────
-
-function StakingColumns({ homeStaking, awayStaking }: { homeStaking: any; awayStaking: any }) {
-  if (!homeStaking && !awayStaking) {
-    return (
-      <View style={styles.emptyPicks}>
-        <Text style={styles.emptyPicksText}>No bet data available</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.stakingContainer}>
-      <StakingSide staking={homeStaking} align="left" />
-      <View style={styles.stakingDivider} />
-      <StakingSide staking={awayStaking} align="right" />
-    </View>
-  );
-}
-
-function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right' }) {
-  const singles: any[] = staking?.singles ?? [];
-  const parlays: any[] = staking?.parlays ?? [];
-
-  if (singles.length === 0 && parlays.length === 0) {
-    return (
-      <View style={styles.stakingSide}>
-        <Text style={[styles.noBets, { textAlign: align }]}>No bets</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.stakingSide}>
-      {singles.map((bet: any) => {
-        const pl = +(bet.profitLoss ?? 0);
-        const isPending = bet.status === 'pending';
-        return (
-          <View key={bet.id} style={[styles.betRow, align === 'right' && styles.betRowRight]}>
-            <Text style={[styles.betFighter, { textAlign: align }]} numberOfLines={1}>
-              {bet.fighterFirstName} {bet.fighterLastName}
-            </Text>
-            <Text style={[styles.betStake, { textAlign: align }]}>${(+(bet.stake ?? 0)).toFixed(0)}</Text>
-            {isPending
-              ? <Text style={[styles.betPending, { textAlign: align }]}>Pending</Text>
-              : <Text style={[styles.betPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}>
-                  {pl >= 0 ? '+' : ''}{pl >= 0 ? '$' : '-$'}{Math.abs(pl).toFixed(0)}
-                </Text>
-            }
-          </View>
-        );
-      })}
-      {parlays.map((parlay: any) => {
-        const legs: any[] = parlay.legs ?? [];
-        const pl = +(parlay.profitLoss ?? 0);
-        const isPending = parlay.status === 'pending';
-        return (
-          <View key={parlay.id} style={[styles.betRow, align === 'right' && styles.betRowRight]}>
-            <Text style={[styles.betFighter, { textAlign: align }]}>{legs.length}-leg parlay</Text>
-            <Text style={[styles.betStake, { textAlign: align }]}>${(+(parlay.stake ?? 0)).toFixed(0)}</Text>
-            {isPending
-              ? <Text style={[styles.betPending, { textAlign: align }]}>Pending</Text>
-              : <Text style={[styles.betPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}>
-                  {pl >= 0 ? '+' : ''}{pl >= 0 ? '$' : '-$'}{Math.abs(pl).toFixed(0)}
-                </Text>
-            }
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },

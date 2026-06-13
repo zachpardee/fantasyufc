@@ -9,7 +9,7 @@ export default function LeagueDetailLayout() {
         headerBackTitle: 'Back',
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'League' }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="matchup" options={{ title: 'Matchup' }} />
       <Stack.Screen name="picks" options={{ title: 'Event Picks' }} />
       <Stack.Screen name="standings" options={{ title: 'Standings' }} />
