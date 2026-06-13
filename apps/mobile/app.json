@@ -35,6 +35,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bcf5f2fe-c897-4176-ae59-eefe09d40720"
+      }
+    },
+    "owner": "blindtiger",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bcf5f2fe-c897-4176-ae59-eefe09d40720"
     }
   }
 }
