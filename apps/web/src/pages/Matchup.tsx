@@ -51,8 +51,10 @@ export function MatchupPage() {
     enabled: showNotifs,
   });
   function openNotifs() {
-    setShowNotifs(true);
-    apiClient.post('/notifications/mark-all-read').catch(() => {});
+    setShowNotifs((v) => {
+      if (!v) apiClient.post('/notifications/mark-all-read').catch(() => {});
+      return !v;
+    });
   }
 
   const { data: league } = useQuery<any>({
