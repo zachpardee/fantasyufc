@@ -15,7 +15,7 @@ export function UserBadge() {
   });
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  const isLeaguePage = /^\/league\/[^/]+$/.test(location.pathname); // league home has its own pill
+  const isLeaguePage = /^\/league\//.test(location.pathname); // all league pages have their own nav
   const isDashboard = location.pathname === '/';                     // dashboard has its own email+logout
   if (!session || isAuthPage || isLeaguePage || isDashboard || !profile) return null;
 
