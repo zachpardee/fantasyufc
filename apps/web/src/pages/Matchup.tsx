@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
 import { MemberAvatar } from '../components/MemberAvatar';
-import { Trophy, Calendar } from 'lucide-react';
+import { Trophy, Calendar, Bell, X } from 'lucide-react';
 import { SkeletonFightRow } from '../components/LoadingScreen';
 import {
   fmtStakeScore, fmtChipScore,
@@ -37,6 +37,23 @@ export function MatchupPage() {
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string; fighterId?: string } | null>(null);
   const openPhoto: PhotoClickHandler = (url, name, fighterId) => setEnlargedPhoto({ url, name, fighterId });
   const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [showNotifs, setShowNotifs] = useState(false);
+
+  const { data: unreadCount } = useQuery<{ count: number }>({
+    queryKey: ['notif-unread'],
+    queryFn: () => apiClient.get('/notifications/unread-count'),
+    refetchInterval: 60_000,
+    enabled: !!session,
+  });
+  const { data: notifications = [] } = useQuery<any[]>({
+    queryKey: ['notifications'],
+    queryFn: () => apiClient.get('/notifications'),
+    enabled: showNotifs,
+  });
+  function openNotifs() {
+    setShowNotifs(true);
+    apiClient.post('/notifications/mark-all-read').catch(() => {});
+  }
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -228,18 +245,61 @@ export function MatchupPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
-        <span style={styles.navTitle}>Matchup</span>
-        {browsingMatchupId && (
-          <button style={styles.currentBtn} onClick={() => setBrowsingMatchupId(null)}>
-            ← My matchup
-          </button>
-        )}
-        {(isViewingHistory || selectedEventId) && !browsingMatchupId && (
-          <button style={styles.currentBtn} onClick={() => { setSelectedMatchupId(null); setSelectedEventId(null); }}>
-            ← Current
-          </button>
-        )}
+        <div style={styles.navLeft}>
+          <Link to="/" style={styles.logoLink}>
+            <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+          </Link>
+          <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
+          {!isMobile && <span style={styles.navTitle}>Matchup</span>}
+        </div>
+        {isMobile && <span style={styles.navTitle}>Matchup</span>}
+        <div style={styles.navRight}>
+          {browsingMatchupId && (
+            <button style={styles.currentBtn} onClick={() => setBrowsingMatchupId(null)}>
+              ← My matchup
+            </button>
+          )}
+          {(isViewingHistory || selectedEventId) && !browsingMatchupId && (
+            <button style={styles.currentBtn} onClick={() => { setSelectedMatchupId(null); setSelectedEventId(null); }}>
+              ← Current
+            </button>
+          )}
+          {myMember && (
+            <MemberAvatar
+              teamName={myMember.teamName}
+              color={myMember.avatarColor ?? '#5555ff'}
+              size={28}
+              avatarUrl={myMember.avatarUrl}
+              onClick={() => setSelectedMember(myMember)}
+            />
+          )}
+          <div style={styles.bellWrap}>
+            <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
+              <Bell size={17} />
+              {(unreadCount?.count ?? 0) > 0 && (
+                <span style={styles.bellBadge}>{unreadCount!.count}</span>
+              )}
+            </button>
+            {showNotifs && (
+              <div style={styles.notifPanel}>
+                <div style={styles.notifHeader}>
+                  <span style={styles.notifTitle}>Notifications</span>
+                  <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
+                </div>
+                {notifications.length === 0
+                  ? <div style={styles.notifEmpty}>No notifications yet</div>
+                  : notifications.map((n) => (
+                    <div key={n.id} style={{ ...styles.notifItem, ...(n.isRead ? {} : styles.notifUnread) }}>
+                      <div style={styles.notifItemTitle}>{n.title}</div>
+                      <div style={styles.notifItemBody}>{n.body}</div>
+                      <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+        </div>
       </nav>
 
       {seasonEvents.length > 0 && (
@@ -786,11 +846,28 @@ function ScoreBreakdown({ label, picks, matchupPts, championPts }: {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 12, overflow: 'visible' },
+  logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
+  logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
+  navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
+  navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto', marginLeft: 'auto' },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   navTitle: { color: '#fff', fontWeight: 700, flex: 1 },
   liveBadge: { background: '#c8102e', color: '#fff', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
   currentBtn: { background: 'transparent', border: '1px solid #333', borderRadius: 6, color: '#888', fontSize: 12, padding: '4px 10px', cursor: 'pointer' },
+  bellWrap: { position: 'relative' as const },
+  bellBtn: { background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, position: 'relative' as const },
+  bellBadge: { position: 'absolute' as const, top: -4, right: -4, background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 4px', minWidth: 14, textAlign: 'center' as const },
+  notifPanel: { position: 'absolute' as const, top: 36, right: 0, width: 320, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 100, maxHeight: 400, overflowY: 'auto' as const },
+  notifHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 8px', borderBottom: '1px solid #242424' },
+  notifTitle: { color: '#ccc', fontWeight: 700, fontSize: 13 },
+  notifClose: { background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 2, display: 'flex' },
+  notifEmpty: { color: '#555', fontSize: 13, padding: '20px 14px', textAlign: 'center' as const },
+  notifItem: { padding: '10px 14px', borderBottom: '1px solid #1e1e1e' },
+  notifUnread: { background: '#141414' },
+  notifItemTitle: { color: '#ccc', fontSize: 13, fontWeight: 600, marginBottom: 2 },
+  notifItemBody: { color: '#777', fontSize: 12, marginBottom: 4 },
+  notifItemTime: { color: '#444', fontSize: 11 },
   empty: { color: '#888', padding: 40, textAlign: 'center', marginTop: 80 },
 
   historyStrip: {
