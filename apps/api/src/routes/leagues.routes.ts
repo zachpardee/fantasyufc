@@ -179,12 +179,14 @@ leaguesRouter.patch('/:leagueId/members/me', requireAuth, async (req: AuthReques
     const body = z.object({
       teamName: z.string().min(1).max(100).optional(),
       avatarColor: z.string().max(20).optional(),
+      picksPublic: z.boolean().optional(),
     }).parse(req.body);
 
     const sets: string[] = [];
     const vals: any[] = [];
     if (body.teamName !== undefined) { sets.push(`team_name = $${vals.push(body.teamName)}`); }
     if (body.avatarColor !== undefined) { sets.push(`avatar_color = $${vals.push(body.avatarColor)}`); }
+    if (body.picksPublic !== undefined) { sets.push(`picks_public = $${vals.push(body.picksPublic)}`); }
     if (!sets.length) return res.json({});
 
     vals.push(req.params.leagueId, req.user!.id);

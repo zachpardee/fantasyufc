@@ -14,8 +14,10 @@ export function PicksPage() {
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [localChampion, setLocalChampion] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [picksPublic, setPicksPublic] = useState(false);
   const initialViewSet = useRef(false);
   const championInitialized = useRef(false);
+  const picksPublicInitialized = useRef(false);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -80,6 +82,18 @@ export function PicksPage() {
     championInitialized.current = true;
     if (championData?.fighterId) setLocalChampion(championData.fighterId);
   }, [championData]);
+
+  useEffect(() => {
+    if (picksPublicInitialized.current || picksData === undefined) return;
+    picksPublicInitialized.current = true;
+    setPicksPublic(picksData?.picksPublic ?? false);
+  }, [picksData]);
+
+  const publicToggleMutation = useMutation({
+    mutationFn: (value: boolean) =>
+      apiClient.patch(`/leagues/${leagueId}/members/me`, { picksPublic: value }),
+    onSuccess: (_data, value) => setPicksPublic(value),
+  });
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -360,16 +374,36 @@ export function PicksPage() {
           )}
 
           <div style={styles.footer}>
-            {saveMutation.isError && (
-              <span style={styles.footerError}>Failed to save — please try again</span>
-            )}
-            <button
-              style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending}
-            >
-              {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
-            </button>
+            <div style={styles.publicToggleRow}>
+              <label style={styles.publicToggleLabel}>
+                <div
+                  role="checkbox"
+                  aria-checked={picksPublic}
+                  tabIndex={0}
+                  style={{ ...styles.toggleTrack, ...(picksPublic ? styles.toggleTrackOn : {}) }}
+                  onClick={() => publicToggleMutation.mutate(!picksPublic)}
+                  onKeyDown={(e) => e.key === 'Enter' && publicToggleMutation.mutate(!picksPublic)}
+                >
+                  <div style={{ ...styles.toggleThumb, ...(picksPublic ? styles.toggleThumbOn : {}) }} />
+                </div>
+                <span style={styles.publicToggleText}>Share picks publicly</span>
+              </label>
+              {picksPublic && (
+                <span style={styles.publicWarning}>Opponents can see your picks before the event locks</span>
+              )}
+            </div>
+            <div style={styles.footerActions}>
+              {saveMutation.isError && (
+                <span style={styles.footerError}>Failed to save — please try again</span>
+              )}
+              <button
+                style={{ ...styles.saveBtn, ...(saveMutation.isPending ? styles.saveBtnDisabled : {}) }}
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+              >
+                {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -589,7 +623,16 @@ const styles: Record<string, React.CSSProperties> = {
   methodBtnCorrect: { border: '1px solid #4caf50', color: '#4caf50', background: '#0a1a0a' },
   methodBtnWrong: { border: '1px solid #333', color: '#444' },
   resultOutcome: { color: '#555', fontSize: 12, textAlign: 'center', marginTop: 10 },
-  footer: { position: 'sticky', bottom: 0, background: '#0a0a0a', borderTop: '1px solid #1a1a1a', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
+  footer: { position: 'sticky', bottom: 0, background: '#0a0a0a', borderTop: '1px solid #1a1a1a', padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 10 },
+  footerActions: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
+  publicToggleRow: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const },
+  publicToggleLabel: { display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' as const },
+  publicToggleText: { color: '#aaa', fontSize: 13, fontWeight: 600 },
+  publicWarning: { color: '#f59e0b', fontSize: 12 },
+  toggleTrack: { width: 36, height: 20, borderRadius: 10, background: '#333', position: 'relative' as const, flexShrink: 0, transition: 'background 0.2s' },
+  toggleTrackOn: { background: '#c8102e' },
+  toggleThumb: { position: 'absolute' as const, top: 2, left: 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'transform 0.2s' },
+  toggleThumbOn: { transform: 'translateX(16px)' },
   footerHint: { color: '#666', fontSize: 14, flex: 1 },
   footerError: { color: '#ff6b6b', fontSize: 14, flex: 1, fontWeight: 600 },
   savedMsg: { color: '#4caf50', fontSize: 14, fontWeight: 600 },

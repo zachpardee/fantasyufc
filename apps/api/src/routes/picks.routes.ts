@@ -35,7 +35,7 @@ picksRouter.get('/current-event', requireAuth, async (req: AuthRequest, res, nex
 picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      `SELECT id, picks_public FROM league_members WHERE league_id = $1 AND user_id = $2`,
       [req.params.leagueId, req.user!.id],
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
@@ -43,21 +43,23 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
     // Allow viewing another member's picks (for matchup page) — verify they're in this league
     const viewingOpponent = !!(req.query.memberId && req.query.memberId !== member.id);
     let targetMemberId = member.id;
+    let targetPicksPublic = false;
     if (viewingOpponent) {
       const { rows: [targetMember] } = await db.query(
-        `SELECT id FROM league_members WHERE league_id = $1 AND id = $2`,
+        `SELECT id, picks_public FROM league_members WHERE league_id = $1 AND id = $2`,
         [req.params.leagueId, req.query.memberId],
       );
       if (!targetMember) throw new AppError(404, 'Member not found in this league');
       targetMemberId = targetMember.id;
+      targetPicksPublic = targetMember.picks_public ?? false;
     }
 
     const { rows: [event] } = await db.query(
       `SELECT status, name, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [req.params.eventId],
     );
     const eventLive = event?.status === 'live' || event?.status === 'completed';
-    // Opponent picks are hidden until the event goes live
-    const revealOpponent = !viewingOpponent || eventLive;
+    // Opponent picks hidden until event goes live, unless the opponent made picks public
+    const revealOpponent = !viewingOpponent || eventLive || targetPicksPublic;
 
     const { rows: fights } = await db.query(`
       SELECT
@@ -91,7 +93,7 @@ picksRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) =>
 
     const locked = event ? isEventLocked(event) : false;
 
-    res.json({ fights, locked, eventStatus: event?.status, eventName: event?.name, scheduledAt: event?.scheduled_at });
+    res.json({ fights, locked, eventStatus: event?.status, eventName: event?.name, scheduledAt: event?.scheduled_at, picksPublic: member.picks_public ?? false });
   } catch (err) { next(err); }
 });
 
