@@ -672,34 +672,58 @@ export function LeagueHomePage() {
 
         return (
           <>
-            <div style={{ ...styles.matchupBanner, position: 'relative', overflow: 'hidden', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 40px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
+            {/* Mobile: prev/next as a row above the banner */}
+            {isMobile && myMatchups.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 6px' }}>
+                <button
+                  onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
+                  disabled={!hasPrev}
+                  style={{ background: 'none', border: 'none', color: hasPrev ? '#bbb' : '#333', cursor: hasPrev ? 'pointer' : 'default', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
+                >
+                  ‹ Prev
+                </button>
+                <span style={{ fontSize: 10, color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {myMatchups.length - effectiveIdx} / {myMatchups.length}
+                </span>
+                <button
+                  onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
+                  disabled={!hasNext}
+                  style={{ background: 'none', border: 'none', color: hasNext ? '#bbb' : '#333', cursor: hasNext ? 'pointer' : 'default', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
+                >
+                  Next ›
+                </button>
+              </div>
+            )}
+            <div style={{ ...styles.matchupBanner, position: 'relative', overflow: 'hidden', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 16px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
               {effectiveMatchup && (
                 <>
                   <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${leftColor}, transparent)` }} />
                   <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${rightColor}, transparent)` }} />
                 </>
               )}
-              {/* Previous matchup arrow (left) */}
-              <button
-                onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
-                disabled={!hasPrev}
-                style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', background: hasPrev ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasPrev ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: isMobile ? '6px 8px' : '8px 12px', color: hasPrev ? '#bbb' : '#2a2a2a' }}
-              >
-                <span style={{ fontSize: 26, lineHeight: 1 }}>‹</span>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Prev</span>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
-              </button>
-
-              {/* Next matchup arrow (right) */}
-              <button
-                onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
-                disabled={!hasNext}
-                style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: hasNext ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasNext ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: isMobile ? '6px 8px' : '8px 12px', color: hasNext ? '#bbb' : '#2a2a2a' }}
-              >
-                <span style={{ fontSize: 26, lineHeight: 1 }}>›</span>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Next</span>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
-              </button>
+              {/* Previous/next arrows — desktop only */}
+              {!isMobile && (
+                <>
+                  <button
+                    onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
+                    disabled={!hasPrev}
+                    style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', background: hasPrev ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasPrev ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 12px', color: hasPrev ? '#bbb' : '#2a2a2a' }}
+                  >
+                    <span style={{ fontSize: 26, lineHeight: 1 }}>‹</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Prev</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+                  </button>
+                  <button
+                    onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
+                    disabled={!hasNext}
+                    style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: hasNext ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasNext ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 12px', color: hasNext ? '#bbb' : '#2a2a2a' }}
+                  >
+                    <span style={{ fontSize: 26, lineHeight: 1 }}>›</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Next</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+                  </button>
+                </>
+              )}
 
               <div style={styles.matchupLabelRow}>
                 <span style={styles.matchupLabel}>{bannerLabel}</span>
