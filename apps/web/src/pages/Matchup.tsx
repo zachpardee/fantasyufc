@@ -93,8 +93,8 @@ export function MatchupPage() {
   // The most recent event the user has a matchup in (for default selection)
   const mostRecentMyMatchup = seasonEvents.find((ev) => myMatchupByEvent.has(ev.eventId));
 
-  // The current/next event (earliest scheduled or live)
-  const currentUpcomingEventId = [...seasonEvents].reverse()
+  // The current/next event (earliest scheduled or live) — use allSeasonEvents (newest-first) so order of seasonEvents doesn't matter
+  const currentUpcomingEventId = [...allSeasonEvents].reverse()
     .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
 
   // Scroll the chip strip to center the current event chip once data is ready
@@ -329,7 +329,8 @@ export function MatchupPage() {
             const hasScore = myM && isEventCompleted;
             const eventMatchups = allMatchups.filter((m) => m.eventId === ev.eventId);
             const isBrowsingThisEvent = !myM && eventMatchups.some((m) => m.id === browsingMatchupId);
-            const isActive = (!!selectedMatchupId && myM?.id === selectedMatchupId) || selectedEventId === ev.eventId || isBrowsingThisEvent;
+            const isViewingDefault = !selectedMatchupId && !selectedEventId && !browsingMatchupId;
+            const isActive = (!!selectedMatchupId && myM?.id === selectedMatchupId) || selectedEventId === ev.eventId || isBrowsingThisEvent || (isViewingDefault && isCurrentEvent);
             const hasAnyMatchups = eventMatchups.length > 0;
             const eventShort = ev.eventName
               ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
@@ -881,9 +882,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 90,
   },
-  historyChipActive: { border: '1px solid #c8102e', background: '#1a0808' },
-  historyChipCurrent: { border: '1px solid #ffd700', background: '#1a1800' },
-  historyChipNoMatchup: { opacity: 0.5, cursor: 'pointer' },
+  historyChipActive: { border: '2px solid #c8102e', background: '#1f0606' },
+  historyChipCurrent: { border: '1px solid #555', background: '#1a1a1a' },
+  historyChipNoMatchup: { opacity: 0.4, cursor: 'pointer' },
   chipNextBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipLiveBadge: { color: '#c8102e', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
   chipFinalsBadge: { color: '#ffd700', fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' },
