@@ -430,42 +430,43 @@ export function LeagueHomePage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to="/" style={styles.logoLink}>
-          <img src="/logo.jpg" alt="FFL" style={styles.logo} />
-        </Link>
-        <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
-        <div ref={leagueMenuRef} style={{ position: 'relative' }}>
-          <button
-            style={styles.leagueMenuBtn}
-            onClick={() => setShowLeagueMenu((v) => !v)}
-          >
-            League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {showLeagueMenu && (
-            <div style={styles.leagueMenuDropdown}>
-              <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
-                <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
-              </Link>
-              {navLinks.filter((l) => l.show).map((item) =>
-                item.onClick ? (
-                  <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
-                    <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                  </button>
-                ) : (
-                  <Link
-                    key={item.label}
-                    to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
-                    style={styles.leagueMenuItem}
-                    onClick={() => setShowLeagueMenu(false)}
-                  >
-                    <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                  </Link>
-                )
-              )}
-            </div>
-          )}
+        <div style={styles.navLeft}>
+          <Link to="/" style={styles.logoLink}>
+            <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+          </Link>
+          <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
+          <div ref={leagueMenuRef} style={{ position: 'relative' }}>
+            <button
+              style={styles.leagueMenuBtn}
+              onClick={() => setShowLeagueMenu((v) => !v)}
+            >
+              League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {showLeagueMenu && (
+              <div style={styles.leagueMenuDropdown}>
+                <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
+                  <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
+                </Link>
+                {navLinks.filter((l) => l.show).map((item) =>
+                  item.onClick ? (
+                    <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
+                      <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
+                    </button>
+                  ) : (
+                    <Link
+                      key={item.label}
+                      to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
+                      style={styles.leagueMenuItem}
+                      onClick={() => setShowLeagueMenu(false)}
+                    >
+                      <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
+                    </Link>
+                  )
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        <span style={{ flex: 1 }} />
         <div style={styles.memberStrip}>
           {members.map((m) => {
             const color = (m as any).avatarColor ?? '#5555ff';
@@ -480,44 +481,46 @@ export function LeagueHomePage() {
             );
           })}
         </div>
-        {session?.user.email && (
-          <div style={styles.userPill}>
-            <MemberAvatar
-              teamName={myMember?.teamName ?? session.user.email}
-              color={(myMember as any)?.avatarColor ?? '#5555ff'}
-              size={26}
-              avatarUrl={(myMember as any)?.avatarUrl}
-            />
-            <span style={styles.userPillEmail}>{session.user.email}</span>
-          </div>
-        )}
-        <div style={styles.bellWrap}>
-          <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
-            <Bell size={17} />
-            {(unreadCount?.count ?? 0) > 0 && (
-              <span style={styles.bellBadge}>{unreadCount!.count}</span>
-            )}
-          </button>
-          {showNotifs && (
-            <div style={styles.notifPanel}>
-              <div style={styles.notifHeader}>
-                <span style={styles.notifTitle}>Notifications</span>
-                <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
-              </div>
-              {notifications.length === 0
-                ? <div style={styles.notifEmpty}>No notifications yet</div>
-                : notifications.map((n) => (
-                  <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
-                    <div style={styles.notifItemTitle}>{n.title}</div>
-                    <div style={styles.notifItemBody}>{n.body}</div>
-                    <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
-                  </div>
-                ))
-              }
+        <div style={styles.navRight}>
+          {session?.user.email && (
+            <div style={styles.userPill}>
+              <MemberAvatar
+                teamName={myMember?.teamName ?? session.user.email}
+                color={(myMember as any)?.avatarColor ?? '#5555ff'}
+                size={26}
+                avatarUrl={(myMember as any)?.avatarUrl}
+              />
+              <span style={styles.userPillEmail}>{session.user.email}</span>
             </div>
           )}
+          <div style={styles.bellWrap}>
+            <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
+              <Bell size={17} />
+              {(unreadCount?.count ?? 0) > 0 && (
+                <span style={styles.bellBadge}>{unreadCount!.count}</span>
+              )}
+            </button>
+            {showNotifs && (
+              <div style={styles.notifPanel}>
+                <div style={styles.notifHeader}>
+                  <span style={styles.notifTitle}>Notifications</span>
+                  <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
+                </div>
+                {notifications.length === 0
+                  ? <div style={styles.notifEmpty}>No notifications yet</div>
+                  : notifications.map((n) => (
+                    <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
+                      <div style={styles.notifItemTitle}>{n.title}</div>
+                      <div style={styles.notifItemBody}>{n.body}</div>
+                      <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+          <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
         </div>
-        <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
       </nav>
 
       {/* League name header */}
@@ -1399,7 +1402,9 @@ const styles: Record<string, React.CSSProperties> = {
   logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
-  memberStrip: { position: 'absolute' as const, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8, alignItems: 'center', pointerEvents: 'auto' },
+  navLeft: { display: 'flex', alignItems: 'center', gap: 16, flex: '0 0 auto' },
+  navRight: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
+  memberStrip: { display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0 },
   onlineDot: {
     position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
     borderRadius: '50%', background: '#4caf50', border: '2px solid #111',
