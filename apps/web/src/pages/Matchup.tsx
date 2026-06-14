@@ -529,8 +529,7 @@ export function MatchupPage() {
               {homePicksLoading || awayPicksLoading ? (
                 [0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)
               ) : (
-                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-start' }}>
-                  {isMobile && <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={isLive} />}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: isMobile ? 6 : 12, alignItems: 'flex-start' }}>
                   <MatchupPickPanel
                     teamName={leftTeamName ?? ''}
                     fights={leftPicks?.fights ?? []}
@@ -570,7 +569,7 @@ export function MatchupPage() {
 
           {/* Score breakdown (pick'em only) */}
           {!isStaking && (
-            <div style={{ ...styles.totalsBar, ...(isMobile ? { padding: '16px', flexDirection: 'column', gap: 24 } : {}) }}>
+            <div style={{ ...styles.totalsBar, ...(isMobile ? { padding: '12px 16px' } : {}) }}>
               <ScoreBreakdown
                 label={leftTeamName ?? ''}
                 picks={leftPicks?.fights ?? []}
