@@ -329,6 +329,7 @@ export function MatchupPage() {
             const hasScore = myM && isEventCompleted;
             const eventMatchups = allMatchups.filter((m) => m.eventId === ev.eventId);
             const isBrowsingThisEvent = !myM && eventMatchups.some((m) => m.id === browsingMatchupId);
+            const isCurrentEvent = ev.eventId === currentUpcomingEventId;
             const isViewingDefault = !selectedMatchupId && !selectedEventId && !browsingMatchupId;
             const isActive = (!!selectedMatchupId && myM?.id === selectedMatchupId) || selectedEventId === ev.eventId || isBrowsingThisEvent || (isViewingDefault && isCurrentEvent);
             const hasAnyMatchups = eventMatchups.length > 0;
@@ -338,8 +339,6 @@ export function MatchupPage() {
             const dateStr = ev.scheduledAt
               ? new Date(ev.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
               : null;
-
-            const isCurrentEvent = ev.eventId === currentUpcomingEventId;
             const isSemis = ev.eventId === league?.playoffSemisEventId;
             const isFinals = ev.eventId === league?.playoffFinalsEventId;
 
