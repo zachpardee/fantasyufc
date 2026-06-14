@@ -486,6 +486,15 @@ export function LeagueHomePage() {
             </div>
           )}
           <div style={styles.navRight}>
+            {isMobile && myMember && (
+              <MemberAvatar
+                teamName={myMember.teamName}
+                color={(myMember as any).avatarColor ?? '#5555ff'}
+                size={28}
+                avatarUrl={(myMember as any).avatarUrl}
+                onClick={() => setSelectedMember(myMember)}
+              />
+            )}
             {!isMobile && session?.user.email && (
               <div style={styles.userPill}>
                 <MemberAvatar
@@ -523,26 +532,9 @@ export function LeagueHomePage() {
                 </div>
               )}
             </div>
-            <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
+            {!isMobile && <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>}
           </div>
         </div>
-        {/* Row 2 — mobile only: scrollable avatar strip */}
-        {isMobile && members.length > 0 && (
-          <div style={styles.memberStripMobile}>
-            {members.map((m) => {
-              const color = (m as any).avatarColor ?? '#5555ff';
-              const isOnline = onlineUsers.some((u) => u.userId === m.userId);
-              return (
-                <div key={m.id} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                  <MemberAvatar teamName={m.teamName} color={color} size={28} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
-                  {hasBelt(m, members, league) && <BeltHalo size={28} />}
-                  {hasBmfBelt(m, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
-                  {isOnline && <span style={styles.onlineDot} title="Online" />}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </nav>
 
       {/* League name header */}
@@ -1448,7 +1440,7 @@ const styles: Record<string, React.CSSProperties> = {
   logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
-  navMobile: { flexDirection: 'column' as const, alignItems: 'stretch', padding: '8px 12px', gap: 6 },
+  navMobile: { padding: '8px 12px' },
   navRow1: { display: 'flex', alignItems: 'center', gap: 12, width: '100%' },
   navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
   navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto', marginLeft: 'auto' },
