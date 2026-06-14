@@ -429,98 +429,120 @@ export function LeagueHomePage() {
 
   return (
     <div style={styles.page}>
-      <nav style={styles.nav}>
-        <div style={styles.navLeft}>
-          <Link to="/" style={styles.logoLink}>
-            <img src="/logo.jpg" alt="FFL" style={styles.logo} />
-          </Link>
-          <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
-          <div ref={leagueMenuRef} style={{ position: 'relative' }}>
-            <button
-              style={styles.leagueMenuBtn}
-              onClick={() => setShowLeagueMenu((v) => !v)}
-            >
-              League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            {showLeagueMenu && (
-              <div style={styles.leagueMenuDropdown}>
-                <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
-                  <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
-                </Link>
-                {navLinks.filter((l) => l.show).map((item) =>
-                  item.onClick ? (
-                    <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
-                      <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                    </button>
-                  ) : (
-                    <Link
-                      key={item.label}
-                      to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
-                      style={styles.leagueMenuItem}
-                      onClick={() => setShowLeagueMenu(false)}
-                    >
-                      <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                    </Link>
-                  )
-                )}
-              </div>
-            )}
+      <nav style={{ ...styles.nav, ...(isMobile ? styles.navMobile : {}) }}>
+        {/* Row 1 — always shown */}
+        <div style={styles.navRow1}>
+          <div style={styles.navLeft}>
+            <Link to="/" style={styles.logoLink}>
+              <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+            </Link>
+            {!isMobile && <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>}
+            <div ref={leagueMenuRef} style={{ position: 'relative' }}>
+              <button
+                style={styles.leagueMenuBtn}
+                onClick={() => setShowLeagueMenu((v) => !v)}
+              >
+                League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showLeagueMenu && (
+                <div style={styles.leagueMenuDropdown}>
+                  <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
+                    <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
+                  </Link>
+                  {navLinks.filter((l) => l.show).map((item) =>
+                    item.onClick ? (
+                      <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
+                        <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
+                      </button>
+                    ) : (
+                      <Link
+                        key={item.label}
+                        to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
+                        style={styles.leagueMenuItem}
+                        onClick={() => setShowLeagueMenu(false)}
+                      >
+                        <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
+                      </Link>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div style={styles.memberStrip}>
-          {members.map((m) => {
-            const color = (m as any).avatarColor ?? '#5555ff';
-            const isOnline = onlineUsers.some((u) => u.userId === m.userId);
-            return (
-              <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                <MemberAvatar teamName={m.teamName} color={color} size={30} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
-                {hasBelt(m, members, league) && <BeltHalo size={30} />}
-                {hasBmfBelt(m, league) && <BeltHalo size={30} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
-                {isOnline && <span style={styles.onlineDot} title="Online" />}
-              </div>
-            );
-          })}
-        </div>
-        <div style={styles.navRight}>
-          {session?.user.email && (
-            <div style={styles.userPill}>
-              <MemberAvatar
-                teamName={myMember?.teamName ?? session.user.email}
-                color={(myMember as any)?.avatarColor ?? '#5555ff'}
-                size={26}
-                avatarUrl={(myMember as any)?.avatarUrl}
-              />
-              <span style={styles.userPillEmail}>{session.user.email}</span>
+          {!isMobile && (
+            <div style={styles.memberStrip}>
+              {members.map((m) => {
+                const color = (m as any).avatarColor ?? '#5555ff';
+                const isOnline = onlineUsers.some((u) => u.userId === m.userId);
+                return (
+                  <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
+                    <MemberAvatar teamName={m.teamName} color={color} size={30} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
+                    {hasBelt(m, members, league) && <BeltHalo size={30} />}
+                    {hasBmfBelt(m, league) && <BeltHalo size={30} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
+                    {isOnline && <span style={styles.onlineDot} title="Online" />}
+                  </div>
+                );
+              })}
             </div>
           )}
-          <div style={styles.bellWrap}>
-            <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
-              <Bell size={17} />
-              {(unreadCount?.count ?? 0) > 0 && (
-                <span style={styles.bellBadge}>{unreadCount!.count}</span>
-              )}
-            </button>
-            {showNotifs && (
-              <div style={styles.notifPanel}>
-                <div style={styles.notifHeader}>
-                  <span style={styles.notifTitle}>Notifications</span>
-                  <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
-                </div>
-                {notifications.length === 0
-                  ? <div style={styles.notifEmpty}>No notifications yet</div>
-                  : notifications.map((n) => (
-                    <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
-                      <div style={styles.notifItemTitle}>{n.title}</div>
-                      <div style={styles.notifItemBody}>{n.body}</div>
-                      <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
-                    </div>
-                  ))
-                }
+          <div style={styles.navRight}>
+            {!isMobile && session?.user.email && (
+              <div style={styles.userPill}>
+                <MemberAvatar
+                  teamName={myMember?.teamName ?? session.user.email}
+                  color={(myMember as any)?.avatarColor ?? '#5555ff'}
+                  size={26}
+                  avatarUrl={(myMember as any)?.avatarUrl}
+                />
+                <span style={styles.userPillEmail}>{session.user.email}</span>
               </div>
             )}
+            <div style={styles.bellWrap}>
+              <button style={styles.bellBtn} onClick={openNotifs} title="Notifications">
+                <Bell size={17} />
+                {(unreadCount?.count ?? 0) > 0 && (
+                  <span style={styles.bellBadge}>{unreadCount!.count}</span>
+                )}
+              </button>
+              {showNotifs && (
+                <div style={styles.notifPanel}>
+                  <div style={styles.notifHeader}>
+                    <span style={styles.notifTitle}>Notifications</span>
+                    <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
+                  </div>
+                  {notifications.length === 0
+                    ? <div style={styles.notifEmpty}>No notifications yet</div>
+                    : notifications.map((n) => (
+                      <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
+                        <div style={styles.notifItemTitle}>{n.title}</div>
+                        <div style={styles.notifItemBody}>{n.body}</div>
+                        <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+            <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
           </div>
-          <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
         </div>
+        {/* Row 2 — mobile only: scrollable avatar strip */}
+        {isMobile && members.length > 0 && (
+          <div style={styles.memberStripMobile}>
+            {members.map((m) => {
+              const color = (m as any).avatarColor ?? '#5555ff';
+              const isOnline = onlineUsers.some((u) => u.userId === m.userId);
+              return (
+                <div key={m.id} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                  <MemberAvatar teamName={m.teamName} color={color} size={28} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
+                  {hasBelt(m, members, league) && <BeltHalo size={28} />}
+                  {hasBmfBelt(m, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
+                  {isOnline && <span style={styles.onlineDot} title="Online" />}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       {/* League name header */}
@@ -1402,9 +1424,12 @@ const styles: Record<string, React.CSSProperties> = {
   logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
   leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
-  navLeft: { display: 'flex', alignItems: 'center', gap: 16, flex: '0 0 auto' },
-  navRight: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
+  navMobile: { flexDirection: 'column' as const, alignItems: 'stretch', padding: '8px 12px', gap: 6 },
+  navRow1: { display: 'flex', alignItems: 'center', gap: 12, width: '100%' },
+  navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
+  navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto', marginLeft: 'auto' },
   memberStrip: { display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0 },
+  memberStripMobile: { display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 2, scrollbarWidth: 'none' as const },
   onlineDot: {
     position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
     borderRadius: '50%', background: '#4caf50', border: '2px solid #111',
