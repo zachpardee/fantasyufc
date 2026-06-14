@@ -79,8 +79,8 @@ export function MatchupPage() {
   });
   const myMember = members.find((m) => m.userId === session?.user.id);
 
-  // allSeasonEvents is already sorted newest-first from the API
-  const seasonEvents = allSeasonEvents;
+  // Reverse to oldest-first so past is left, upcoming is right (matches ‹ Prev / Next › on league home)
+  const seasonEvents = [...allSeasonEvents].reverse();
 
   // Current user's matchup keyed by eventId
   const myMatchupByEvent = new Map<string, any>();
