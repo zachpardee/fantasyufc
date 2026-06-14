@@ -462,46 +462,48 @@ export function MatchupPage() {
           <div style={{ ...styles.scoreboard, ...(isMobile ? styles.scoreboardMobile : {}) }}>
             <div style={styles.teamBlock}>
               <div style={styles.teamLabelRow}>
-                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => leftMember && setSelectedMember(leftMember)}>
-                  <MemberAvatar teamName={leftTeamName ?? ''} color={leftColor} size={32} avatarUrl={leftMember?.avatarUrl} onClick={() => leftMember && setSelectedMember(leftMember)} />
-                  {leftHasBelt && <BeltHalo size={32} />}
-                  {leftHasBmf && <BeltHalo size={32} variant="bmf" position={leftHasBelt ? 'bottom' : 'top'} />}
+                <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }} onClick={() => leftMember && setSelectedMember(leftMember)}>
+                  <MemberAvatar teamName={leftTeamName ?? ''} color={leftColor} size={isMobile ? 24 : 32} avatarUrl={leftMember?.avatarUrl} onClick={() => leftMember && setSelectedMember(leftMember)} />
+                  {leftHasBelt && <BeltHalo size={isMobile ? 24 : 32} />}
+                  {leftHasBmf && <BeltHalo size={isMobile ? 24 : 32} variant="bmf" position={leftHasBelt ? 'bottom' : 'top'} />}
                 </div>
                 <div style={styles.teamLabel}>{leftTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
+                fontSize: isMobile ? (isStaking ? 24 : 36) : (isStaking ? 36 : 52),
                 color: matchup.winnerId === leftTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
               }}>{isStaking ? fmtStakeScore(leftStakingScore) : leftPicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
             </div>
 
-            <div style={{ ...styles.vsBlock, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
+            <div style={{ ...styles.vsBlock, flex: isMobile ? '0 0 48px' : 1, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
               {matchup.winnerId && !isLive ? (
-                <div style={styles.resultBadge}>
+                <div style={{ ...styles.resultBadge, fontSize: isMobile ? 10 : 12 }}>
                   {matchup.winnerId === leftTeamId
                     ? `${leftTeamName} wins`
                     : `${rightTeamName} wins`}
                 </div>
               ) : (
-                <div style={styles.vsText}>VS</div>
+                <div style={{ ...styles.vsText, fontSize: isMobile ? 14 : 18 }}>VS</div>
               )}
-              <div style={styles.browseHint}>other matchups ▾</div>
+              {!isMobile && <div style={styles.browseHint}>other matchups ▾</div>}
             </div>
 
             <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
               <div style={{ ...styles.teamLabelRow, flexDirection: 'row-reverse' }}>
-                <div style={{ position: 'relative', display: 'inline-flex' }} onClick={() => rightMember && setSelectedMember(rightMember)}>
-                  <MemberAvatar teamName={rightTeamName ?? ''} color={rightColor} size={32} avatarUrl={rightMember?.avatarUrl} onClick={() => rightMember && setSelectedMember(rightMember)} />
-                  {rightHasBelt && <BeltHalo size={32} />}
-                  {rightHasBmf && <BeltHalo size={32} variant="bmf" position={rightHasBelt ? 'bottom' : 'top'} />}
+                <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }} onClick={() => rightMember && setSelectedMember(rightMember)}>
+                  <MemberAvatar teamName={rightTeamName ?? ''} color={rightColor} size={isMobile ? 24 : 32} avatarUrl={rightMember?.avatarUrl} onClick={() => rightMember && setSelectedMember(rightMember)} />
+                  {rightHasBelt && <BeltHalo size={isMobile ? 24 : 32} />}
+                  {rightHasBmf && <BeltHalo size={isMobile ? 24 : 32} variant="bmf" position={rightHasBelt ? 'bottom' : 'top'} />}
                 </div>
                 <div style={styles.teamLabel}>{rightTeamName}</div>
               </div>
               <div style={{
                 ...styles.matchupScore,
                 ...(isStaking ? styles.matchupScoreStaking : {}),
+                fontSize: isMobile ? (isStaking ? 24 : 36) : (isStaking ? 36 : 52),
                 color: matchup.winnerId === rightTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
               }}>{isStaking ? fmtStakeScore(rightStakingScore) : rightPicksScore.toFixed(0)}</div>
               <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
@@ -900,11 +902,11 @@ const styles: Record<string, React.CSSProperties> = {
   eventDate: { color: '#444', fontSize: 12, marginTop: 2 },
 
   scoreboard: { background: '#111', borderBottom: '1px solid #222', padding: '24px 32px', display: 'flex', alignItems: 'center' },
-  scoreboardMobile: { padding: '16px', flexDirection: 'column', gap: 12 },
-  teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4 },
-  teamLabelRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
+  scoreboardMobile: { padding: '12px 16px' },
+  teamBlock: { flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
+  teamLabelRow: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 },
   teamAvatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a1a1a', border: '2px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' },
-  teamLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  teamLabel: { color: '#666', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   matchupScore: { fontSize: 52, fontWeight: 700, lineHeight: 1 },
   matchupScoreStaking: { fontSize: 36 },
   scoreUnit: { color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
