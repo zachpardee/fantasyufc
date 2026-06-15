@@ -179,14 +179,13 @@ export function MatchupPage() {
   const isLive = matchup?.eventStatus === 'live';
   const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
 
-  // Compute live staking score: unbet budget + settled P&L
+  // Compute live staking P&L: settled profit/loss minus what's still at risk
   function calcStakingScore(staking: any): number {
     if (!staking) return 0;
-    const budget = parseFloat(staking.weeklyBudget) || 100;
     const allBets = [...(staking.singles ?? []), ...(staking.parlays ?? [])];
     const pendingStake = allBets.filter((b: any) => b.status === 'pending').reduce((s: number, b: any) => s + (parseFloat(b.stake) || 0), 0);
     const settledPnl = allBets.filter((b: any) => b.status !== 'pending').reduce((s: number, b: any) => s + (parseFloat(b.profitLoss) || 0), 0);
-    return budget - pendingStake + settledPnl;
+    return settledPnl - pendingStake;
   }
 
   // Orient so the current user's side is always on the left
@@ -477,7 +476,7 @@ export function MatchupPage() {
                 fontSize: isMobile ? (isStaking ? 24 : 36) : (isStaking ? 36 : 52),
                 color: matchup.winnerId === leftTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
               }}>{isStaking ? fmtStakeScore(leftStakingScore) : leftPicksScore.toFixed(0)}</div>
-              <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
+              <div style={styles.scoreUnit}>{isStaking ? 'event P&L' : 'matchup pts'}</div>
             </div>
 
             <div style={{ ...styles.vsBlock, flex: isMobile ? '0 0 48px' : 1, cursor: 'pointer' }} onClick={() => setShowMatchupPicker(v => !v)}>
@@ -508,7 +507,7 @@ export function MatchupPage() {
                 fontSize: isMobile ? (isStaking ? 24 : 36) : (isStaking ? 36 : 52),
                 color: matchup.winnerId === rightTeamId ? '#fff' : matchup.winnerId ? '#444' : '#fff',
               }}>{isStaking ? fmtStakeScore(rightStakingScore) : rightPicksScore.toFixed(0)}</div>
-              <div style={styles.scoreUnit}>{isStaking ? 'event payout' : 'matchup pts'}</div>
+              <div style={styles.scoreUnit}>{isStaking ? 'event P&L' : 'matchup pts'}</div>
             </div>
           </div>
             );

@@ -134,19 +134,7 @@ export async function generateMatchupsForLeague(leagueId: string) {
     client.release();
   }
 
-  // For staking leagues, initialize new matchup scores to weekly_budget
-  await db.query(`
-    UPDATE matchups m
-    SET home_score = l.weekly_budget,
-        away_score = l.weekly_budget
-    FROM leagues l
-    WHERE m.league_id = l.id
-      AND m.league_id = $1
-      AND l.league_format = 'staking'
-      AND m.home_score = 0
-      AND m.away_score = 0
-      AND m.winner_id IS NULL
-  `, [leagueId]);
+  // Staking matchup scores represent event P&L (starts at 0, can go negative)
 
   return { events: events.length, rounds: schedule.length, teams: teamIds.length };
 }

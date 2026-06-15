@@ -14,23 +14,19 @@ export async function refreshStakingMatchupScores(leagueId: string, eventId: str
     await db.query(`
       UPDATE matchups SET
         home_score = (
-          SELECT COALESCE(l.weekly_budget, 100)
-            - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3), 0)
-            - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 LIMIT 1), 0)
-            + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3 AND s.status != 'pending'), 0)
-            + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 AND p.status != 'pending' LIMIT 1), 0)
-          FROM leagues l WHERE l.id = $5
+          - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3), 0)
+          - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 LIMIT 1), 0)
+          + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$3 AND s.status != 'pending'), 0)
+          + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$3 AND p.status != 'pending' LIMIT 1), 0)
         ),
         away_score = (
-          SELECT COALESCE(l.weekly_budget, 100)
-            - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4), 0)
-            - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 LIMIT 1), 0)
-            + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4 AND s.status != 'pending'), 0)
-            + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 AND p.status != 'pending' LIMIT 1), 0)
-          FROM leagues l WHERE l.id = $5
+          - COALESCE((SELECT SUM(s.stake) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4), 0)
+          - COALESCE((SELECT p.stake FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 LIMIT 1), 0)
+          + COALESCE((SELECT SUM(s.actual_payout) FROM staking_singles s WHERE s.event_id=$2 AND s.member_id=$4 AND s.status != 'pending'), 0)
+          + COALESCE((SELECT p.actual_payout FROM staking_parlays p WHERE p.event_id=$2 AND p.member_id=$4 AND p.status != 'pending' LIMIT 1), 0)
         )
       WHERE id = $1
-    `, [m.id, eventId, m.home_team_id, m.away_team_id, leagueId]);
+    `, [m.id, eventId, m.home_team_id, m.away_team_id]);
   }
 }
 
