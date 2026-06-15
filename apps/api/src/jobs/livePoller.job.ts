@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { db } from '../config/database';
-import { fetchEventsByDate } from '../services/espn.adapter';
+import { fetchEventsByDate, fetchUpcomingEvents } from '../services/espn.adapter';
 import { searchEventResults } from '../services/sportsdb.adapter';
 import { processFightResult, refreshStakingMatchupScores } from '../services/scoring.service';
 import { sendNotification } from '../services/notification.service';
@@ -33,7 +33,20 @@ async function pollLiveEvents() {
 
 async function pollEvent(event: { id: string; ufc_event_id: string; name: string; scheduled_at: string; status: string }) {
   const dateStr = new Date(event.scheduled_at).toISOString().slice(0, 10).replace(/-/g, '');
-  const espnEvents = await fetchEventsByDate(dateStr);
+  let espnEvents = await fetchEventsByDate(dateStr);
+
+  // ESPN stores events under the US local date, not UTC. A UTC-midnight event (e.g. 8pm Eastern)
+  // won't appear under its UTC date. Try the previous calendar day as a fallback.
+  if (!espnEvents.length) {
+    const prevDateStr = new Date(new Date(event.scheduled_at).getTime() - 86_400_000)
+      .toISOString().slice(0, 10).replace(/-/g, '');
+    espnEvents = await fetchEventsByDate(prevDateStr);
+  }
+
+  // Last resort: check the current live scoreboard (no date filter)
+  if (!espnEvents.length) {
+    espnEvents = await fetchUpcomingEvents();
+  }
 
   // Match our DB event to the ESPN event by ID or name
   const espnEvent = espnEvents.find(
