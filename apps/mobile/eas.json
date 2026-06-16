@@ -10,7 +10,12 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://fantasy-fighting-league-production.up.railway.app/api/v1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://njrwgieloladyrajglpf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qcndnaWVsb2xhZHlyYWpnbHBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNTAyMjQsImV4cCI6MjA5NDkyNjIyNH0.IIRSvswc4qGk1pIz0w2yDl4CjWik5yBDOioE4pEVmh0"
+      }
     },
     "production": {
       "autoIncrement": true,
