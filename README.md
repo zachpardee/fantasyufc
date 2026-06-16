@@ -1,6 +1,30 @@
 # Fantasy UFC
 
-ESPN-style fantasy sports app for UFC fighters. Pick fighters, score points based on real fight results, and compete head-to-head against your league.
+ESPN-style fantasy sports app for UFC. Build a league, predict fight outcomes, and compete head-to-head as real results roll in live.
+
+**▶︎ Try it: [fantasyfightingleague.vercel.app](https://fantasyfightingleague.vercel.app)**
+
+---
+
+## Features
+
+- 🥊 **Two league formats** — *Pick'em* (predict winners & finish methods for points) and *Staking* (bet a weekly budget with odds-based payouts)
+- 📊 **Live scoring** — fight results pulled from ESPN in real time; scores update as the card unfolds
+- ⚔️ **Head-to-head matchups** — your score faces a different league member every event
+- 🏆 **Playoffs & a season champion** — plus a BMF belt that travels to whoever beats the current holder
+- 📱 **Companion mobile app** — native iOS/Android build via Expo / React Native
+- 🔔 **Leagues, done right** — invite codes, league chat, notifications, waivers, and commissioner tools
+
+---
+
+## How to Play
+
+1. **Join a league** — create your own or join friends with an invite code.
+2. **Make your picks** — each UFC event, pick the fight winners and how they'll win. (Staking leagues bet a weekly budget on fights instead.)
+3. **Go head-to-head** — your score faces a different league member every event; most points takes the win.
+4. **Win the season** — rack up wins, reach the playoffs, and claim the title.
+
+---
 
 ## Stack
 
@@ -17,7 +41,7 @@ ESPN-style fantasy sports app for UFC fighters. Pick fighters, score points base
 
 | Service | URL |
 |---------|-----|
-| Web | https://fantasy-ufc-swart.vercel.app |
+| Web | https://fantasyfightingleague.vercel.app |
 | API | https://fantasy-fighting-league-production.up.railway.app |
 
 ---
