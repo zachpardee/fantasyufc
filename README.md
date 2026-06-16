@@ -4,6 +4,8 @@ ESPN-style fantasy sports app for UFC. Build a league, predict fight outcomes, a
 
 **▶︎ Try it: [fantasyfightingleague.vercel.app](https://fantasyfightingleague.vercel.app)**
 
+![Head-to-head matchup with live scoring](docs/matchup.png)
+
 ---
 
 ## Features
