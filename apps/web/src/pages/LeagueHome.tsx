@@ -1442,9 +1442,9 @@ const styles: Record<string, React.CSSProperties> = {
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
   navMobile: { padding: '8px 12px' },
   navRow1: { display: 'flex', alignItems: 'center', gap: 12, width: '100%' },
-  navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '0 0 auto' },
-  navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto', marginLeft: 'auto' },
-  memberStrip: { display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0 },
+  navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
+  navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, justifyContent: 'flex-end' },
+  memberStrip: { display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' },
   memberStripMobile: { display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 2, scrollbarWidth: 'none' as const },
   onlineDot: {
     position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
