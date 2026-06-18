@@ -216,7 +216,7 @@ export default function LeagueHomeScreen() {
       {/* ── Top nav bar ── */}
       <View style={[s.navBar, { paddingTop: insets.top + 8 }]}>
         <View style={s.navBarTop}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={8}>
+          <TouchableOpacity onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/league'))} style={s.backBtn} hitSlop={8}>
             <ChevronLeft size={24} color="#888" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
