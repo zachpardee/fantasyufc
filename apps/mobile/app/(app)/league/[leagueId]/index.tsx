@@ -178,6 +178,15 @@ export default function LeagueHomeScreen() {
   const champion = members.find((m) => m.isChampion);
   const isLive = matchup?.eventStatus === 'live' || currentEvent?.status === 'live';
 
+  // Has the logged-in user already submitted picks / placed bets for this matchup's event?
+  const myIsHome = !!myMember && !!matchup && myMember.id === matchup.homeTeamId;
+  const myIsAway = !!myMember && !!matchup && myMember.id === matchup.awayTeamId;
+  const myPicksData = myIsHome ? homePicks : myIsAway ? awayPicks : null;
+  const myStakingData = myIsHome ? homeStaking : myIsAway ? awayStaking : null;
+  const hasSubmitted = isStaking
+    ? ((myStakingData?.singles?.length ?? 0) + (myStakingData?.parlays?.length ?? 0)) > 0
+    : !!myPicksData?.fights?.some((f: any) => f.pickedFighterId);
+
   async function copyInviteCode() {
     const code = (league as any)?.inviteCode;
     if (!code) return;
@@ -296,36 +305,6 @@ export default function LeagueHomeScreen() {
         </View>
       )}
 
-      {/* ── Current event card ── */}
-      {currentEvent && (
-        <View style={[s.eventCard, isLive && s.eventCardLive]}>
-          <View style={s.eventCardHeader}>
-            {isLive && <View style={s.livePip}><Text style={s.livePipText}>LIVE</Text></View>}
-            <Text style={[s.eventCardName, isLive && { color: '#fff' }]} numberOfLines={1}>
-              {currentEvent.name}
-            </Text>
-          </View>
-          {(currentEvent.venue || currentEvent.location) && (
-            <Text style={s.eventCardMeta} numberOfLines={1}>
-              {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-            </Text>
-          )}
-          {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && !isLive && (
-            <Text style={s.eventCardDate}>
-              {fmtDate(currentEvent.prelimsAt ?? currentEvent.scheduledAt)}
-            </Text>
-          )}
-          {isActive && (
-            <TouchableOpacity
-              style={s.picksBtn}
-              onPress={() => router.push(`/(app)/league/${leagueId}/picks` as never)}
-            >
-              <Text style={s.picksBtnText}>{isStaking ? 'Place Bets →' : 'Submit Picks →'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
       {/* ── Current matchup scoreboard ── */}
       {matchup && isActive && (() => {
         // Always show the logged-in user on the left
@@ -358,7 +337,6 @@ export default function LeagueHomeScreen() {
               ) : (
                 <Text style={s.matchupLabel}>CURRENT MATCHUP</Text>
               )}
-              <Text style={s.matchupEventName} numberOfLines={1}>{matchup.eventName}</Text>
             </View>
             <View style={s.matchupScores}>
               <View style={s.teamSide}>
@@ -395,6 +373,40 @@ export default function LeagueHomeScreen() {
           </TouchableOpacity>
         );
       })()}
+
+      {/* ── Current event card ── */}
+      {currentEvent && (
+        <View style={[s.eventCard, isLive && s.eventCardLive]}>
+          <View style={s.eventCardHeader}>
+            {isLive && <View style={s.livePip}><Text style={s.livePipText}>LIVE</Text></View>}
+            <Text style={[s.eventCardName, isLive && { color: '#fff' }]} numberOfLines={1}>
+              {currentEvent.name}
+            </Text>
+          </View>
+          {(currentEvent.venue || currentEvent.location) && (
+            <Text style={s.eventCardMeta} numberOfLines={1}>
+              {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+          {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && !isLive && (
+            <Text style={s.eventCardDate}>
+              {fmtDate(currentEvent.prelimsAt ?? currentEvent.scheduledAt)}
+            </Text>
+          )}
+          {isActive && (
+            <TouchableOpacity
+              style={s.picksBtn}
+              onPress={() => router.push(`/(app)/league/${leagueId}/picks` as never)}
+            >
+              <Text style={s.picksBtnText}>
+                {isStaking
+                  ? (hasSubmitted ? 'Edit Bets →' : 'Place Bets →')
+                  : (hasSubmitted ? 'Edit Picks →' : 'Submit Picks →')}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* ── Fight card ── */}
       {matchup && isActive && (() => {
@@ -670,7 +682,6 @@ const s = StyleSheet.create({
   matchupEdge: { position: 'absolute', top: 0, bottom: 0, width: 4, opacity: 0.9 },
   matchupLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   matchupLabel: { color: '#c8102e', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  matchupEventName: { flex: 1, color: '#444', fontSize: 11, textAlign: 'right' },
   matchupScores: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   teamSide: { flex: 1, alignItems: 'center', gap: 4 },
   teamSideName: { color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, maxWidth: 120 },
