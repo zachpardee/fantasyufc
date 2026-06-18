@@ -134,6 +134,13 @@ export default function MatchupScreen() {
     refetchInterval: liveInterval,
   });
 
+  // Staking leagues still need the fight list (without picks) so users can see the card
+  const { data: stakingFightCard } = useQuery<any>({
+    queryKey: ['staking-fightcard', leagueId, eventId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}`),
+    enabled: isStaking && !!eventId,
+  });
+
   useRealtimeScoring(matchup?.id);
 
   // Always show the logged-in user on the left
@@ -311,7 +318,17 @@ export default function MatchupScreen() {
 
           {/* Picks / Bets — logged-in user on the left */}
           {isStaking ? (
-            <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
+            <>
+              <PicksColumns
+                homePicks={stakingFightCard?.fights ?? []}
+                awayPicks={stakingFightCard?.fights ?? []}
+                homeChampion={null}
+                awayChampion={null}
+                locked={false}
+                showPicks={false}
+              />
+              <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
+            </>
           ) : (
             <PicksColumns
               homePicks={leftPicks?.fights ?? []}

@@ -125,6 +125,12 @@ export default function LeagueHomeScreen() {
     enabled: isStakingLeague && !!matchupEventId && !!matchupAwayId,
     refetchInterval: liveInterval,
   });
+  // Staking leagues still need the fight list (without picks) so users can see the card they're betting on
+  const { data: stakingFightCard } = useQuery<any>({
+    queryKey: ['staking-fightcard', leagueId, matchupEventId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}`),
+    enabled: isStakingLeague && !!matchupEventId,
+  });
 
   const renameTeamMutation = useMutation({
     mutationFn: (name: string) => apiClient.patch(`/leagues/${leagueId}/members/me`, { teamName: name }),
@@ -407,7 +413,17 @@ export default function LeagueHomeScreen() {
               {locked && <View style={s.lockedBadge}><Text style={s.lockedText}>LOCKED</Text></View>}
             </View>
             {isStaking ? (
-              <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
+              <>
+                <PicksColumns
+                  homePicks={stakingFightCard?.fights ?? []}
+                  awayPicks={stakingFightCard?.fights ?? []}
+                  homeChampion={null}
+                  awayChampion={null}
+                  locked={false}
+                  showPicks={false}
+                />
+                <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
+              </>
             ) : (
               <PicksColumns
                 homePicks={leftPicks?.fights ?? []}

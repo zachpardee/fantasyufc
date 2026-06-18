@@ -69,8 +69,8 @@ function FighterPhoto({ imageUrl, flipped }: { imageUrl?: string | null; flipped
 
 // ── Main fight card ───────────────────────────────────────────────────────────
 
-function FightCard({ fight, homePick, awayPick, locked }: {
-  fight: any; homePick: any; awayPick: any; locked: boolean;
+function FightCard({ fight, homePick, awayPick, locked, showPicks = true }: {
+  fight: any; homePick: any; awayPick: any; locked: boolean; showPicks?: boolean;
 }) {
   const hasResult = !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
   const redWon = fight.resultWinnerId === fight.redFighterId;
@@ -141,22 +141,24 @@ function FightCard({ fight, homePick, awayPick, locked }: {
       </View>
 
       {/* Pick row */}
-      <View style={s.pickRow}>
-        <PickBadge
-          pick={homePick}
-          pickedRed={homePickedRed}
-          fight={fight}
-          locked={locked}
-          align="left"
-        />
-        <PickBadge
-          pick={awayPick}
-          pickedRed={awayPickedRed}
-          fight={fight}
-          locked={locked}
-          align="right"
-        />
-      </View>
+      {showPicks && (
+        <View style={s.pickRow}>
+          <PickBadge
+            pick={homePick}
+            pickedRed={homePickedRed}
+            fight={fight}
+            locked={locked}
+            align="left"
+          />
+          <PickBadge
+            pick={awayPick}
+            pickedRed={awayPickedRed}
+            fight={fight}
+            locked={locked}
+            align="right"
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -198,17 +200,18 @@ function PickBadge({ pick, pickedRed, fight, locked, align }: {
 
 // ── Pickem columns ────────────────────────────────────────────────────────────
 
-export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked }: {
+export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked, showPicks = true }: {
   homePicks: any[]; awayPicks: any[];
   homeChampion: any; awayChampion: any;
   locked: boolean;
+  showPicks?: boolean;
 }) {
   const fights = homePicks.length > 0 ? homePicks : awayPicks;
   if (fights.length === 0) {
     return (
       <View style={s.emptyPicks}>
         <Text style={s.emptyPicksText}>
-          {locked ? 'No picks for this event' : 'Picks hidden until event starts'}
+          {showPicks ? (locked ? 'No picks for this event' : 'Picks hidden until event starts') : 'No fights posted yet'}
         </Text>
       </View>
     );
@@ -217,10 +220,10 @@ export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion,
   return (
     <>
       {fights.map((fight: any, i: number) => (
-        <FightCard key={fight.id ?? i} fight={fight} homePick={homePicks[i]} awayPick={awayPicks[i]} locked={locked} />
+        <FightCard key={fight.id ?? i} fight={fight} homePick={homePicks[i]} awayPick={awayPicks[i]} locked={locked} showPicks={showPicks} />
       ))}
 
-      {(homeChampion || awayChampion) && (
+      {showPicks && (homeChampion || awayChampion) && (
         <View style={s.champCard}>
           <Text style={s.champCardLabel}>★ Event Champion</Text>
           <View style={s.champCardRow}>
@@ -331,11 +334,11 @@ const s = StyleSheet.create({
   // Fight card
   fightCard: {
     borderBottomWidth: 1, borderBottomColor: '#111',
-    paddingVertical: 10,
+    paddingVertical: 6,
   },
   fightMeta: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 12, marginBottom: 8,
+    paddingHorizontal: 12, marginBottom: 4,
   },
   weightClass: { color: '#444', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
   resultLabel: { color: '#888', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
@@ -346,7 +349,7 @@ const s = StyleSheet.create({
   fighterSideBlue: { flexDirection: 'row-reverse' },
   fighterDimmed: { opacity: 0.3 },
 
-  photo: { width: 52, height: 68, borderRadius: 4, backgroundColor: '#181818' },
+  photo: { width: 40, height: 50, borderRadius: 4, backgroundColor: '#181818' },
   photoFlipped: { transform: [{ scaleX: -1 }] },
   photoFallback: { backgroundColor: '#181818' },
 
@@ -365,9 +368,9 @@ const s = StyleSheet.create({
   vsText: { color: '#2a2a2a', fontSize: 10, fontWeight: '800' },
 
   // Pick badges
-  pickRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 12, marginTop: 8 },
+  pickRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 12, marginTop: 5 },
   pickBadge: {
-    flex: 1, paddingHorizontal: 8, paddingVertical: 5,
+    flex: 1, paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: 6, borderWidth: 1, borderColor: '#2a2a2a',
     backgroundColor: '#ffffff0a',
   },

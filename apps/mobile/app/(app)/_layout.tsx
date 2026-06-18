@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Trophy, Dumbbell, Settings } from 'lucide-react-native';
+import { Home, Trophy, Swords, Settings } from 'lucide-react-native';
 
 export default function AppLayout() {
   return (
@@ -13,16 +13,18 @@ export default function AppLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{ title: 'Home', tabBarLabel: 'Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} /> }}
-      />
-      <Tabs.Screen
         name="league"
-        options={{ title: 'Leagues', tabBarLabel: 'Leagues', headerShown: false, tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} /> }}
+        options={{ title: 'League Home', tabBarLabel: 'League Home', headerShown: false, tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
-        name="fighters"
-        options={{ title: 'Fighters', tabBarLabel: 'Fighters', headerShown: false, tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size ?? 22} /> }}
+        name="matchup"
+        options={{ title: 'Matchup', tabBarLabel: 'Matchup', headerShown: false, tabBarIcon: ({ color, size }) => <Swords color={color} size={size ?? 22} /> }}
+      />
+      {/* Fighters browser still exists as a route, just not shown in the tab bar */}
+      <Tabs.Screen name="fighters" options={{ href: null }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: 'User Home', tabBarLabel: 'User Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
         name="settings"
