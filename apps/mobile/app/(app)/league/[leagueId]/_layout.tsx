@@ -10,6 +10,7 @@ export default function LeagueDetailLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="event" options={{ headerShown: false }} />
       <Stack.Screen name="matchup" options={{ title: 'Matchup' }} />
       <Stack.Screen name="picks" options={{ title: 'Event Picks' }} />
       <Stack.Screen name="standings" options={{ title: 'Standings' }} />

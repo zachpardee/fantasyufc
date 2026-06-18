@@ -1,8 +1,8 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Pressable, Alert, TextInput, Share, Animated, Modal, Dimensions,
+  Pressable, Alert, TextInput, Share, Animated, Modal,
 } from 'react-native';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -48,16 +48,9 @@ function fmtDate(iso: string) {
     ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function fmtTime(iso: string): string {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return 'now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
-}
-
-export default function LeagueHomeScreen() {
-  const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+export default function LeagueEventScreen({ leagueIdProp }: { leagueIdProp?: string }) {
+  const params = useLocalSearchParams<{ leagueId: string }>();
+  const leagueId = leagueIdProp ?? params.leagueId;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -66,8 +59,6 @@ export default function LeagueHomeScreen() {
   const [teamNameInput, setTeamNameInput] = useState('');
   const [copyMsg, setCopyMsg] = useState('');
   const [showNotifs, setShowNotifs] = useState(false);
-  const [selectedMatchupIdx, setSelectedMatchupIdx] = useState(0);
-  const [chatInput, setChatInput] = useState('');
 
   const { data: league } = useQuery<League>({
     queryKey: ['league', leagueId],
@@ -78,28 +69,6 @@ export default function LeagueHomeScreen() {
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
     enabled: !!league,
-  });
-
-  const myMember = members.find((m) => m.userId === session?.user?.id);
-
-  const { data: standings = [] } = useQuery<any[]>({
-    queryKey: ['standings', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
-    enabled: !!league,
-  });
-
-  const { data: messages = [] } = useQuery<any[]>({
-    queryKey: ['messages', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/messages`),
-    enabled: !!league,
-    refetchInterval: 15_000,
-  });
-  const sendMessageMutation = useMutation({
-    mutationFn: (body: string) => apiClient.post(`/leagues/${leagueId}/messages`, { body }),
-    onSuccess: () => {
-      setChatInput('');
-      qc.invalidateQueries({ queryKey: ['messages', leagueId] });
-    },
   });
 
   const { data: currentEvent } = useQuery<any>({
@@ -114,33 +83,11 @@ export default function LeagueHomeScreen() {
     enabled: !!league,
   });
 
+  const matchupEventId = matchup?.eventId;
+  const matchupHomeId = matchup?.homeTeamId;
+  const matchupAwayId = matchup?.awayTeamId;
   const isStakingLeague = (league as any)?.leagueFormat === 'staking';
-
-  // All matchups in the league — used to page through the other pairings in the same event
-  const { data: allMatchups = [] } = useQuery<any[]>({
-    queryKey: ['matchups-all', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups`),
-    enabled: !!matchup,
-  });
-
-  // The matchups for the current event, the logged-in user's pairing first
-  const eventMatchups = useMemo(() => {
-    if (!matchup) return [];
-    const inEvent = allMatchups.filter((m) => m.eventId === matchup.eventId);
-    if (inEvent.length === 0) return [matchup];
-    return [
-      ...inEvent.filter((m) => m.id === matchup.id),
-      ...inEvent.filter((m) => m.id !== matchup.id),
-    ];
-  }, [allMatchups, matchup]);
-
-  const activeMatchup = eventMatchups[selectedMatchupIdx] ?? matchup;
-  const viewingMyMatchup = !!activeMatchup && !!matchup && activeMatchup.id === matchup.id;
-
-  const matchupEventId = activeMatchup?.eventId;
-  const matchupHomeId = activeMatchup?.homeTeamId;
-  const matchupAwayId = activeMatchup?.awayTeamId;
-  const matchupIsLive = activeMatchup?.eventStatus === 'live';
+  const matchupIsLive = matchup?.eventStatus === 'live';
   const liveInterval = matchupIsLive ? 30_000 : (false as const);
 
   const { data: homePicks } = useQuery<any>({
@@ -186,19 +133,6 @@ export default function LeagueHomeScreen() {
     enabled: isStakingLeague && !!matchupEventId,
   });
 
-  // The user's OWN picks/bets for this event — drives the Submit/Edit button independently
-  // of which matchup the scoreboard pager is showing.
-  const { data: myEventPicks } = useQuery<any>({
-    queryKey: ['my-event-picks', leagueId, matchup?.eventId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchup.eventId}`),
-    enabled: !isStakingLeague && !!matchup?.eventId,
-  });
-  const { data: myEventStaking } = useQuery<any>({
-    queryKey: ['my-event-staking', leagueId, matchup?.eventId, myMember?.id],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchup.eventId}?memberId=${myMember.id}`),
-    enabled: isStakingLeague && !!matchup?.eventId && !!myMember?.id,
-  });
-
   const renameTeamMutation = useMutation({
     mutationFn: (name: string) => apiClient.patch(`/leagues/${leagueId}/members/me`, { teamName: name }),
     onSuccess: () => {
@@ -239,17 +173,20 @@ export default function LeagueHomeScreen() {
   const isCommissioner =
     session?.user?.id === (league as any).commissionerId ||
     session?.user?.id === (league as any).commissionerUserId;
+  const myMember = members.find((m) => m.userId === session?.user?.id);
   const isSetup = league.status === 'setup';
   const isActive = league.status === 'active' || league.status === 'playoffs';
   const champion = members.find((m) => m.isChampion);
   const isLive = matchup?.eventStatus === 'live' || currentEvent?.status === 'live';
 
-  const sortedStandings = [...standings].sort((a, b) =>
-    (b.wins ?? 0) - (a.wins ?? 0) ||
-    (isStaking
-      ? (+(b.stakingBalance ?? 0)) - (+(a.stakingBalance ?? 0))
-      : (+(b.totalPoints ?? 0)) - (+(a.totalPoints ?? 0))),
-  );
+  // Has the logged-in user already submitted picks / placed bets for this matchup's event?
+  const myIsHome = !!myMember && !!matchup && myMember.id === matchup.homeTeamId;
+  const myIsAway = !!myMember && !!matchup && myMember.id === matchup.awayTeamId;
+  const myPicksData = myIsHome ? homePicks : myIsAway ? awayPicks : null;
+  const myStakingData = myIsHome ? homeStaking : myIsAway ? awayStaking : null;
+  const hasSubmitted = isStaking
+    ? ((myStakingData?.singles?.length ?? 0) + (myStakingData?.parlays?.length ?? 0)) > 0
+    : !!myPicksData?.fights?.some((f: any) => f.pickedFighterId);
 
   async function copyInviteCode() {
     const code = (league as any)?.inviteCode;
@@ -369,153 +306,150 @@ export default function LeagueHomeScreen() {
         </View>
       )}
 
-      {/* ── Matchups banner (a full scoreboard per matchup in the current event) ── */}
-      {isActive && eventMatchups.length > 0 && (
-        <View style={s.bannerWrap}>
-          <View style={s.bannerTopRow}>
-            {isLive ? (
-              <View style={s.livePill}><LiveDot /><Text style={s.livePipText}>LIVE</Text></View>
-            ) : (
-              <Text style={s.bannerLabel}>CURRENT EVENT</Text>
+      {/* ── Current matchup scoreboard ── */}
+      {matchup && isActive && (() => {
+        // Always show the logged-in user on the left
+        const flip = !!myMember && myMember.id === matchup.awayTeamId;
+        const leftName = flip ? matchup.awayTeamName : matchup.homeTeamName;
+        const rightName = flip ? matchup.homeTeamName : matchup.awayTeamName;
+        const leftScore = +(flip ? matchup.awayScore : matchup.homeScore);
+        const rightScore = +(flip ? matchup.homeScore : matchup.awayScore);
+        const leftMember = members.find((m) => m.id === (flip ? matchup.awayTeamId : matchup.homeTeamId));
+        const rightMember = members.find((m) => m.id === (flip ? matchup.homeTeamId : matchup.awayTeamId));
+        const leftColor = (leftMember as any)?.avatarColor ?? '#5555ff';
+        const rightColor = (rightMember as any)?.avatarColor ?? '#5555ff';
+        const leader = leftScore > rightScore ? leftName : rightScore > leftScore ? rightName : null;
+        const diff = Math.abs(leftScore - rightScore);
+        const hasScores = leftScore !== 0 || rightScore !== 0;
+        return (
+          <TouchableOpacity
+            style={s.matchupCard}
+            activeOpacity={0.85}
+            onPress={() => router.push(`/(app)/league/${leagueId}/matchup` as never)}
+          >
+            <View style={[s.matchupEdge, { left: 0, backgroundColor: leftColor }]} />
+            <View style={[s.matchupEdge, { right: 0, backgroundColor: rightColor }]} />
+            <View style={s.matchupLabelRow}>
+              {isLive ? (
+                <View style={s.livePill}>
+                  <LiveDot />
+                  <Text style={s.livePipText}>LIVE</Text>
+                </View>
+              ) : (
+                <Text style={s.matchupLabel}>CURRENT MATCHUP</Text>
+              )}
+            </View>
+            <View style={s.matchupScores}>
+              <View style={s.teamSide}>
+                <MemberAvatar name={leftName} color={leftColor} avatarUrl={(leftMember as any)?.avatarUrl} size={36} />
+                <Text style={s.teamSideName} numberOfLines={1}>{leftName}</Text>
+                <Text style={[
+                  s.teamSideScore,
+                  leftScore >= rightScore ? s.scoreLeading : s.scoreTrailing,
+                ]}>
+                  {fmtMatchupScore(leftScore, isStaking)}
+                </Text>
+              </View>
+              <Text style={s.vs}>VS</Text>
+              <View style={s.teamSide}>
+                <MemberAvatar name={rightName} color={rightColor} avatarUrl={(rightMember as any)?.avatarUrl} size={36} />
+                <Text style={s.teamSideName} numberOfLines={1}>{rightName}</Text>
+                <Text style={[
+                  s.teamSideScore,
+                  rightScore >= leftScore ? s.scoreLeading : s.scoreTrailing,
+                ]}>
+                  {fmtMatchupScore(rightScore, isStaking)}
+                </Text>
+              </View>
+            </View>
+            {hasScores && (
+              <View style={s.leadChip}>
+                <Text style={s.leadChipText}>
+                  {leader
+                    ? `${leader} leads by ${isStaking ? `$${diff.toFixed(0)}` : diff.toFixed(1)}`
+                    : 'Tied'}
+                </Text>
+              </View>
             )}
-            {currentEvent && <Text style={s.bannerEvent} numberOfLines={1}>{currentEvent.name}</Text>}
-          </View>
-          {eventMatchups.map((m) => {
-            const mine = !!myMember && (m.homeTeamId === myMember.id || m.awayTeamId === myMember.id);
-            const flip = mine && myMember!.id === m.awayTeamId;
-            const leftId = flip ? m.awayTeamId : m.homeTeamId;
-            const rightId = flip ? m.homeTeamId : m.awayTeamId;
-            const leftName = flip ? m.awayTeamName : m.homeTeamName;
-            const rightName = flip ? m.homeTeamName : m.awayTeamName;
-            const leftScore = +(flip ? m.awayScore : m.homeScore) || 0;
-            const rightScore = +(flip ? m.homeScore : m.awayScore) || 0;
-            const leftMember = members.find((mm) => mm.id === leftId);
-            const rightMember = members.find((mm) => mm.id === rightId);
-            const leftColor = (leftMember as any)?.avatarColor ?? '#5555ff';
-            const rightColor = (rightMember as any)?.avatarColor ?? '#5555ff';
-            const leader = leftScore > rightScore ? leftName : rightScore > leftScore ? rightName : null;
-            const diff = Math.abs(leftScore - rightScore);
-            const hasScores = leftScore !== 0 || rightScore !== 0;
-            return (
-              <TouchableOpacity
-                key={m.id}
-                style={[s.matchupCard, mine && s.matchupCardMine]}
-                activeOpacity={0.85}
-                onPress={() => router.push(`/(app)/league/${leagueId}/matchup` as never)}
-              >
-                <View style={[s.matchupEdge, { left: 0, backgroundColor: leftColor }]} />
-                <View style={[s.matchupEdge, { right: 0, backgroundColor: rightColor }]} />
-                {mine && <Text style={s.matchupMineTag}>YOUR MATCHUP</Text>}
-                <View style={s.matchupScores}>
-                  <View style={s.teamSide}>
-                    <MemberAvatar name={leftName} color={leftColor} avatarUrl={(leftMember as any)?.avatarUrl} size={30} />
-                    <Text style={s.teamSideName} numberOfLines={1}>{leftName}</Text>
-                    <Text style={[s.teamSideScore, leftScore >= rightScore ? s.scoreLeading : s.scoreTrailing]}>
-                      {fmtMatchupScore(leftScore, isStaking)}
-                    </Text>
-                  </View>
-                  <Text style={s.vs}>VS</Text>
-                  <View style={s.teamSide}>
-                    <MemberAvatar name={rightName} color={rightColor} avatarUrl={(rightMember as any)?.avatarUrl} size={30} />
-                    <Text style={s.teamSideName} numberOfLines={1}>{rightName}</Text>
-                    <Text style={[s.teamSideScore, rightScore >= leftScore ? s.scoreLeading : s.scoreTrailing]}>
-                      {fmtMatchupScore(rightScore, isStaking)}
-                    </Text>
-                  </View>
-                </View>
-                {hasScores && (
-                  <View style={s.leadChip}>
-                    <Text style={s.leadChipText}>
-                      {leader ? `${leader} leads by ${isStaking ? `$${diff.toFixed(0)}` : diff.toFixed(1)}` : 'Tied'}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+          </TouchableOpacity>
+        );
+      })()}
 
-      {/* ── Standings ── */}
-      {!isSetup && sortedStandings.length > 0 && (
-        <View style={s.standSection}>
-          <Text style={s.standTitle}>Standings</Text>
-          <View style={s.standHeadRow}>
-            <Text style={s.standRank}> </Text>
-            <Text style={[s.standTeam, s.standColLabel]}>Team</Text>
-            <Text style={[s.standRec, s.standColLabel]}>W-L-T</Text>
-            <Text style={[s.standPts, s.standColLabel]}>{isStaking ? 'Season P&L' : 'Season'}</Text>
+      {/* ── Current event card ── */}
+      {currentEvent && (
+        <View style={[s.eventCard, isLive && s.eventCardLive]}>
+          <View style={s.eventCardHeader}>
+            {isLive && <View style={s.livePip}><Text style={s.livePipText}>LIVE</Text></View>}
+            <Text style={[s.eventCardName, isLive && { color: '#fff' }]} numberOfLines={1}>
+              {currentEvent.name}
+            </Text>
           </View>
-          {sortedStandings.map((entry, i) => {
-            const isMe = entry.userId === session?.user?.id;
-            const pts = isStaking
-              ? fmtMatchupScore(+(entry.stakingBalance ?? 0), true)
-              : (+(entry.totalPoints ?? 0)).toFixed(1);
-            return (
-              <TouchableOpacity
-                key={entry.id}
-                style={[s.standRow, isMe && s.standRowMine]}
-                activeOpacity={0.8}
-                onPress={() => router.push(`/(app)/league/${leagueId}/team/${entry.id}` as never)}
-              >
-                <Text style={s.standRank}>{i + 1}</Text>
-                <Text style={[s.standTeam, isMe && s.standTeamMine]} numberOfLines={1}>
-                  {entry.teamName}{isMe ? '  (You)' : ''}
-                </Text>
-                <Text style={s.standRec}>
-                  {entry.wins}-{entry.losses}{entry.ties ? `-${entry.ties}` : ''}
-                </Text>
-                <Text style={s.standPts}>{pts}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {/* ── League chat ── */}
-      {!isSetup && (
-        <View style={s.chatSection}>
-          <Text style={s.chatTitle}>League Chat</Text>
-          {messages.length === 0 ? (
-            <Text style={s.chatEmpty}>No messages yet — say something!</Text>
-          ) : (
-            messages.map((m) => {
-              const isMe = m.memberId === myMember?.id;
-              return (
-                <View key={m.id} style={s.chatMsg}>
-                  <MemberAvatar name={m.teamName ?? m.username ?? '?'} color={m.avatarColor} size={26} />
-                  <View style={s.chatMsgBody}>
-                    <View style={s.chatMsgHead}>
-                      <Text style={s.chatMsgName} numberOfLines={1}>
-                        {m.teamName ?? m.username}{isMe ? ' (You)' : ''}
-                      </Text>
-                      <Text style={s.chatMsgTime}>{fmtTime(m.createdAt)}</Text>
-                    </View>
-                    <Text style={s.chatMsgText}>{m.body}</Text>
-                  </View>
-                </View>
-              );
-            })
+          {(currentEvent.venue || currentEvent.location) && (
+            <Text style={s.eventCardMeta} numberOfLines={1}>
+              {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+            </Text>
           )}
-          <View style={s.chatInputRow}>
-            <TextInput
-              style={s.chatInput}
-              placeholder="Say something..."
-              placeholderTextColor="#555"
-              value={chatInput}
-              onChangeText={setChatInput}
-              multiline
-            />
+          {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && !isLive && (
+            <Text style={s.eventCardDate}>
+              {fmtDate(currentEvent.prelimsAt ?? currentEvent.scheduledAt)}
+            </Text>
+          )}
+          {isActive && (
             <TouchableOpacity
-              style={[s.chatSend, (!chatInput.trim() || sendMessageMutation.isPending) && s.chatSendDisabled]}
-              onPress={() => chatInput.trim() && sendMessageMutation.mutate(chatInput.trim())}
-              disabled={!chatInput.trim() || sendMessageMutation.isPending}
+              style={s.picksBtn}
+              onPress={() => router.push(`/(app)/league/${leagueId}/picks` as never)}
             >
-              <Text style={s.chatSendText}>Send</Text>
+              <Text style={s.picksBtnText}>
+                {isStaking
+                  ? (hasSubmitted ? 'Edit Bets →' : 'Place Bets →')
+                  : (hasSubmitted ? 'Edit Picks →' : 'Submit Picks →')}
+              </Text>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
       )}
+
+      {/* ── Fight card ── */}
+      {matchup && isActive && (() => {
+        const flip = !!myMember && myMember.id === matchup.awayTeamId;
+        const leftPicks = flip ? awayPicks : homePicks;
+        const rightPicks = flip ? homePicks : awayPicks;
+        const leftChampion = flip ? awayChampion : homeChampion;
+        const rightChampion = flip ? homeChampion : awayChampion;
+        const leftStaking = flip ? awayStaking : homeStaking;
+        const rightStaking = flip ? homeStaking : awayStaking;
+        const locked = !!(homePicks?.locked || awayPicks?.locked);
+        return (
+          <View style={s.fightCardSection}>
+            <View style={s.fightCardHeader}>
+              <Text style={s.fightCardLabel}>FIGHT CARD</Text>
+              {locked && <View style={s.lockedBadge}><Text style={s.lockedText}>LOCKED</Text></View>}
+            </View>
+            {isStaking ? (
+              <>
+                <PicksColumns
+                  homePicks={stakingFightCard?.fights ?? []}
+                  awayPicks={stakingFightCard?.fights ?? []}
+                  homeChampion={null}
+                  awayChampion={null}
+                  locked={false}
+                  showPicks={false}
+                />
+                <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
+              </>
+            ) : (
+              <PicksColumns
+                homePicks={leftPicks?.fights ?? []}
+                awayPicks={rightPicks?.fights ?? []}
+                homeChampion={leftChampion}
+                awayChampion={rightChampion}
+                locked={locked}
+                highlightMine
+              />
+            )}
+          </View>
+        );
+      })()}
 
       {/* ── Nav grid ── */}
       <View style={s.nav}>
@@ -619,43 +553,6 @@ function statusColor(status: string) {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-
-  // Matchups banner (stacked scoreboards)
-  bannerWrap: { marginBottom: 4 },
-  bannerTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, marginTop: 4, marginBottom: 10 },
-  bannerLabel: { color: '#666', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  bannerEvent: { color: '#bbb', fontSize: 12, fontWeight: '600', flex: 1 },
-  matchupCardMine: { borderColor: '#c8102e55' },
-  matchupMineTag: { color: '#c8102e', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, textAlign: 'center', marginBottom: 8 },
-
-  // Standings
-  standSection: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#141414', borderRadius: 12, borderWidth: 1, borderColor: '#242424', overflow: 'hidden' },
-  standTitle: { color: '#fff', fontSize: 15, fontWeight: '700', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
-  standHeadRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 6 },
-  standColLabel: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-
-  // League chat
-  chatSection: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#141414', borderRadius: 12, borderWidth: 1, borderColor: '#242424', padding: 14 },
-  chatTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 12 },
-  chatEmpty: { color: '#555', fontSize: 13, textAlign: 'center', paddingVertical: 12 },
-  chatMsg: { flexDirection: 'row', gap: 8, marginBottom: 12, alignItems: 'flex-start' },
-  chatMsgBody: { flex: 1 },
-  chatMsgHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 1 },
-  chatMsgName: { color: '#ccc', fontSize: 12, fontWeight: '700', flexShrink: 1 },
-  chatMsgTime: { color: '#555', fontSize: 10 },
-  chatMsgText: { color: '#bbb', fontSize: 13, lineHeight: 18 },
-  chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', marginTop: 4 },
-  chatInput: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 8, borderWidth: 1, borderColor: '#2a2a2a', color: '#fff', fontSize: 14, paddingHorizontal: 12, paddingVertical: 8, maxHeight: 100 },
-  chatSend: { backgroundColor: '#c8102e', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 10 },
-  chatSendDisabled: { opacity: 0.5 },
-  chatSendText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  standRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#1a1a1a' },
-  standRowMine: { backgroundColor: '#c8102e10' },
-  standRank: { width: 24, color: '#666', fontSize: 13, fontWeight: '700' },
-  standTeam: { flex: 1, color: '#ddd', fontSize: 14, fontWeight: '600' },
-  standTeamMine: { color: '#fff' },
-  standRec: { color: '#888', fontSize: 13, width: 70, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  standPts: { color: '#fff', fontSize: 14, fontWeight: '700', width: 64, textAlign: 'right', fontVariant: ['tabular-nums'] },
 
   // Top nav bar
   navBar: {
@@ -777,18 +674,20 @@ const s = StyleSheet.create({
 
   // Matchup scoreboard
   matchupCard: {
-    marginHorizontal: 16, marginBottom: 8,
-    backgroundColor: '#16161d', borderRadius: 12,
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: '#16161d', borderRadius: 14,
     borderWidth: 1, borderColor: '#26262e',
-    paddingVertical: 10, paddingHorizontal: 16, overflow: 'hidden',
+    padding: 16, paddingHorizontal: 20, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   matchupEdge: { position: 'absolute', top: 0, bottom: 0, width: 4, opacity: 0.9 },
   matchupLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   matchupLabel: { color: '#c8102e', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  matchupScores: { flexDirection: 'row', alignItems: 'center' },
-  teamSide: { flex: 1, alignItems: 'center', gap: 3 },
-  teamSideName: { color: '#888', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, maxWidth: 120 },
-  teamSideScore: { fontSize: 26, fontWeight: '800', color: '#666', fontVariant: ['tabular-nums'], letterSpacing: -1 },
+  matchupScores: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  teamSide: { flex: 1, alignItems: 'center', gap: 4 },
+  teamSideName: { color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, maxWidth: 120 },
+  teamSideScore: { fontSize: 32, fontWeight: '800', color: '#666', fontVariant: ['tabular-nums'], letterSpacing: -1 },
   scoreLeading: { color: '#fff' },
   scoreTrailing: { color: '#555' },
   vs: { color: '#333', fontWeight: '700', paddingHorizontal: 10, fontSize: 12, alignSelf: 'center' },

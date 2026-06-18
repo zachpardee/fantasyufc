@@ -1,10 +1,14 @@
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter, Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { apiClient } from '../../src/api/client';
 import type { League } from '@fantasy-ufc/shared';
+import LeagueEventScreen from './league/[leagueId]/event';
 
-export default function MatchupTabScreen() {
+// "Current Event" tab — renders the league's event home (old scoreboard +
+// fight-card design) for your active league, in-place so this tab stays
+// highlighted.
+export default function CurrentEventScreen() {
   const router = useRouter();
 
   const { data: leagues, isLoading } = useQuery<League[]>({
@@ -20,8 +24,6 @@ export default function MatchupTabScreen() {
     );
   }
 
-  // Jump to the league you're actively playing: prefer a live/active/playoff
-  // league, otherwise the first one you're in.
   const target =
     leagues.find((l) => l.status === 'active' || l.status === 'playoffs') ?? leagues[0];
 
@@ -29,7 +31,7 @@ export default function MatchupTabScreen() {
     return (
       <View style={s.center}>
         <Text style={s.title}>No leagues yet</Text>
-        <Text style={s.text}>Join or create a league to see your matchup.</Text>
+        <Text style={s.text}>Join or create a league to get started.</Text>
         <TouchableOpacity style={s.btn} onPress={() => router.replace('/(app)/league')}>
           <Text style={s.btnText}>Go to Leagues</Text>
         </TouchableOpacity>
@@ -37,7 +39,7 @@ export default function MatchupTabScreen() {
     );
   }
 
-  return <Redirect href={`/(app)/league/${target.id}/matchup`} />;
+  return <LeagueEventScreen leagueIdProp={target.id} />;
 }
 
 const s = StyleSheet.create({

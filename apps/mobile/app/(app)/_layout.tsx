@@ -1,6 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Home, Trophy, Swords, Settings } from 'lucide-react-native';
 
+// Anchor the tab navigator on League Home so re-tapping a tab doesn't bounce to User Home.
+export const unstable_settings = {
+  initialRouteName: 'league',
+};
+
 export default function AppLayout() {
   return (
     <Tabs
@@ -17,11 +22,9 @@ export default function AppLayout() {
         options={{ title: 'League Home', tabBarLabel: 'League Home', headerShown: false, tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} /> }}
       />
       <Tabs.Screen
-        name="matchup"
-        options={{ title: 'Matchup', tabBarLabel: 'Matchup', headerShown: false, tabBarIcon: ({ color, size }) => <Swords color={color} size={size ?? 22} /> }}
+        name="current-event"
+        options={{ title: 'Current Event', tabBarLabel: 'Current Event', headerShown: false, tabBarIcon: ({ color, size }) => <Swords color={color} size={size ?? 22} /> }}
       />
-      {/* Fighters browser still exists as a route, just not shown in the tab bar */}
-      <Tabs.Screen name="fighters" options={{ href: null }} />
       <Tabs.Screen
         name="index"
         options={{ title: 'User Home', tabBarLabel: 'User Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} /> }}
@@ -30,6 +33,8 @@ export default function AppLayout() {
         name="settings"
         options={{ title: 'Settings', tabBarLabel: 'Settings', tabBarIcon: ({ color, size }) => <Settings color={color} size={size ?? 22} /> }}
       />
+      {/* Fighters browser still exists as a route, just not shown in the tab bar */}
+      <Tabs.Screen name="fighters" options={{ href: null }} />
     </Tabs>
   );
 }
