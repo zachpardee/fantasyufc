@@ -12,7 +12,6 @@
   "dependencies": {
     "@fantasy-ufc/shared": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@sentry/browser": "^10.57.0",
     "@supabase/supabase-js": "^2.43.0",
     "@tanstack/react-query": "^5.45.0",
     "axios": "^1.7.2",
