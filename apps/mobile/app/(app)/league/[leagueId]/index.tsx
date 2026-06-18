@@ -443,6 +443,7 @@ export default function LeagueHomeScreen() {
                 homeChampion={leftChampion}
                 awayChampion={rightChampion}
                 locked={locked}
+                highlightMine
               />
             )}
           </View>

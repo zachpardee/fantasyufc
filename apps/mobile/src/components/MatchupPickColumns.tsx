@@ -69,8 +69,8 @@ function FighterPhoto({ imageUrl, flipped }: { imageUrl?: string | null; flipped
 
 // ── Main fight card ───────────────────────────────────────────────────────────
 
-function FightCard({ fight, homePick, awayPick, locked, showPicks = true }: {
-  fight: any; homePick: any; awayPick: any; locked: boolean; showPicks?: boolean;
+function FightCard({ fight, homePick, awayPick, locked, showPicks = true, highlightMine = false }: {
+  fight: any; homePick: any; awayPick: any; locked: boolean; showPicks?: boolean; highlightMine?: boolean;
 }) {
   const hasResult = !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
   const redWon = fight.resultWinnerId === fight.redFighterId;
@@ -149,6 +149,7 @@ function FightCard({ fight, homePick, awayPick, locked, showPicks = true }: {
             fight={fight}
             locked={locked}
             align="left"
+            mine={highlightMine}
           />
           <PickBadge
             pick={awayPick}
@@ -163,12 +164,13 @@ function FightCard({ fight, homePick, awayPick, locked, showPicks = true }: {
   );
 }
 
-function PickBadge({ pick, pickedRed, fight, locked, align }: {
-  pick: any; pickedRed: boolean; fight: any; locked: boolean; align: 'left' | 'right';
+function PickBadge({ pick, pickedRed, fight, locked, align, mine = false }: {
+  pick: any; pickedRed: boolean; fight: any; locked: boolean; align: 'left' | 'right'; mine?: boolean;
 }) {
   if (!pick?.pickedFighterId) {
     return (
-      <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight]}>
+      <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight, mine && s.pickBadgeMine]}>
+        {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR PICK</Text>}
         <Text style={s.pickNone}>—</Text>
       </View>
     );
@@ -182,13 +184,16 @@ function PickBadge({ pick, pickedRed, fight, locked, align }: {
   const badgeColor = locked
     ? isCorrect === true ? '#4caf5022' : isCorrect === false ? '#ff525222' : '#ffffff0a'
     : '#ffffff0a';
-  const borderColor = locked
-    ? isCorrect === true ? '#4caf5066' : isCorrect === false ? '#ff525244' : '#2a2a2a'
-    : '#2a2a2a';
+  const borderColor = mine
+    ? '#c8102e'
+    : locked
+      ? isCorrect === true ? '#4caf5066' : isCorrect === false ? '#ff525244' : '#2a2a2a'
+      : '#2a2a2a';
 
   return (
-    <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight, { backgroundColor: badgeColor, borderColor }]}>
-      <Text style={[s.pickName, { textAlign: align }, locked && isCorrect === false && s.pickWrong]} numberOfLines={1}>
+    <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight, mine && s.pickBadgeMine, { backgroundColor: badgeColor, borderColor }]}>
+      {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR PICK</Text>}
+      <Text style={[s.pickName, { textAlign: align }, mine && s.pickNameMine, locked && isCorrect === false && s.pickWrong]} numberOfLines={1}>
         {firstName} {lastName}
       </Text>
       {locked && isCorrect === true && <Text style={[s.pickResult, s.pickCorrect, { textAlign: align }]}>+{pts.toFixed(0)}</Text>}
@@ -200,11 +205,12 @@ function PickBadge({ pick, pickedRed, fight, locked, align }: {
 
 // ── Pickem columns ────────────────────────────────────────────────────────────
 
-export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked, showPicks = true }: {
+export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked, showPicks = true, highlightMine = false }: {
   homePicks: any[]; awayPicks: any[];
   homeChampion: any; awayChampion: any;
   locked: boolean;
   showPicks?: boolean;
+  highlightMine?: boolean;
 }) {
   const fights = homePicks.length > 0 ? homePicks : awayPicks;
   if (fights.length === 0) {
@@ -220,7 +226,7 @@ export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion,
   return (
     <>
       {fights.map((fight: any, i: number) => (
-        <FightCard key={fight.id ?? i} fight={fight} homePick={homePicks[i]} awayPick={awayPicks[i]} locked={locked} showPicks={showPicks} />
+        <FightCard key={fight.id ?? i} fight={fight} homePick={homePicks[i]} awayPick={awayPicks[i]} locked={locked} showPicks={showPicks} highlightMine={highlightMine} />
       ))}
 
       {showPicks && (homeChampion || awayChampion) && (
@@ -375,8 +381,11 @@ const s = StyleSheet.create({
     backgroundColor: '#ffffff0a',
   },
   pickBadgeRight: {},
+  pickBadgeMine: { backgroundColor: '#c8102e14', borderColor: '#c8102e' },
+  pickMineLabel: { color: '#c8102e', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 1 },
   pickNone: { color: '#2a2a2a', fontSize: 12, textAlign: 'center' },
   pickName: { color: '#bbb', fontSize: 12, fontWeight: '600' },
+  pickNameMine: { color: '#fff' },
   pickWrong: { color: '#ff5252' },
   pickResult: { fontSize: 11, fontWeight: '700', marginTop: 2 },
   pickCorrect: { color: '#4caf50' },

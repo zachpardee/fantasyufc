@@ -336,6 +336,7 @@ export default function MatchupScreen() {
               homeChampion={leftChampion}
               awayChampion={rightChampion}
               locked={leftPicks?.locked ?? false}
+              highlightMine
             />
           )}
         </>
