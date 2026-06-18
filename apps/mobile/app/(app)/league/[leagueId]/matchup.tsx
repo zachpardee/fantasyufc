@@ -21,8 +21,8 @@ function fmtScore(n: number, isStaking: boolean): string {
 
 function fmtChip(n: number, isStaking: boolean): string {
   if (isStaking) {
-    const abs = Math.abs(n);
-    return (n < 0 ? '-$' : '+$') + abs.toFixed(0);
+    const str = '$' + Math.abs(n).toFixed(0);
+    return n < 0 ? `(${str})` : str;
   }
   return n.toFixed(0);
 }

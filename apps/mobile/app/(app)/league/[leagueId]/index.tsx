@@ -35,14 +35,6 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-function fmtScore(n: number, isStaking: boolean): string {
-  if (isStaking) {
-    const abs = Math.abs(n);
-    return n < 0 ? `-$${abs.toFixed(0)}` : `+$${abs.toFixed(0)}`;
-  }
-  return n.toFixed(1);
-}
-
 function fmtMatchupScore(n: number, isStaking: boolean): string {
   if (isStaking) {
     return n < 0 ? `($${Math.abs(n).toFixed(0)})` : `$${n.toFixed(0)}`;
