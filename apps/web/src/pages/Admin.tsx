@@ -77,11 +77,20 @@ export function AdminPage() {
               ) : data.odds?.error ? (
                 <ErrorText>{data.odds.error}</ErrorText>
               ) : (
-                <>
-                  <Big>{data.odds?.remaining ?? '—'}</Big>
-                  <Unit>requests remaining</Unit>
-                  <Row label="Used" value={data.odds?.used ?? '—'} />
-                </>
+                (() => {
+                  const used = data.odds?.used ?? null;
+                  const rem = data.odds?.remaining ?? null;
+                  const total = (used ?? 0) + (rem ?? 0);
+                  return (
+                    <>
+                      <Big>{rem ?? '—'}</Big>
+                      <Unit>requests remaining</Unit>
+                      {total > 0 && used != null && <Bar value={used} max={total} dangerHigh />}
+                      <Row label="Used" value={used ?? '—'} />
+                      {total > 0 && <Row label="Monthly cap" value={total} />}
+                    </>
+                  );
+                })()
               )}
             </Card>
 
@@ -97,9 +106,23 @@ export function AdminPage() {
                     .join(' · ') || '0'
                 }
               />
+              <StackedBar
+                segments={Object.entries(data.app?.leaguesByStatus ?? {}).map(([k, v]) => ({
+                  label: k,
+                  value: Number(v),
+                  color: STATUS_COLORS[k] ?? '#555',
+                }))}
+              />
               <Row
                 label="Events"
                 value={`${data.app?.events?.live ?? 0} live · ${data.app?.events?.scheduled ?? 0} sched · ${data.app?.events?.completed ?? 0} done`}
+              />
+              <StackedBar
+                segments={[
+                  { label: 'live', value: data.app?.events?.live ?? 0, color: '#c8102e' },
+                  { label: 'scheduled', value: data.app?.events?.scheduled ?? 0, color: '#3b6cff' },
+                  { label: 'completed', value: data.app?.events?.completed ?? 0, color: '#555' },
+                ]}
               />
             </Card>
 
@@ -130,7 +153,7 @@ export function AdminPage() {
               ) : data.railway?.error ? (
                 <ErrorText>{data.railway.error}</ErrorText>
               ) : (
-                <Pre>{JSON.stringify(data.railway?.data, null, 2)}</Pre>
+                <UsageView data={data.railway?.data} />
               )}
             </Card>
 
@@ -141,7 +164,7 @@ export function AdminPage() {
               ) : data.supabase?.error ? (
                 <ErrorText>{data.supabase.error}</ErrorText>
               ) : (
-                <Pre>{JSON.stringify(data.supabase?.data, null, 2)}</Pre>
+                <UsageView data={data.supabase?.data} />
               )}
             </Card>
           </div>
@@ -159,6 +182,91 @@ export function AdminPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  active: '#4caf50',
+  setup: '#e0a000',
+  playoffs: '#3b6cff',
+  completed: '#555',
+};
+
+// Horizontal progress bar. `dangerHigh` colors it green→amber→red as it fills (for quotas
+// you don't want to exhaust); otherwise it's a flat accent fill.
+function Bar({ value, max, dangerHigh }: { value: number; max: number; dangerHigh?: boolean }) {
+  const frac = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
+  const color = dangerHigh
+    ? frac >= 0.85
+      ? '#ff5252'
+      : frac >= 0.6
+        ? '#e0a000'
+        : '#4caf50'
+    : '#c8102e';
+  return (
+    <div style={s.barTrack} title={`${value} / ${max}`}>
+      <div style={{ ...s.barFill, width: `${frac * 100}%`, background: color }} />
+    </div>
+  );
+}
+
+// Proportional stacked bar of labeled segments (e.g. leagues/events by status).
+function StackedBar({ segments }: { segments: { label: string; value: number; color: string }[] }) {
+  const total = segments.reduce((a, b) => a + b.value, 0);
+  if (total <= 0) return null;
+  return (
+    <div style={s.barTrack}>
+      {segments
+        .filter((seg) => seg.value > 0)
+        .map((seg) => (
+          <div
+            key={seg.label}
+            style={{
+              width: `${(seg.value / total) * 100}%`,
+              background: seg.color,
+              height: '100%',
+            }}
+            title={`${seg.label}: ${seg.value}`}
+          />
+        ))}
+    </div>
+  );
+}
+
+// Renders an external usage payload (Railway/Supabase): any numeric { usage/used, limit/total }
+// pairs become bars; everything else falls back to a JSON view.
+function UsageView({ data }: { data: unknown }) {
+  const rows: { label: string; used: number; limit: number }[] = [];
+  const walk = (obj: any, prefix = '') => {
+    if (!obj || typeof obj !== 'object') return;
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && typeof v === 'object') {
+        const o = v as any;
+        const used = o.usage ?? o.used ?? o.current ?? o.value ?? o.estimatedValue;
+        const limit = o.limit ?? o.total ?? o.max ?? o.included ?? o.quota;
+        if (typeof used === 'number' && typeof limit === 'number' && limit > 0) {
+          rows.push({ label: prefix + k, used, limit });
+        } else {
+          walk(v, prefix + k + '.');
+        }
+      }
+    }
+  };
+  try {
+    walk(data);
+  } catch {
+    /* ignore */
+  }
+  if (rows.length === 0) return <Pre>{JSON.stringify(data, null, 2)}</Pre>;
+  return (
+    <>
+      {rows.map((r) => (
+        <div key={r.label} style={{ marginBottom: 8 }}>
+          <Row label={r.label} value={`${r.used} / ${r.limit}`} />
+          <Bar value={r.used} max={r.limit} dangerHigh />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -227,6 +335,17 @@ const s: Record<string, React.CSSProperties> = {
   },
   big: { fontSize: 34, fontWeight: 800, color: '#fff', lineHeight: 1 },
   unit: { color: '#888', fontSize: 12, marginTop: 2, marginBottom: 8 },
+  barTrack: {
+    display: 'flex',
+    width: '100%',
+    height: 8,
+    background: '#0a0a0a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 999,
+    overflow: 'hidden',
+    margin: '6px 0',
+  },
+  barFill: { height: '100%', borderRadius: 999, transition: 'width 0.3s' },
   statRow: {
     display: 'flex',
     justifyContent: 'space-between',
