@@ -45,14 +45,24 @@ export async function autoScheduleNextEvents() {
 
   for (const league of leagues) {
     try {
-      await scheduleNextEventForLeague(league.id, league.season_year, league.last_event_at, league.season_ends_at);
+      await scheduleNextEventForLeague(
+        league.id,
+        league.season_year,
+        league.last_event_at,
+        league.season_ends_at,
+      );
     } catch (err) {
       console.error('[AutoSchedule] Error scheduling for league', league.id, err);
     }
   }
 }
 
-async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, lastEventAt: Date, seasonEndsAt: Date | null) {
+async function scheduleNextEventForLeague(
+  leagueId: string,
+  seasonYear: number,
+  lastEventAt: Date,
+  seasonEndsAt: Date | null,
+) {
   // Per-league season end set at season start (covers static-calendar leagues
   // running outside the legacy Jan-Jun window). Legacy window is the fallback.
   const seasonEnd = seasonEndsAt ? new Date(seasonEndsAt) : seasonWindow(seasonYear).end;
@@ -66,12 +76,16 @@ async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, 
   // For static-calendar leagues, never schedule events before the season's
   // opening day (a league can be activated during the preseason).
   const staticSeason = seasonEndsAt ? seasonByRegularEnd(new Date(seasonEndsAt)) : null;
-  const lowerBound = staticSeason && staticSeason.startsAt > new Date(lastEventAt)
-    ? staticSeason.startsAt
-    : new Date(lastEventAt);
+  const lowerBound =
+    staticSeason && staticSeason.startsAt > new Date(lastEventAt)
+      ? staticSeason.startsAt
+      : new Date(lastEventAt);
 
   // Next UFC scoring event within the season window that isn't already scheduled
-  const { rows: [nextEvent] } = await db.query(`
+  const {
+    rows: [nextEvent],
+  } = await db.query(
+    `
     SELECT e.id, e.name, e.scheduled_at
     FROM ufc_events e
     WHERE e.status = 'scheduled'
@@ -83,22 +97,29 @@ async function scheduleNextEventForLeague(leagueId: string, seasonYear: number, 
       )
     ORDER BY e.scheduled_at ASC
     LIMIT 1
-  `, [lowerBound, seasonEnd, leagueId]);
+  `,
+    [lowerBound, seasonEnd, leagueId],
+  );
 
   if (!nextEvent) {
     console.log(`[AutoSchedule] No upcoming event in season window for league ${leagueId}`);
     return;
   }
 
-  await db.query(`
+  await db.query(
+    `
     INSERT INTO league_events (league_id, event_id, is_scoring)
     VALUES ($1, $2, true)
     ON CONFLICT (league_id, event_id) DO NOTHING
-  `, [leagueId, nextEvent.id]);
+  `,
+    [leagueId, nextEvent.id],
+  );
 
   await generateMatchupsForLeague(leagueId);
 
-  console.log(`[AutoSchedule] Scheduled "${nextEvent.name}" (${nextEvent.scheduled_at}) for league ${leagueId}`);
+  console.log(
+    `[AutoSchedule] Scheduled "${nextEvent.name}" (${nextEvent.scheduled_at}) for league ${leagueId}`,
+  );
 }
 
 // Mark leagues as completed when their season window has ended and all events are done.
@@ -117,17 +138,24 @@ async function completeElapsedSeasons() {
 
   for (const league of leagues) {
     // Only complete if every scoring event for this league is done (no live/scheduled events left)
-    const { rows: [{ pending }] } = await db.query<{ pending: string }>(`
+    const {
+      rows: [{ pending }],
+    } = await db.query<{ pending: string }>(
+      `
       SELECT COUNT(*) AS pending
       FROM league_events le
       JOIN ufc_events e ON e.id = le.event_id
       WHERE le.league_id = $1 AND le.is_scoring = true
         AND e.status IN ('scheduled', 'live')
-    `, [league.id]);
+    `,
+      [league.id],
+    );
 
     if (parseInt(pending) === 0) {
       await db.query(`UPDATE leagues SET status = 'completed' WHERE id = $1`, [league.id]);
-      console.log(`[AutoSchedule] Completed season for league ${league.id} (${league.season_year})`);
+      console.log(
+        `[AutoSchedule] Completed season for league ${league.id} (${league.season_year})`,
+      );
     }
   }
 }

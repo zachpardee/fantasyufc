@@ -11,15 +11,19 @@ export const app = express();
 
 app.set('trust proxy', 1);
 app.use(helmet());
-const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:19006').split(',');
-app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, server-to-server)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: ${origin} not allowed`));
-  },
-  credentials: true,
-}));
+const allowedOrigins = (
+  process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:19006'
+).split(',');
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: ${origin} not allowed`));
+    },
+    credentials: true,
+  }),
+);
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 

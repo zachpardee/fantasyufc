@@ -35,7 +35,7 @@ export async function searchEventResults(eventName: string): Promise<SportsDbEve
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
 
-    const data = await res.json() as any;
+    const data = (await res.json()) as any;
     const event = data?.event?.[0];
     if (!event) return null;
 
@@ -58,7 +58,7 @@ export async function fetchEventResultsById(sportsDbId: string): Promise<SportsD
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
 
-    const data = await res.json() as any;
+    const data = (await res.json()) as any;
     const event = data?.events?.[0];
     if (!event) return null;
 
@@ -79,11 +79,19 @@ export async function fetchEventResultsById(sportsDbId: string): Promise<SportsD
 // "WeightClass\tWinner\tdef.\tLoser\tMethod\tRound\tTime\n..."
 export function parseResultsString(raw: string): ParsedFightResult[] {
   const results: ParsedFightResult[] = [];
-  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   for (const line of lines) {
     // Skip section headers like "Main card (PPV)" or "Preliminary card"
-    if (!line.includes('\t') && !line.includes('def.') && !line.includes('Draw') && !line.includes('NC')) {
+    if (
+      !line.includes('\t') &&
+      !line.includes('def.') &&
+      !line.includes('Draw') &&
+      !line.includes('NC')
+    ) {
       continue;
     }
 

@@ -20,7 +20,9 @@ class MemoryCache implements CacheClient {
   private store = new Map<string, { value: string; expiresAt: number }>();
 
   async connect() {
-    console.warn('[Cache] Redis not configured — using in-memory cache (restarts clear all cached data)');
+    console.warn(
+      '[Cache] Redis not configured — using in-memory cache (restarts clear all cached data)',
+    );
   }
 
   async get(key: string): Promise<string | null> {

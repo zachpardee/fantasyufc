@@ -7,7 +7,11 @@ import { z } from 'zod';
 
 export const stakingRouter = Router({ mergeParams: true });
 
-function isEventLocked(event: { status: string; prelims_at: string | null; scheduled_at: string }): boolean {
+function isEventLocked(event: {
+  status: string;
+  prelims_at: string | null;
+  scheduled_at: string;
+}): boolean {
   if (event.status === 'live' || event.status === 'completed') return true;
   const startMs = new Date(event.prelims_at ?? event.scheduled_at).getTime();
   return Date.now() >= startMs - 10 * 60 * 1000;
@@ -27,7 +31,9 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
     const { leagueId, eventId } = req.params;
     const memberId = req.query.memberId as string | undefined;
 
-    const { rows: [me] } = await db.query(
+    const {
+      rows: [me],
+    } = await db.query(
       `SELECT lm.id, lm.staking_balance, l.weekly_budget
        FROM league_members lm JOIN leagues l ON l.id = lm.league_id
        WHERE lm.league_id = $1 AND lm.user_id = $2`,
@@ -39,13 +45,14 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
     const targetMemberId = memberId ?? me.id;
 
     // Gate opponent bets until event is live
-    const { rows: [event] } = await db.query(
-      `SELECT status FROM ufc_events WHERE id = $1`, [eventId],
-    );
+    const {
+      rows: [event],
+    } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
     const eventLive = event?.status === 'live' || event?.status === 'completed';
     const revealOpponent = !viewingOpponent || eventLive;
 
-    const { rows: singles } = await db.query(`
+    const { rows: singles } = await db.query(
+      `
       SELECT ss.*,
         f.red_fighter_id, f.blue_fighter_id, f.is_main_event, f.bout_order,
         rf.first_name as fighter_first_name, rf.last_name as fighter_last_name,
@@ -55,19 +62,25 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       JOIN fighters rf ON rf.id = ss.fighter_id
       WHERE ss.league_id = $1 AND ss.event_id = $2 AND ss.member_id = $3
       ORDER BY f.is_main_event DESC, f.bout_order DESC
-    `, [leagueId, eventId, revealOpponent ? targetMemberId : null]);
+    `,
+      [leagueId, eventId, revealOpponent ? targetMemberId : null],
+    );
 
     // Fetch all parlays for this event/member (multiple allowed — e.g. settled + new pending)
-    const { rows: parlayRows } = await db.query(`
+    const { rows: parlayRows } = await db.query(
+      `
       SELECT sp.* FROM staking_parlays sp
       WHERE sp.league_id = $1 AND sp.event_id = $2 AND sp.member_id = $3
       ORDER BY sp.created_at ASC
-    `, [leagueId, eventId, revealOpponent ? targetMemberId : null]);
+    `,
+      [leagueId, eventId, revealOpponent ? targetMemberId : null],
+    );
 
     // Fetch all legs for all parlays in one query
     let allLegRows: any[] = [];
     if (parlayRows.length > 0) {
-      const { rows } = await db.query(`
+      const { rows } = await db.query(
+        `
         SELECT spl.*, spl.parlay_id,
           f.red_fighter_id, f.blue_fighter_id, f.is_main_event, f.bout_order,
           rf.first_name as fighter_first_name, rf.last_name as fighter_last_name
@@ -76,7 +89,9 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
         JOIN fighters rf ON rf.id = spl.fighter_id
         WHERE spl.parlay_id = ANY($1::uuid[])
         ORDER BY f.is_main_event DESC, f.bout_order DESC
-      `, [parlayRows.map((p: any) => p.id)]);
+      `,
+        [parlayRows.map((p: any) => p.id)],
+      );
       allLegRows = rows;
     }
 
@@ -97,10 +112,12 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       .filter((p: any) => p.status === 'pending')
       .reduce((sum: number, p: any) => sum + parseFloat(p.stake), 0);
     const usedThisWeek =
-      singles.filter((s: any) => s.status === 'pending').reduce((sum: number, s: any) => sum + parseFloat(s.stake), 0)
-      + pendingParlayStake;
+      singles
+        .filter((s: any) => s.status === 'pending')
+        .reduce((sum: number, s: any) => sum + parseFloat(s.stake), 0) + pendingParlayStake;
 
-    const { rows: fights } = await db.query(`
+    const { rows: fights } = await db.query(
+      `
       SELECT f.id, f.red_fighter_id, f.blue_fighter_id,
              f.is_main_event, f.bout_order, f.card_segment,
              f.red_fighter_odds, f.blue_fighter_odds,
@@ -120,7 +137,9 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       WHERE f.event_id = $1 AND f.card_segment IN ('main', 'prelims')
       ORDER BY f.is_main_event DESC, f.bout_order DESC
       LIMIT 6
-    `, [eventId]);
+    `,
+      [eventId],
+    );
 
     res.json({
       fights,
@@ -133,7 +152,9 @@ stakingRouter.get('/:eventId', requireAuth, async (req: AuthRequest, res, next) 
       availableThisWeek: Math.max(0, weeklyBudget - usedThisWeek),
       seasonBankroll: parseFloat(me.staking_balance),
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /leagues/:leagueId/staking/:eventId/singles — replace all single bets for event
@@ -141,15 +162,21 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
   try {
     const { leagueId, eventId } = req.params;
 
-    const body = z.object({
-      bets: z.array(z.object({
-        fightId: z.string().uuid(),
-        fighterId: z.string().uuid(),
-        stake: z.number().positive().max(100000),
-      })),
-    }).parse(req.body);
+    const body = z
+      .object({
+        bets: z.array(
+          z.object({
+            fightId: z.string().uuid(),
+            fighterId: z.string().uuid(),
+            stake: z.number().positive().max(100000),
+          }),
+        ),
+      })
+      .parse(req.body);
 
-    const { rows: [member] } = await db.query(
+    const {
+      rows: [member],
+    } = await db.query(
       `SELECT lm.id, l.league_format, l.weekly_budget
        FROM league_members lm JOIN leagues l ON l.id = lm.league_id
        WHERE lm.league_id = $1 AND lm.user_id = $2`,
@@ -158,9 +185,11 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
     if (!member) throw new AppError(403, 'Not a member of this league');
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
-    const { rows: [event] } = await db.query(
-      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [eventId],
-    );
+    const {
+      rows: [event],
+    } = await db.query(`SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [
+      eventId,
+    ]);
     if (!event) throw new AppError(404, 'Event not found');
     if (isEventLocked(event)) throw new AppError(400, 'Betting is closed for this event');
 
@@ -168,13 +197,16 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
     try {
       await client.query('BEGIN');
 
-      const { rows: fights } = await client.query(`
+      const { rows: fights } = await client.query(
+        `
         SELECT id, red_fighter_id, blue_fighter_id, red_fighter_odds, blue_fighter_odds
         FROM fights
         WHERE event_id = $1 AND card_segment IN ('main', 'prelims')
         ORDER BY is_main_event DESC, bout_order DESC
         LIMIT 6
-      `, [eventId]);
+      `,
+        [eventId],
+      );
 
       const fightMap = new Map(fights.map((f: any) => [f.id, f]));
 
@@ -188,11 +220,15 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
       }
 
       // Budget check: existing pending + new bets + pending parlay
-      const { rows: [existingParlay] } = await client.query(
+      const {
+        rows: [existingParlay],
+      } = await client.query(
         `SELECT stake FROM staking_parlays WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
-      const { rows: [existingSinglesAgg] } = await client.query(
+      const {
+        rows: [existingSinglesAgg],
+      } = await client.query(
         `SELECT COALESCE(SUM(stake), 0) AS total FROM staking_singles WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
@@ -212,11 +248,24 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
         const fight = fightMap.get(bet.fightId)!;
         const isRed = fight.red_fighter_id === bet.fighterId;
         const odds: number | null = isRed ? fight.red_fighter_odds : fight.blue_fighter_odds;
-        const potentialPayout = odds != null ? calcPotentialPayout(bet.stake, toDecimalOdds(odds)) : null;
-        await client.query(`
+        const potentialPayout =
+          odds != null ? calcPotentialPayout(bet.stake, toDecimalOdds(odds)) : null;
+        await client.query(
+          `
           INSERT INTO staking_singles (league_id, event_id, member_id, fight_id, fighter_id, odds, stake, potential_payout)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `, [leagueId, eventId, member.id, bet.fightId, bet.fighterId, odds, bet.stake, potentialPayout]);
+        `,
+          [
+            leagueId,
+            eventId,
+            member.id,
+            bet.fightId,
+            bet.fighterId,
+            odds,
+            bet.stake,
+            potentialPayout,
+          ],
+        );
       }
 
       await client.query('COMMIT');
@@ -228,7 +277,9 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
     } finally {
       client.release();
     }
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // PUT /leagues/:leagueId/staking/:eventId/parlay — replace parlay for event
@@ -236,15 +287,24 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
   try {
     const { leagueId, eventId } = req.params;
 
-    const body = z.object({
-      stake: z.number().positive().max(100000),
-      legs: z.array(z.object({
-        fightId: z.string().uuid(),
-        fighterId: z.string().uuid(),
-      })).min(2).max(6),
-    }).parse(req.body);
+    const body = z
+      .object({
+        stake: z.number().positive().max(100000),
+        legs: z
+          .array(
+            z.object({
+              fightId: z.string().uuid(),
+              fighterId: z.string().uuid(),
+            }),
+          )
+          .min(2)
+          .max(6),
+      })
+      .parse(req.body);
 
-    const { rows: [member] } = await db.query(
+    const {
+      rows: [member],
+    } = await db.query(
       `SELECT lm.id, l.league_format, l.weekly_budget
        FROM league_members lm JOIN leagues l ON l.id = lm.league_id
        WHERE lm.league_id = $1 AND lm.user_id = $2`,
@@ -253,9 +313,11 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
     if (!member) throw new AppError(403, 'Not a member of this league');
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
-    const { rows: [event] } = await db.query(
-      `SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [eventId],
-    );
+    const {
+      rows: [event],
+    } = await db.query(`SELECT status, scheduled_at, prelims_at FROM ufc_events WHERE id = $1`, [
+      eventId,
+    ]);
     if (!event) throw new AppError(404, 'Event not found');
     if (isEventLocked(event)) throw new AppError(400, 'Betting is closed for this event');
 
@@ -263,15 +325,23 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
     try {
       await client.query('BEGIN');
 
-      const { rows: fights } = await client.query(`
+      const { rows: fights } = await client.query(
+        `
         SELECT id, red_fighter_id, blue_fighter_id, red_fighter_odds, blue_fighter_odds
         FROM fights WHERE event_id = $1 AND card_segment IN ('main', 'prelims')
         ORDER BY is_main_event DESC, bout_order DESC LIMIT 10
-      `, [eventId]);
+      `,
+        [eventId],
+      );
       const fightMap = new Map(fights.map((f: any) => [f.id, f]));
 
       let combinedDecOdds = 1;
-      const legDetails: { fightId: string; fighterId: string; odds: number | null; decOdds: number | null }[] = [];
+      const legDetails: {
+        fightId: string;
+        fighterId: string;
+        odds: number | null;
+        decOdds: number | null;
+      }[] = [];
       for (const leg of body.legs) {
         const fight = fightMap.get(leg.fightId);
         if (!fight) throw new AppError(400, `Fight ${leg.fightId} not valid for this event`);
@@ -289,17 +359,25 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
         `SELECT stake FROM staking_singles WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
-      const singlesStake = existingSingles.reduce((s: number, r: any) => s + parseFloat(r.stake), 0);
+      const singlesStake = existingSingles.reduce(
+        (s: number, r: any) => s + parseFloat(r.stake),
+        0,
+      );
 
       const weeklyBudget = parseFloat(member.weekly_budget ?? 100);
       const totalCommitted = body.stake + singlesStake;
 
       if (totalCommitted > weeklyBudget + 0.001) {
-        throw new AppError(400, `Exceeds weekly budget of $${weeklyBudget}. Already allocated $${singlesStake.toFixed(2)} to singles.`);
+        throw new AppError(
+          400,
+          `Exceeds weekly budget of $${weeklyBudget}. Already allocated $${singlesStake.toFixed(2)} to singles.`,
+        );
       }
 
       // Remove old parlay (no balance refund — budget is per-event)
-      const { rows: [existingParlay] } = await client.query(
+      const {
+        rows: [existingParlay],
+      } = await client.query(
         `SELECT id FROM staking_parlays WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
         [leagueId, eventId, member.id],
       );
@@ -307,21 +385,42 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
         await client.query(`DELETE FROM staking_parlays WHERE id = $1`, [existingParlay.id]);
       }
 
-      const hasAllOdds = legDetails.every((l) => l.odds != null);
-      const finalDecOdds = hasAllOdds ? combinedDecOdds : null;
-      const potentialPayout = hasAllOdds ? calcPotentialPayout(body.stake, combinedDecOdds) : null;
-      const { rows: [parlay] } = await client.query(`
+      // A leg with no posted line contributes 1.0 to the multiplier (combinedDecOdds
+      // already skips it), matching the bet-builder preview. Store the combined value so
+      // the payout still shows — don't null the whole parlay just because one leg is unpriced.
+      const finalDecOdds = combinedDecOdds;
+      const potentialPayout = calcPotentialPayout(body.stake, combinedDecOdds);
+      const {
+        rows: [parlay],
+      } = await client.query(
+        `
         INSERT INTO staking_parlays (league_id, event_id, member_id, stake, decimal_odds, potential_payout)
         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-      `, [leagueId, eventId, member.id, body.stake,
-          finalDecOdds != null ? Math.round(finalDecOdds * 10000) / 10000 : null, potentialPayout]);
+      `,
+        [
+          leagueId,
+          eventId,
+          member.id,
+          body.stake,
+          finalDecOdds != null ? Math.round(finalDecOdds * 10000) / 10000 : null,
+          potentialPayout,
+        ],
+      );
 
       for (const leg of legDetails) {
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO staking_parlay_legs (parlay_id, fight_id, fighter_id, odds, decimal_odds)
           VALUES ($1,$2,$3,$4,$5)
-        `, [parlay.id, leg.fightId, leg.fighterId, leg.odds,
-            leg.decOdds != null ? Math.round(leg.decOdds * 10000) / 10000 : null]);
+        `,
+          [
+            parlay.id,
+            leg.fightId,
+            leg.fighterId,
+            leg.odds,
+            leg.decOdds != null ? Math.round(leg.decOdds * 10000) / 10000 : null,
+          ],
+        );
       }
 
       await client.query('COMMIT');
@@ -329,7 +428,8 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
       const { rows: legs } = await db.query(
         `SELECT spl.*, fi.first_name as fighter_first_name, fi.last_name as fighter_last_name
          FROM staking_parlay_legs spl JOIN fighters fi ON fi.id = spl.fighter_id
-         WHERE spl.parlay_id = $1`, [parlay.id],
+         WHERE spl.parlay_id = $1`,
+        [parlay.id],
       );
       res.json({ parlay, legs });
       refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
@@ -339,7 +439,9 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
     } finally {
       client.release();
     }
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /leagues/:leagueId/staking/:eventId/parlay
@@ -347,75 +449,107 @@ stakingRouter.delete('/:eventId/parlay', requireAuth, async (req: AuthRequest, r
   try {
     const { leagueId, eventId } = req.params;
 
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows: [parlay] } = await db.query(
+    const {
+      rows: [parlay],
+    } = await db.query(
       `SELECT id FROM staking_parlays WHERE league_id=$1 AND event_id=$2 AND member_id=$3 AND status='pending'`,
       [leagueId, eventId, member.id],
     );
     if (!parlay) throw new AppError(404, 'No pending parlay to remove');
 
-    const { rows: [event] } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
+    const {
+      rows: [event],
+    } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
     if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
 
     await db.query(`DELETE FROM staking_parlays WHERE id = $1`, [parlay.id]);
     res.json({ ok: true });
     refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // DELETE /leagues/:leagueId/staking/:eventId/singles/:betId
-stakingRouter.delete('/:eventId/singles/:betId', requireAuth, async (req: AuthRequest, res, next) => {
-  try {
-    const { leagueId, eventId, betId } = req.params;
+stakingRouter.delete(
+  '/:eventId/singles/:betId',
+  requireAuth,
+  async (req: AuthRequest, res, next) => {
+    try {
+      const { leagueId, eventId, betId } = req.params;
 
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [leagueId, req.user!.id],
-    );
-    if (!member) throw new AppError(403, 'Not a member of this league');
+      const {
+        rows: [member],
+      } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+        leagueId,
+        req.user!.id,
+      ]);
+      if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows: [event] } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
-    if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
+      const {
+        rows: [event],
+      } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
+      if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
 
-    const { rows: [single] } = await db.query(
-      `SELECT id FROM staking_singles WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
-      [betId, leagueId, eventId, member.id],
-    );
-    if (!single) throw new AppError(404, 'Bet not found');
+      const {
+        rows: [single],
+      } = await db.query(
+        `SELECT id FROM staking_singles WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
+        [betId, leagueId, eventId, member.id],
+      );
+      if (!single) throw new AppError(404, 'Bet not found');
 
-    await db.query(`DELETE FROM staking_singles WHERE id = $1`, [single.id]);
-    res.json({ ok: true });
-    refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
-  } catch (err) { next(err); }
-});
+      await db.query(`DELETE FROM staking_singles WHERE id = $1`, [single.id]);
+      res.json({ ok: true });
+      refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // DELETE /leagues/:leagueId/staking/:eventId/parlays/:parlayId
-stakingRouter.delete('/:eventId/parlays/:parlayId', requireAuth, async (req: AuthRequest, res, next) => {
-  try {
-    const { leagueId, eventId, parlayId } = req.params;
+stakingRouter.delete(
+  '/:eventId/parlays/:parlayId',
+  requireAuth,
+  async (req: AuthRequest, res, next) => {
+    try {
+      const { leagueId, eventId, parlayId } = req.params;
 
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [leagueId, req.user!.id],
-    );
-    if (!member) throw new AppError(403, 'Not a member of this league');
+      const {
+        rows: [member],
+      } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+        leagueId,
+        req.user!.id,
+      ]);
+      if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows: [event] } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
-    if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
+      const {
+        rows: [event],
+      } = await db.query(`SELECT status FROM ufc_events WHERE id = $1`, [eventId]);
+      if (!event || event.status !== 'scheduled') throw new AppError(400, 'Betting is closed');
 
-    const { rows: [parlay] } = await db.query(
-      `SELECT id FROM staking_parlays WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
-      [parlayId, leagueId, eventId, member.id],
-    );
-    if (!parlay) throw new AppError(404, 'Parlay not found');
+      const {
+        rows: [parlay],
+      } = await db.query(
+        `SELECT id FROM staking_parlays WHERE id=$1 AND league_id=$2 AND event_id=$3 AND member_id=$4 AND status='pending'`,
+        [parlayId, leagueId, eventId, member.id],
+      );
+      if (!parlay) throw new AppError(404, 'Parlay not found');
 
-    await db.query(`DELETE FROM staking_parlays WHERE id = $1`, [parlay.id]);
-    res.json({ ok: true });
-    refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
-  } catch (err) { next(err); }
-});
+      await db.query(`DELETE FROM staking_parlays WHERE id = $1`, [parlay.id]);
+      res.json({ ok: true });
+      refreshStakingMatchupScores(leagueId, eventId).catch(() => {});
+    } catch (err) {
+      next(err);
+    }
+  },
+);

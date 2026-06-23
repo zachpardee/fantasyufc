@@ -14,14 +14,18 @@ async function main() {
 
   console.log('Active leagues:');
   for (const l of leagues) {
-    console.log(`  ${l.name} (${l.id}): status=${l.status}, events=${l.event_count}, regular_matchups=${l.regular_matchups}, members=${l.member_count}`);
+    console.log(
+      `  ${l.name} (${l.id}): status=${l.status}, events=${l.event_count}, regular_matchups=${l.regular_matchups}, members=${l.member_count}`,
+    );
   }
 
   for (const league of leagues) {
     console.log(`\nRegenerating matchups for: ${league.name} (${league.id})`);
     try {
       const result = await generateMatchupsForLeague(league.id);
-      console.log(`  Done: ${result.events} events, ${result.rounds} rounds, ${result.teams} teams`);
+      console.log(
+        `  Done: ${result.events} events, ${result.rounds} rounds, ${result.teams} teams`,
+      );
     } catch (err: any) {
       console.error(`  Error: ${err.message}`);
     }

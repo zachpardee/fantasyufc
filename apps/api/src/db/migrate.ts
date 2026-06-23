@@ -23,9 +23,9 @@ async function migrate() {
     .sort();
 
   for (const file of files) {
-    const { rows: [existing] } = await db.query(
-      `SELECT id FROM _migrations WHERE filename = $1`, [file],
-    );
+    const {
+      rows: [existing],
+    } = await db.query(`SELECT id FROM _migrations WHERE filename = $1`, [file]);
     if (existing) {
       console.log(`Skipping ${file} (already run)`);
       continue;
@@ -54,4 +54,7 @@ async function migrate() {
   await db.end();
 }
 
-migrate().catch((err) => { console.error(err); process.exit(1); });
+migrate().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

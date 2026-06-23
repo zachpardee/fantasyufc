@@ -31,7 +31,13 @@ async function pollLiveEvents() {
   }
 }
 
-async function pollEvent(event: { id: string; ufc_event_id: string; name: string; scheduled_at: string; status: string }) {
+async function pollEvent(event: {
+  id: string;
+  ufc_event_id: string;
+  name: string;
+  scheduled_at: string;
+  status: string;
+}) {
   const dateStr = new Date(event.scheduled_at).toISOString().slice(0, 10).replace(/-/g, '');
   let espnEvents = await fetchEventsByDate(dateStr);
 
@@ -39,7 +45,9 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
   // won't appear under its UTC date. Try the previous calendar day as a fallback.
   if (!espnEvents.length) {
     const prevDateStr = new Date(new Date(event.scheduled_at).getTime() - 86_400_000)
-      .toISOString().slice(0, 10).replace(/-/g, '');
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, '');
     espnEvents = await fetchEventsByDate(prevDateStr);
   }
 
@@ -58,9 +66,11 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
   // not after the main card — so we never trust it to set 'completed' directly.
   // Instead derive 'completed' from fight-level data after processing results.
   const espnSaysActive = espnEvent.status === 'in' || espnEvent.completed;
-  let resolvedStatus = espnSaysActive ? 'live'
-    : event.status === 'live' ? 'live'   // never revert live → scheduled mid-event
-    : 'scheduled';
+  let resolvedStatus = espnSaysActive
+    ? 'live'
+    : event.status === 'live'
+      ? 'live' // never revert live → scheduled mid-event
+      : 'scheduled';
 
   if (resolvedStatus === 'live' && event.status !== 'live') {
     await db.query(`UPDATE ufc_events SET status = 'live' WHERE id = $1`, [event.id]);
@@ -72,7 +82,9 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     if (!espnFight.completed) continue;
 
     // Primary lookup by ESPN fight ID
-    let { rows: [existingFight] } = await db.query(
+    let {
+      rows: [existingFight],
+    } = await db.query(
       `SELECT f.id, fr.id as result_id
        FROM fights f
        LEFT JOIN fight_results fr ON fr.fight_id = f.id
@@ -85,7 +97,10 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     if (!existingFight) {
       const redLast = espnFight.redCorner.displayName.split(' ').pop()?.toLowerCase() ?? '';
       const blueLast = espnFight.blueCorner.displayName.split(' ').pop()?.toLowerCase() ?? '';
-      const { rows: [nameFight] } = await db.query(`
+      const {
+        rows: [nameFight],
+      } = await db.query(
+        `
         SELECT f.id, fr.id as result_id
         FROM fights f
         JOIN fighters rf ON rf.id = f.red_fighter_id
@@ -93,10 +108,17 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
         LEFT JOIN fight_results fr ON fr.fight_id = f.id
         WHERE f.event_id = $1
           AND (LOWER(rf.last_name) IN ($2, $3) OR LOWER(bf.last_name) IN ($2, $3))
-      `, [event.id, redLast, blueLast]);
+      `,
+        [event.id, redLast, blueLast],
+      );
       if (nameFight) {
-        console.log(`[LivePoller] Name-matched fight ${espnFight.espnFightId} (${espnFight.redCorner.displayName} vs ${espnFight.blueCorner.displayName}) — updating ufc_fight_id`);
-        await db.query(`UPDATE fights SET ufc_fight_id = $1 WHERE id = $2`, [espnFight.espnFightId, nameFight.id]);
+        console.log(
+          `[LivePoller] Name-matched fight ${espnFight.espnFightId} (${espnFight.redCorner.displayName} vs ${espnFight.blueCorner.displayName}) — updating ufc_fight_id`,
+        );
+        await db.query(`UPDATE fights SET ufc_fight_id = $1 WHERE id = $2`, [
+          espnFight.espnFightId,
+          nameFight.id,
+        ]);
         existingFight = nameFight;
       }
     }
@@ -113,7 +135,8 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     // Infer method: if fight lasted all scheduled rounds it went to decision.
     // ESPN clockSeconds is remaining time (0 when round expires). A fight stopped
     // early has clockSeconds > 0; one that went the full final round has clockSeconds == 0.
-    const isDecision = espnFight.period >= espnFight.scheduledRounds && espnFight.clockSeconds === 0;
+    const isDecision =
+      espnFight.period >= espnFight.scheduledRounds && espnFight.clockSeconds === 0;
     const inferredOutcome = isDecision ? 'decision_unanimous' : 'ko_tko';
 
     // Backfill nationality from ESPN flag data while we have it
@@ -127,29 +150,33 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
     }
 
     // Resolve winner fighter ID
-    const { rows: [winnerFighter] } = await db.query(
-      `SELECT id FROM fighters WHERE ufc_fighter_id = $1`,
-      [winner.espnAthleteId],
-    );
+    const {
+      rows: [winnerFighter],
+    } = await db.query(`SELECT id FROM fighters WHERE ufc_fighter_id = $1`, [winner.espnAthleteId]);
     if (!winnerFighter) continue;
     const winnerId = winnerFighter.id;
 
     // Insert basic result (method will be corrected by SportsDB enrichment)
-    const { rows: [fightResult] } = await db.query(`
+    const {
+      rows: [fightResult],
+    } = await db.query(
+      `
       INSERT INTO fight_results (
         fight_id, winner_id, winner_side, outcome,
         ending_round, ending_time_seconds,
         performance_of_night, fight_of_night
       ) VALUES ($1, $2, $3, $4, $5, $6, false, false)
       RETURNING id
-    `, [
-      existingFight.id,
-      winnerId,
-      winnerSide,
-      inferredOutcome,
-      espnFight.period,
-      espnFight.clockSeconds,
-    ]);
+    `,
+      [
+        existingFight.id,
+        winnerId,
+        winnerSide,
+        inferredOutcome,
+        espnFight.period,
+        espnFight.clockSeconds,
+      ],
+    );
 
     await db.query(`UPDATE fights SET status = 'completed' WHERE id = $1`, [existingFight.id]);
 
@@ -158,16 +185,23 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
       console.error('[LivePoller] Scoring error for fight:', espnFight.espnFightId, err),
     );
 
-    console.log(`[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${winner.displayName} wins R${espnFight.period}`);
+    console.log(
+      `[LivePoller] Processed result for fight ${espnFight.espnFightId}: ${winner.displayName} wins R${espnFight.period}`,
+    );
   }
 
   // After processing fights, check if every fight now has a result.
   // Only mark the event completed when the last fight finishes.
-  const { rows: [fightStats] } = await db.query(`
+  const {
+    rows: [fightStats],
+  } = await db.query(
+    `
     SELECT COUNT(*)::int AS total,
            COUNT(*) FILTER (WHERE status = 'completed')::int AS done
     FROM fights WHERE event_id = $1
-  `, [event.id]);
+  `,
+    [event.id],
+  );
 
   if (fightStats.total > 0 && fightStats.done === fightStats.total) {
     resolvedStatus = 'completed';
@@ -181,11 +215,14 @@ async function pollEvent(event: { id: string; ufc_event_id: string; name: string
 }
 
 async function finalizeAllLeagueMatchups(eventId: string) {
-  const { rows: leagues } = await db.query(`
+  const { rows: leagues } = await db.query(
+    `
     SELECT DISTINCT le.league_id
     FROM league_events le
     WHERE le.event_id = $1 AND le.is_scoring = true
-  `, [eventId]);
+  `,
+    [eventId],
+  );
 
   await Promise.allSettled(
     leagues.map((l) =>
@@ -200,32 +237,47 @@ async function finalizeAllLeagueMatchups(eventId: string) {
 }
 
 async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
-  const { rows: [league] } = await db.query(`
+  const {
+    rows: [league],
+  } = await db.query(
+    `
     SELECT status, season_ends_at, playoff_semis_event_id, playoff_finals_event_id, league_format
     FROM leagues WHERE id = $1
-  `, [leagueId]);
+  `,
+    [leagueId],
+  );
 
-  if (league.status !== 'active' || !league.playoff_semis_event_id || !league.season_ends_at) return;
+  if (league.status !== 'active' || !league.playoff_semis_event_id || !league.season_ends_at)
+    return;
 
   // Only trigger if this event is within the regular season window
-  const { rows: [event] } = await db.query(
-    `SELECT scheduled_at FROM ufc_events WHERE id = $1`, [eventId],
-  );
+  const {
+    rows: [event],
+  } = await db.query(`SELECT scheduled_at FROM ufc_events WHERE id = $1`, [eventId]);
   if (!event || new Date(event.scheduled_at) > new Date(league.season_ends_at)) return;
 
   // All regular season events in league_events (excluding the playoff events) must be completed
-  const { rows: notYetDone } = await db.query(`
+  const { rows: notYetDone } = await db.query(
+    `
     SELECT e.id FROM ufc_events e
     JOIN league_events le ON le.event_id = e.id AND le.league_id = $1
     WHERE e.id NOT IN ($2, $3)
       AND e.scheduled_at <= $4
       AND e.status NOT IN ('completed', 'cancelled')
-  `, [leagueId, league.playoff_semis_event_id, league.playoff_finals_event_id, league.season_ends_at]);
+  `,
+    [
+      leagueId,
+      league.playoff_semis_event_id,
+      league.playoff_finals_event_id,
+      league.season_ends_at,
+    ],
+  );
 
   if (notYetDone.length > 0) return;
 
   // Also check no completed regular season matchup is still unfinalized
-  const { rows: pending } = await db.query(`
+  const { rows: pending } = await db.query(
+    `
     SELECT m.id FROM matchups m
     JOIN ufc_events e ON e.id = m.event_id
     WHERE m.league_id = $1
@@ -233,19 +285,24 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
       AND m.winner_id IS NULL
       AND e.scheduled_at <= $2
       AND e.status = 'completed'
-  `, [leagueId, league.season_ends_at]);
+  `,
+    [leagueId, league.season_ends_at],
+  );
 
   if (pending.length > 0) return;
 
   console.log(`[LivePoller] Auto-starting playoffs for league ${leagueId}`);
 
   const isStaking = league.league_format === 'staking';
-  const { rows: topTeams } = await db.query(`
+  const { rows: topTeams } = await db.query(
+    `
     SELECT id FROM league_members
     WHERE league_id = $1 AND is_active = true
     ORDER BY ${isStaking ? 'wins DESC, staking_balance DESC' : 'total_points DESC, wins DESC'}
     LIMIT 4
-  `, [leagueId]);
+  `,
+    [leagueId],
+  );
 
   if (topTeams.length < 2) return;
 
@@ -253,7 +310,10 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
   const fullBracket = topTeams.length >= 4;
   const round = fullBracket ? 'semis' : 'finals';
   const pairs: [any, any, number, number][] = fullBracket
-    ? [[s1, s4, 1, 4], [s2, s3, 2, 3]]
+    ? [
+        [s1, s4, 1, 4],
+        [s2, s3, 2, 3],
+      ]
     : [[s1, s2, 1, 2]];
 
   // Ensure semis event is in league schedule
@@ -263,11 +323,14 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
   );
 
   for (const [home, away, hs, as_] of pairs) {
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
       VALUES ($1, $2, $3, $4, true, $5, $6, $7)
       ON CONFLICT DO NOTHING
-    `, [leagueId, league.playoff_semis_event_id, home.id, away.id, round, hs, as_]);
+    `,
+      [leagueId, league.playoff_semis_event_id, home.id, away.id, round, hs, as_],
+    );
   }
 
   await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [leagueId]);
@@ -281,10 +344,15 @@ async function maybeAutoStartPlayoffs(leagueId: string, eventId: string) {
 }
 
 async function maybeAutoAdvanceToFinals(leagueId: string, eventId: string) {
-  const { rows: [league] } = await db.query(`
+  const {
+    rows: [league],
+  } = await db.query(
+    `
     SELECT status, playoff_semis_event_id, playoff_finals_event_id, league_format
     FROM leagues WHERE id = $1
-  `, [leagueId]);
+  `,
+    [leagueId],
+  );
 
   if (league.status !== 'playoffs' || !league.playoff_finals_event_id) return;
   if (eventId !== league.playoff_semis_event_id) return;
@@ -303,11 +371,14 @@ async function maybeAutoAdvanceToFinals(leagueId: string, eventId: string) {
   );
   if (unfinished.length > 0) return;
 
-  const { rows: semis } = await db.query(`
+  const { rows: semis } = await db.query(
+    `
     SELECT id, home_team_id, away_team_id, home_score, away_score, home_seed, away_seed
     FROM matchups WHERE league_id = $1 AND playoff_round = 'semis'
     ORDER BY home_seed ASC
-  `, [leagueId]);
+  `,
+    [leagueId],
+  );
 
   if (semis.length < 2) return;
 
@@ -316,11 +387,17 @@ async function maybeAutoAdvanceToFinals(leagueId: string, eventId: string) {
     `SELECT id, total_points, staking_balance FROM league_members WHERE league_id = $1`,
     [leagueId],
   );
-  const pts = new Map(memberPts.map((r: any) => [r.id, +(isStaking ? r.staking_balance : r.total_points)]));
+  const pts = new Map(
+    memberPts.map((r: any) => [r.id, +(isStaking ? r.staking_balance : r.total_points)]),
+  );
 
   function pickWinner(m: any): { id: string; seed: number } {
-    const hs = +m.home_score, as_ = +m.away_score;
-    if (hs !== as_) return hs > as_ ? { id: m.home_team_id, seed: m.home_seed } : { id: m.away_team_id, seed: m.away_seed };
+    const hs = +m.home_score,
+      as_ = +m.away_score;
+    if (hs !== as_)
+      return hs > as_
+        ? { id: m.home_team_id, seed: m.home_seed }
+        : { id: m.away_team_id, seed: m.away_seed };
     return (pts.get(m.home_team_id) ?? 0) >= (pts.get(m.away_team_id) ?? 0)
       ? { id: m.home_team_id, seed: m.home_seed }
       : { id: m.away_team_id, seed: m.away_seed };
@@ -330,10 +407,13 @@ async function maybeAutoAdvanceToFinals(leagueId: string, eventId: string) {
   const w2 = pickWinner(semis[1]);
   const [home, away] = w1.seed <= w2.seed ? [w1, w2] : [w2, w1];
 
-  await db.query(`
+  await db.query(
+    `
     INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
     VALUES ($1, $2, $3, $4, true, 'finals', $5, $6)
-  `, [leagueId, league.playoff_finals_event_id, home.id, away.id, home.seed, away.seed]);
+  `,
+    [leagueId, league.playoff_finals_event_id, home.id, away.id, home.seed, away.seed],
+  );
 
   if (isStaking) {
     refreshStakingMatchupScores(leagueId, league.playoff_finals_event_id).catch(() => {});
@@ -346,7 +426,10 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
   console.log('[LivePoller] Enriching results from SportsDB for:', eventName);
 
   // Try different name formats
-  const searchName = eventName.replace(/^UFC\s+/i, 'UFC ').replace(/:.+$/, '').trim();
+  const searchName = eventName
+    .replace(/^UFC\s+/i, 'UFC ')
+    .replace(/:.+$/, '')
+    .trim();
   const sportsDbEvent = await searchEventResults(searchName);
 
   if (!sportsDbEvent?.results.length) {
@@ -355,7 +438,8 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
   }
 
   // LEFT JOIN so we also catch fights that ESPN never recorded a winner for (draws, NC, missed fights)
-  const { rows: fights } = await db.query(`
+  const { rows: fights } = await db.query(
+    `
     SELECT f.id, f.ufc_fight_id, fr.id as result_id, fr.outcome,
            rf.id as red_id, rf.first_name as red_first, rf.last_name as red_last,
            bf.id as blue_id, bf.first_name as blue_first, bf.last_name as blue_last
@@ -364,7 +448,9 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
     JOIN fighters rf ON rf.id = f.red_fighter_id
     JOIN fighters bf ON bf.id = f.blue_fighter_id
     WHERE f.event_id = $1
-  `, [eventId]);
+  `,
+    [eventId],
+  );
 
   let updatedCount = 0;
   let insertedCount = 0;
@@ -377,16 +463,20 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
       const wName = r.winnerName.toLowerCase();
       const lName = r.loserName.toLowerCase();
       const fullNameMatch =
-        redName.includes(wName) || wName.includes(redName) ||
-        blueName.includes(wName) || wName.includes(blueName) ||
-        redName.includes(lName) || lName.includes(redName) ||
-        blueName.includes(lName) || lName.includes(blueName);
+        redName.includes(wName) ||
+        wName.includes(redName) ||
+        blueName.includes(wName) ||
+        wName.includes(blueName) ||
+        redName.includes(lName) ||
+        lName.includes(redName) ||
+        blueName.includes(lName) ||
+        lName.includes(blueName);
       if (fullNameMatch) return true;
       const redLast = redName.split(' ').pop()!;
       const blueLast = blueName.split(' ').pop()!;
       const wLast = wName.split(' ').pop()!;
       const lLast = lName.split(' ').pop()!;
-      return (redLast === wLast || redLast === lLast || blueLast === wLast || blueLast === lLast);
+      return redLast === wLast || redLast === lLast || blueLast === wLast || blueLast === lLast;
     });
 
     if (!sdbResult) continue;
@@ -408,46 +498,64 @@ async function enrichResultsFromSportsDB(eventId: string, eventName: string) {
 
       if (!sdbResult.isDraw && !sdbResult.isNC) {
         const redMatches =
-          redName.includes(wName) || wName.includes(redName) ||
+          redName.includes(wName) ||
+          wName.includes(redName) ||
           redName.split(' ').pop() === wName.split(' ').pop();
         winnerId = redMatches ? fight.red_id : fight.blue_id;
         winnerSide = redMatches ? 'red' : 'blue';
       }
 
-      const { rows: [fightResult] } = await db.query(`
+      const {
+        rows: [fightResult],
+      } = await db.query(
+        `
         INSERT INTO fight_results (
           fight_id, winner_id, winner_side, outcome,
           ending_round, ending_time_seconds,
           performance_of_night, fight_of_night
         ) VALUES ($1, $2, $3, $4, $5, $6, false, false)
         RETURNING id
-      `, [fight.id, winnerId, winnerSide, sdbResult.method, sdbResult.round, sdbResult.timeSeconds]);
+      `,
+        [fight.id, winnerId, winnerSide, sdbResult.method, sdbResult.round, sdbResult.timeSeconds],
+      );
 
       await db.query(`UPDATE fights SET status = 'completed' WHERE id = $1`, [fight.id]);
       await processFightResult(fightResult.id).catch(console.error);
       insertedCount++;
-      console.log(`[LivePoller] SportsDB inserted result: ${fight.red_first} ${fight.red_last} vs ${fight.blue_first} ${fight.blue_last} — ${sdbResult.method}`);
+      console.log(
+        `[LivePoller] SportsDB inserted result: ${fight.red_first} ${fight.red_last} vs ${fight.blue_first} ${fight.blue_last} — ${sdbResult.method}`,
+      );
     }
   }
 
-  console.log(`[LivePoller] SportsDB enrichment: corrected ${updatedCount}, inserted ${insertedCount} fight results for ${eventName}`);
+  console.log(
+    `[LivePoller] SportsDB enrichment: corrected ${updatedCount}, inserted ${insertedCount} fight results for ${eventName}`,
+  );
 }
 
 async function notifyEventStarting(eventId: string, eventName: string) {
   // Notify all users in leagues that have this event scheduled
-  const { rows: users } = await db.query(`
+  const { rows: users } = await db.query(
+    `
     SELECT DISTINCT up.id as user_id
     FROM league_events le
     JOIN leagues l ON l.id = le.league_id
     JOIN league_members lm ON lm.league_id = l.id
     JOIN user_profiles up ON up.id = lm.user_id
     WHERE le.event_id = $1 AND le.is_scoring = true
-  `, [eventId]);
+  `,
+    [eventId],
+  );
 
   await Promise.allSettled(
     users.map((u) =>
-      sendNotification(u.user_id, 'event_starting', `${eventName} is live!`,
-        'Your fighters are competing now. Check your lineup!', { eventId }),
+      sendNotification(
+        u.user_id,
+        'event_starting',
+        `${eventName} is live!`,
+        'Your fighters are competing now. Check your lineup!',
+        { eventId },
+      ),
     ),
   );
 }

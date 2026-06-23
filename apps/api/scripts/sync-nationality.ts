@@ -23,11 +23,14 @@ async function run() {
 
     console.log(`  Page ${page}: ${athletes.length} athletes (updated so far: ${updated})`);
     page++;
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1500));
   }
 
   console.log(`[NationalitySync] Done — updated ${updated} fighters`);
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -24,21 +24,29 @@ eventsRouter.get('/', async (_req, res, next) => {
       LIMIT 50
     `);
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 eventsRouter.get('/live-card', async (_req, res, next) => {
   try {
-    const { rows: [liveEvent] } = await db.query(`
+    const {
+      rows: [liveEvent],
+    } = await db.query(`
       SELECT id, name, status, scheduled_at
       FROM ufc_events
       WHERE status = 'live'
       ORDER BY scheduled_at DESC
       LIMIT 1
     `);
-    if (!liveEvent) { res.json(null); return; }
+    if (!liveEvent) {
+      res.json(null);
+      return;
+    }
 
-    const { rows: fights } = await db.query(`
+    const { rows: fights } = await db.query(
+      `
       SELECT
         f.id, f.bout_order, f.card_segment, f.status, f.is_title_fight,
         f.red_fighter_id, f.blue_fighter_id,
@@ -53,25 +61,32 @@ eventsRouter.get('/live-card', async (_req, res, next) => {
       LEFT JOIN fight_results fr ON fr.fight_id = f.id
       WHERE f.event_id = $1
       ORDER BY f.bout_order DESC
-    `, [liveEvent.id]);
+    `,
+      [liveEvent.id],
+    );
 
     res.json({ event: liveEvent, fights });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 eventsRouter.get('/:eventId', async (req, res, next) => {
   try {
-    const { rows: [event] } = await db.query(
-      `SELECT * FROM ufc_events WHERE id = $1`, [req.params.eventId],
-    );
+    const {
+      rows: [event],
+    } = await db.query(`SELECT * FROM ufc_events WHERE id = $1`, [req.params.eventId]);
     if (!event) throw new AppError(404, 'Event not found');
     res.json(event);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 eventsRouter.get('/:eventId/fights', async (req, res, next) => {
   try {
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT f.*,
         rf.first_name as red_first_name, rf.last_name as red_last_name,
         rf.nickname as red_nickname, rf.image_url as red_image_url,
@@ -84,55 +99,86 @@ eventsRouter.get('/:eventId/fights', async (req, res, next) => {
       JOIN weight_classes wc ON wc.id = f.weight_class_id
       WHERE f.event_id = $1
       ORDER BY f.bout_order ASC
-    `, [req.params.eventId]);
+    `,
+      [req.params.eventId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 eventsRouter.get('/:eventId/results', async (req, res, next) => {
   try {
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT fr.*, f.red_fighter_id, f.blue_fighter_id, f.is_title_fight, f.card_segment
       FROM fight_results fr
       JOIN fights f ON f.id = fr.fight_id
       WHERE f.event_id = $1
-    `, [req.params.eventId]);
+    `,
+      [req.params.eventId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
-eventsRouter.post('/admin/:eventId/results', requireAuth, requireAdmin, async (req: AuthRequest, res, next) => {
-  try {
-    const body = z.object({
-      fightId: z.string().uuid(),
-      winnerId: z.string().uuid().optional(),
-      winnerSide: z.enum(['red', 'blue']).optional(),
-      outcome: z.enum(['ko_tko','submission','decision_unanimous','decision_split','decision_majority','no_contest','disqualification','draw']),
-      endingRound: z.number().int().min(1).max(5),
-      endingTimeSeconds: z.number().int().min(0).max(300),
-      winnerStats: z.object({
-        sigStrikesLanded: z.number().optional(),
-        sigStrikesAttempted: z.number().optional(),
-        totalStrikesLanded: z.number().optional(),
-        takedownsLanded: z.number().optional(),
-        takedownsAttempted: z.number().optional(),
-        submissionAttempts: z.number().optional(),
-        knockdowns: z.number().optional(),
-      }).optional(),
-      loserStats: z.object({
-        sigStrikesLanded: z.number().optional(),
-        sigStrikesAttempted: z.number().optional(),
-        totalStrikesLanded: z.number().optional(),
-        takedownsLanded: z.number().optional(),
-        takedownsAttempted: z.number().optional(),
-        submissionAttempts: z.number().optional(),
-        knockdowns: z.number().optional(),
-      }).optional(),
-      performanceOfNight: z.boolean().default(false),
-      fightOfNight: z.boolean().default(false),
-    }).parse(req.body);
+eventsRouter.post(
+  '/admin/:eventId/results',
+  requireAuth,
+  requireAdmin,
+  async (req: AuthRequest, res, next) => {
+    try {
+      const body = z
+        .object({
+          fightId: z.string().uuid(),
+          winnerId: z.string().uuid().optional(),
+          winnerSide: z.enum(['red', 'blue']).optional(),
+          outcome: z.enum([
+            'ko_tko',
+            'submission',
+            'decision_unanimous',
+            'decision_split',
+            'decision_majority',
+            'no_contest',
+            'disqualification',
+            'draw',
+          ]),
+          endingRound: z.number().int().min(1).max(5),
+          endingTimeSeconds: z.number().int().min(0).max(300),
+          winnerStats: z
+            .object({
+              sigStrikesLanded: z.number().optional(),
+              sigStrikesAttempted: z.number().optional(),
+              totalStrikesLanded: z.number().optional(),
+              takedownsLanded: z.number().optional(),
+              takedownsAttempted: z.number().optional(),
+              submissionAttempts: z.number().optional(),
+              knockdowns: z.number().optional(),
+            })
+            .optional(),
+          loserStats: z
+            .object({
+              sigStrikesLanded: z.number().optional(),
+              sigStrikesAttempted: z.number().optional(),
+              totalStrikesLanded: z.number().optional(),
+              takedownsLanded: z.number().optional(),
+              takedownsAttempted: z.number().optional(),
+              submissionAttempts: z.number().optional(),
+              knockdowns: z.number().optional(),
+            })
+            .optional(),
+          performanceOfNight: z.boolean().default(false),
+          fightOfNight: z.boolean().default(false),
+        })
+        .parse(req.body);
 
-    const { rows: [fr] } = await db.query(`
+      const {
+        rows: [fr],
+      } = await db.query(
+        `
       INSERT INTO fight_results (
         fight_id, winner_id, winner_side, outcome, ending_round, ending_time_seconds,
         winner_sig_strikes_landed, winner_sig_strikes_attempted, winner_total_strikes_landed,
@@ -144,23 +190,39 @@ eventsRouter.post('/admin/:eventId/results', requireAuth, requireAdmin, async (r
       ON CONFLICT (fight_id) DO UPDATE SET
         winner_id=$2, outcome=$4, ending_round=$5, performance_of_night=$21, fight_of_night=$22
       RETURNING id
-    `, [
-      body.fightId, body.winnerId ?? null, body.winnerSide ?? null, body.outcome,
-      body.endingRound, body.endingTimeSeconds,
-      body.winnerStats?.sigStrikesLanded, body.winnerStats?.sigStrikesAttempted,
-      body.winnerStats?.totalStrikesLanded, body.winnerStats?.takedownsLanded,
-      body.winnerStats?.takedownsAttempted, body.winnerStats?.submissionAttempts,
-      body.winnerStats?.knockdowns,
-      body.loserStats?.sigStrikesLanded, body.loserStats?.sigStrikesAttempted,
-      body.loserStats?.totalStrikesLanded, body.loserStats?.takedownsLanded,
-      body.loserStats?.takedownsAttempted, body.loserStats?.submissionAttempts,
-      body.loserStats?.knockdowns,
-      body.performanceOfNight, body.fightOfNight,
-    ]);
+    `,
+        [
+          body.fightId,
+          body.winnerId ?? null,
+          body.winnerSide ?? null,
+          body.outcome,
+          body.endingRound,
+          body.endingTimeSeconds,
+          body.winnerStats?.sigStrikesLanded,
+          body.winnerStats?.sigStrikesAttempted,
+          body.winnerStats?.totalStrikesLanded,
+          body.winnerStats?.takedownsLanded,
+          body.winnerStats?.takedownsAttempted,
+          body.winnerStats?.submissionAttempts,
+          body.winnerStats?.knockdowns,
+          body.loserStats?.sigStrikesLanded,
+          body.loserStats?.sigStrikesAttempted,
+          body.loserStats?.totalStrikesLanded,
+          body.loserStats?.takedownsLanded,
+          body.loserStats?.takedownsAttempted,
+          body.loserStats?.submissionAttempts,
+          body.loserStats?.knockdowns,
+          body.performanceOfNight,
+          body.fightOfNight,
+        ],
+      );
 
-    await db.query(`UPDATE fights SET status = 'completed' WHERE id = $1`, [body.fightId]);
-    await processFightResult(fr.id);
+      await db.query(`UPDATE fights SET status = 'completed' WHERE id = $1`, [body.fightId]);
+      await processFightResult(fr.id);
 
-    res.status(201).json({ ok: true, fightResultId: fr.id });
-  } catch (err) { next(err); }
-});
+      res.status(201).json({ ok: true, fightResultId: fr.id });
+    } catch (err) {
+      next(err);
+    }
+  },
+);

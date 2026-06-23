@@ -17,16 +17,19 @@ async function run() {
     const match = espnEvents.find(
       (e) => e.espnEventId === event.ufc_event_id || event.name.includes(e.name.split(':')[0]),
     );
-    if (!match) { console.log(`  No ESPN match for: ${event.name}`); continue; }
+    if (!match) {
+      console.log(`  No ESPN match for: ${event.name}`);
+      continue;
+    }
 
     for (const fight of match.fights) {
       for (const corner of [fight.redCorner, fight.blueCorner]) {
         if (!corner.country || seen.has(corner.espnAthleteId)) continue;
         seen.add(corner.espnAthleteId);
-        const r = await db.query(
-          `UPDATE fighters SET nationality = $1 WHERE ufc_fighter_id = $2`,
-          [corner.country, corner.espnAthleteId],
-        );
+        const r = await db.query(`UPDATE fighters SET nationality = $1 WHERE ufc_fighter_id = $2`, [
+          corner.country,
+          corner.espnAthleteId,
+        ]);
         if (r.rowCount && r.rowCount > 0) {
           console.log(`  ${corner.displayName} → ${corner.country}`);
           updated++;
@@ -34,11 +37,14 @@ async function run() {
       }
     }
     console.log(`Done: ${event.name}`);
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   console.log(`\nUpdated ${updated} fighters with nationality.`);
   process.exit(0);
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

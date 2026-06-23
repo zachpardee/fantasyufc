@@ -28,4 +28,7 @@ async function run() {
   console.log('All seeds complete.');
 }
 
-run().catch((err) => { console.error(err); process.exit(1); });
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

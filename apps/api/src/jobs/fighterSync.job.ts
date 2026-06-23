@@ -28,7 +28,9 @@ export async function syncAllFighters() {
         }
       }
 
-      console.log(`[FighterSync] Page ${page}: synced ${athletes.length} fighters (total: ${total})`);
+      console.log(
+        `[FighterSync] Page ${page}: synced ${athletes.length} fighters (total: ${total})`,
+      );
       page++;
 
       // Throttle between pages
@@ -47,17 +49,18 @@ async function upsertFighter(athlete: EspnAthlete) {
   // Resolve weight class
   let weightClassId: string | null = null;
   if (athlete.weightClassSlug) {
-    const { rows: [wc] } = await db.query(
-      `SELECT id FROM weight_classes WHERE slug = $1`,
-      [athlete.weightClassSlug],
-    );
+    const {
+      rows: [wc],
+    } = await db.query(`SELECT id FROM weight_classes WHERE slug = $1`, [athlete.weightClassSlug]);
     weightClassId = wc?.id ?? null;
   }
 
   if (!weightClassId) {
     // Infer from weight
     if (athlete.weightLbs) {
-      const { rows: [wc] } = await db.query(
+      const {
+        rows: [wc],
+      } = await db.query(
         `SELECT id FROM weight_classes WHERE weight_limit_lbs >= $1 ORDER BY weight_limit_lbs ASC LIMIT 1`,
         [athlete.weightLbs - 5],
       );
@@ -67,7 +70,8 @@ async function upsertFighter(athlete: EspnAthlete) {
 
   if (!weightClassId) return; // Can't insert without weight class
 
-  await db.query(`
+  await db.query(
+    `
     INSERT INTO fighters (
       ufc_fighter_id, first_name, last_name, weight_class_id,
       nationality, image_url, height_inches, reach_inches, dob
@@ -81,17 +85,19 @@ async function upsertFighter(athlete: EspnAthlete) {
       height_inches = COALESCE(EXCLUDED.height_inches, fighters.height_inches),
       reach_inches  = COALESCE(EXCLUDED.reach_inches, fighters.reach_inches),
       dob           = COALESCE(EXCLUDED.dob, fighters.dob)
-  `, [
-    athlete.espnId,
-    athlete.firstName,
-    athlete.lastName,
-    weightClassId,
-    athlete.country ?? null,
-    athlete.imageUrl ?? null,
-    athlete.heightInches ?? null,
-    athlete.reachInches ?? null,
-    athlete.dateOfBirth ?? null,
-  ]);
+  `,
+    [
+      athlete.espnId,
+      athlete.firstName,
+      athlete.lastName,
+      weightClassId,
+      athlete.country ?? null,
+      athlete.imageUrl ?? null,
+      athlete.heightInches ?? null,
+      athlete.reachInches ?? null,
+      athlete.dateOfBirth ?? null,
+    ],
+  );
 }
 
 function sleep(ms: number) {

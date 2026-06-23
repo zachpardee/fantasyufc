@@ -23,13 +23,16 @@ scheduleRouter.get('/recent-past', requireAuth, async (req: AuthRequest, res, ne
       LIMIT 3
     `);
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // List UFC events available to add to a league's schedule
 scheduleRouter.get('/available', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT e.id, e.name, e.short_name, e.scheduled_at, e.status,
              e.venue, e.location,
              COUNT(f.id) as fight_count,
@@ -44,15 +47,20 @@ scheduleRouter.get('/available', requireAuth, async (req: AuthRequest, res, next
       GROUP BY e.id
       ORDER BY e.scheduled_at ASC
       LIMIT 30
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Get events currently on this league's schedule
 scheduleRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT e.id, e.name, e.short_name, e.scheduled_at, e.status,
              e.venue, e.location, le.is_scoring,
              COUNT(f.id) as fight_count,
@@ -64,21 +72,29 @@ scheduleRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       WHERE le.league_id = $1
       GROUP BY e.id, le.is_scoring
       ORDER BY e.scheduled_at ASC
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Add an event to a league's schedule and (re)generate matchups
 scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { eventId, isScoring = true } = z.object({
-      eventId: z.string().uuid(),
-      isScoring: z.boolean().default(true),
-    }).parse(req.body);
+    const { eventId, isScoring = true } = z
+      .object({
+        eventId: z.string().uuid(),
+        isScoring: z.boolean().default(true),
+      })
+      .parse(req.body);
 
     // Only commissioner can modify schedule
-    const { rows: [league] } = await db.query(
+    const {
+      rows: [league],
+    } = await db.query(
       `SELECT commissioner_id, status, season_year, season_ends_at FROM leagues WHERE id = $1`,
       [req.params.leagueId],
     );
@@ -87,7 +103,9 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
     if (league.status === 'completed') throw new AppError(400, 'Season is over');
 
     // Verify the event exists
-    const { rows: [event] } = await db.query(
+    const {
+      rows: [event],
+    } = await db.query(
       `SELECT id, name, scheduled_at FROM ufc_events WHERE id = $1 AND status != 'cancelled'`,
       [eventId],
     );
@@ -97,76 +115,105 @@ scheduleRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
     const eventDate = new Date(event.scheduled_at);
     if (league.season_ends_at) {
       if (eventDate > new Date(league.season_ends_at)) {
-        throw new AppError(400, `Events must fall before the season end (${new Date(league.season_ends_at).toLocaleDateString()})`);
+        throw new AppError(
+          400,
+          `Events must fall before the season end (${new Date(league.season_ends_at).toLocaleDateString()})`,
+        );
       }
     } else {
       const { start, end } = seasonWindow(league.season_year);
       if (eventDate < start || eventDate > end) {
-        throw new AppError(400, `Events must fall within the season window (Jan 1 – Jun 30 ${league.season_year})`);
+        throw new AppError(
+          400,
+          `Events must fall within the season window (Jan 1 – Jun 30 ${league.season_year})`,
+        );
       }
     }
 
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO league_events (league_id, event_id, is_scoring)
       VALUES ($1, $2, $3)
       ON CONFLICT (league_id, event_id) DO UPDATE SET is_scoring = EXCLUDED.is_scoring
-    `, [req.params.leagueId, eventId, isScoring]);
+    `,
+      [req.params.leagueId, eventId, isScoring],
+    );
 
     // Only generate matchups if the league has members with draft positions (post-draft)
     if (league.status === 'active') {
       const result = await generateMatchupsForLeague(req.params.leagueId);
       res.status(201).json({ ok: true, event, matchupsGenerated: result });
     } else {
-      res.status(201).json({ ok: true, event, matchupsGenerated: null, note: 'Matchups will generate after draft completes' });
+      res.status(201).json({
+        ok: true,
+        event,
+        matchupsGenerated: null,
+        note: 'Matchups will generate after draft completes',
+      });
     }
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Remove an event from a league's schedule
 scheduleRouter.delete('/:eventId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [league] } = await db.query(
-      `SELECT commissioner_id FROM leagues WHERE id = $1`,
-      [req.params.leagueId],
-    );
+    const {
+      rows: [league],
+    } = await db.query(`SELECT commissioner_id FROM leagues WHERE id = $1`, [req.params.leagueId]);
     if (league?.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
 
     // Don't allow removing events that already have scores
-    const { rows: [hasScores] } = await db.query(`
+    const {
+      rows: [hasScores],
+    } = await db.query(
+      `
       SELECT 1 FROM matchups m
       WHERE m.league_id = $1 AND m.event_id = $2
         AND (m.home_score > 0 OR m.away_score > 0)
       LIMIT 1
-    `, [req.params.leagueId, req.params.eventId]);
-
-    if (hasScores) throw new AppError(400, 'Cannot remove an event that already has scoring activity');
-
-    await db.query(
-      `DELETE FROM league_events WHERE league_id = $1 AND event_id = $2`,
+    `,
       [req.params.leagueId, req.params.eventId],
     );
 
+    if (hasScores)
+      throw new AppError(400, 'Cannot remove an event that already has scoring activity');
+
+    await db.query(`DELETE FROM league_events WHERE league_id = $1 AND event_id = $2`, [
+      req.params.leagueId,
+      req.params.eventId,
+    ]);
+
     // Regenerate matchup schedule without this event
-    const { rows: [{ status }] } = await db.query(`SELECT status FROM leagues WHERE id = $1`, [req.params.leagueId]);
+    const {
+      rows: [{ status }],
+    } = await db.query(`SELECT status FROM leagues WHERE id = $1`, [req.params.leagueId]);
     if (status === 'active') {
       await generateMatchupsForLeague(req.params.leagueId).catch(() => {}); // Best-effort
     }
 
     res.json({ ok: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Manually trigger matchup regeneration (commissioner)
 scheduleRouter.post('/regenerate-matchups', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [league] } = await db.query(
-      `SELECT commissioner_id, status FROM leagues WHERE id = $1`,
-      [req.params.leagueId],
-    );
+    const {
+      rows: [league],
+    } = await db.query(`SELECT commissioner_id, status FROM leagues WHERE id = $1`, [
+      req.params.leagueId,
+    ]);
     if (league?.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
-    if (league.status !== 'active') throw new AppError(400, 'League must be active to generate matchups');
+    if (league.status !== 'active')
+      throw new AppError(400, 'League must be active to generate matchups');
 
     const result = await generateMatchupsForLeague(req.params.leagueId);
     res.json({ ok: true, ...result });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

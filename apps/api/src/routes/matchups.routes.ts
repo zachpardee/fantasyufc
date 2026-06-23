@@ -3,19 +3,23 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.middleware';
 import { db } from '../config/database';
 import { AppError } from '../middleware/error.middleware';
 import { redis, CACHE_TTL } from '../config/redis';
+import { lingerWindowSql } from '../utils/currentEvent';
 
 export const matchupsRouter = Router({ mergeParams: true });
 
 // All UFC events from season start (for chip strip — includes events with no matchup)
 matchupsRouter.get('/season-events', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT DISTINCT e.id as event_id, e.name as event_name, e.scheduled_at, e.status as event_status
       FROM ufc_events e
       JOIN leagues l ON l.id = $1
@@ -51,20 +55,27 @@ matchupsRouter.get('/season-events', requireAuth, async (req: AuthRequest, res, 
           )
         )
       ORDER BY e.scheduled_at DESC
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
         ht.team_name as home_team_name, at2.team_name as away_team_name,
@@ -77,21 +88,30 @@ matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       JOIN user_profiles aup ON aup.id = at2.user_id
       WHERE m.league_id = $1
       ORDER BY e.scheduled_at DESC
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     // Priority: 1) live event, 2) most recently completed, 3) next scheduled
-    let { rows: [matchup] } = await db.query(`
+    let {
+      rows: [matchup],
+    } = await db.query(
+      `
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
         ht.team_name as home_team_name, at2.team_name as away_team_name
@@ -104,11 +124,43 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
         AND e.status = 'live'
       ORDER BY e.scheduled_at ASC
       LIMIT 1
-    `, [req.params.leagueId, member.id]);
+    `,
+      [req.params.leagueId, member.id],
+    );
 
     if (!matchup) {
-      // Next scheduled matchup (upcoming event — preferred over completed for pick-making)
-      const { rows: [upcoming] } = await db.query(`
+      // Recently completed matchup still in its post-event review window — keep showing it
+      // (through Monday for a Saturday event) so users can review the result before it
+      // switches to the next matchup at local midnight.
+      const {
+        rows: [lingering],
+      } = await db.query(
+        `
+        SELECT m.*,
+          e.name as event_name, e.scheduled_at, e.status as event_status,
+          ht.team_name as home_team_name, at2.team_name as away_team_name
+        FROM matchups m
+        JOIN ufc_events e ON e.id = m.event_id
+        JOIN league_members ht ON ht.id = m.home_team_id
+        JOIN league_members at2 ON at2.id = m.away_team_id
+        WHERE m.league_id = $1
+          AND (m.home_team_id = $2 OR m.away_team_id = $2)
+          AND e.status = 'completed'
+          AND ${lingerWindowSql('e')}
+        ORDER BY e.scheduled_at DESC
+        LIMIT 1
+      `,
+        [req.params.leagueId, member.id],
+      );
+      matchup = lingering ?? null;
+    }
+
+    if (!matchup) {
+      // Next scheduled matchup (upcoming event)
+      const {
+        rows: [upcoming],
+      } = await db.query(
+        `
         SELECT m.*,
           e.name as event_name, e.scheduled_at, e.status as event_status,
           ht.team_name as home_team_name, at2.team_name as away_team_name
@@ -121,13 +173,18 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
           AND e.status = 'scheduled'
         ORDER BY e.scheduled_at ASC
         LIMIT 1
-      `, [req.params.leagueId, member.id]);
+      `,
+        [req.params.leagueId, member.id],
+      );
       matchup = upcoming ?? null;
     }
 
     if (!matchup) {
       // Fall back to most recently completed matchup
-      const { rows: [recent] } = await db.query(`
+      const {
+        rows: [recent],
+      } = await db.query(
+        `
         SELECT m.*,
           e.name as event_name, e.scheduled_at, e.status as event_status,
           ht.team_name as home_team_name, at2.team_name as away_team_name
@@ -140,50 +197,72 @@ matchupsRouter.get('/current', requireAuth, async (req: AuthRequest, res, next) 
           AND e.status = 'completed'
         ORDER BY e.scheduled_at DESC
         LIMIT 1
-      `, [req.params.leagueId, member.id]);
+      `,
+        [req.params.leagueId, member.id],
+      );
       matchup = recent ?? null;
     }
 
-    if (!matchup) { res.json(null); return; }
+    if (!matchup) {
+      res.json(null);
+      return;
+    }
     res.json(matchup);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // /standings must be before /:matchupId to avoid Express matching 'standings' as a param
 matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
     const cacheKey = `standings:${req.params.leagueId}`;
     const cached = await redis.get(cacheKey);
-    if (cached) { res.json(JSON.parse(cached)); return; }
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
 
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT lm.*, up.username, up.display_name, up.avatar_url
       FROM league_members lm
       JOIN user_profiles up ON up.id = lm.user_id
       WHERE lm.league_id = $1 AND lm.is_active = true
       ORDER BY lm.total_points DESC, lm.wins DESC
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
 
     await redis.setex(cacheKey, CACHE_TTL.STANDINGS, JSON.stringify(rows));
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
 
-    const { rows: [matchup] } = await db.query(`
+    const {
+      rows: [matchup],
+    } = await db.query(
+      `
       SELECT m.*, e.name as event_name, e.scheduled_at, e.status as event_status,
         e.venue, e.location,
         ht.team_name as home_team_name, at2.team_name as away_team_name,
@@ -210,9 +289,13 @@ matchupsRouter.get('/:matchupId', requireAuth, async (req: AuthRequest, res, nex
       JOIN league_members ht ON ht.id = m.home_team_id
       JOIN league_members at2 ON at2.id = m.away_team_id
       WHERE m.id = $1 AND m.league_id = $2
-    `, [req.params.matchupId, req.params.leagueId]);
+    `,
+      [req.params.matchupId, req.params.leagueId],
+    );
     if (!matchup) throw new AppError(404, 'Matchup not found');
 
     res.json(matchup);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

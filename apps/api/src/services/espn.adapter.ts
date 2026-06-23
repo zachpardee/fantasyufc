@@ -63,17 +63,20 @@ async function fetchJson(url: string): Promise<unknown> {
 }
 
 export async function fetchUpcomingEvents(): Promise<EspnEvent[]> {
-  const data = await fetchJson(`${ESPN_SITE}/scoreboard`) as any;
+  const data = (await fetchJson(`${ESPN_SITE}/scoreboard`)) as any;
   return (data.events ?? []).map(parseEvent).filter(Boolean) as EspnEvent[];
 }
 
 export async function fetchEventsByDate(yyyymmdd: string): Promise<EspnEvent[]> {
-  const data = await fetchJson(`${ESPN_SITE}/scoreboard?dates=${yyyymmdd}`) as any;
+  const data = (await fetchJson(`${ESPN_SITE}/scoreboard?dates=${yyyymmdd}`)) as any;
   return (data.events ?? []).map(parseEvent).filter(Boolean) as EspnEvent[];
 }
 
-export async function fetchAthletes(page = 1, limit = 100): Promise<{ athletes: EspnAthlete[]; hasMore: boolean }> {
-  const data = await fetchJson(`${ESPN_CORE}/athletes?limit=${limit}&page=${page}`) as any;
+export async function fetchAthletes(
+  page = 1,
+  limit = 100,
+): Promise<{ athletes: EspnAthlete[]; hasMore: boolean }> {
+  const data = (await fetchJson(`${ESPN_CORE}/athletes?limit=${limit}&page=${page}`)) as any;
   const refs: string[] = (data.items ?? []).map((item: any) => item.$ref);
 
   const athletes: EspnAthlete[] = [];
@@ -93,7 +96,7 @@ export async function fetchAthletes(page = 1, limit = 100): Promise<{ athletes: 
 
 async function fetchAthleteByRef(ref: string): Promise<EspnAthlete | null> {
   try {
-    const data = await fetchJson(ref) as any;
+    const data = (await fetchJson(ref)) as any;
     const slug = data.weightClass?.slug as string | undefined;
     return {
       espnId: String(data.id),
@@ -206,7 +209,8 @@ function parseMoneyline(raw: unknown): number | undefined {
 
 function parseFighter(comp: any): EspnFighter {
   const recordStr = comp.records?.find((r: any) => r.type === 'total')?.summary ?? '';
-  const country: string | undefined = comp.athlete?.flag?.alt ?? comp.athlete?.country?.name ?? undefined;
+  const country: string | undefined =
+    comp.athlete?.flag?.alt ?? comp.athlete?.country?.name ?? undefined;
   return {
     espnAthleteId: String(comp.id),
     displayName: comp.athlete?.displayName ?? '',
@@ -219,19 +223,19 @@ function parseFighter(comp: any): EspnFighter {
 // Map ESPN weight class slugs to our DB slugs
 function normalizeWeightClassSlug(espnSlug: string): string {
   const map: Record<string, string> = {
-    'flyweight': 'flyweight',
-    'bantamweight': 'bantamweight',
-    'featherweight': 'featherweight',
-    'lightweight': 'lightweight',
-    'welterweight': 'welterweight',
-    'middleweight': 'middleweight',
+    flyweight: 'flyweight',
+    bantamweight: 'bantamweight',
+    featherweight: 'featherweight',
+    lightweight: 'lightweight',
+    welterweight: 'welterweight',
+    middleweight: 'middleweight',
     'light-heavyweight': 'light-heavyweight',
-    'heavyweight': 'heavyweight',
+    heavyweight: 'heavyweight',
     'womens-strawweight': 'womens-strawweight',
     'womens-flyweight': 'womens-flyweight',
     'womens-bantamweight': 'womens-bantamweight',
     'womens-featherweight': 'womens-featherweight',
-    'strawweight': 'womens-strawweight',
+    strawweight: 'womens-strawweight',
   };
   return map[espnSlug] ?? espnSlug;
 }

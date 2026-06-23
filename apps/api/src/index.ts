@@ -13,7 +13,10 @@ async function main() {
   const dbClient = await db.connect();
   dbClient.release();
   await redis.connect().catch((err: unknown) => {
-    console.warn('[Cache] Redis connect failed, falling back to in-memory cache:', (err as Error).message);
+    console.warn(
+      '[Cache] Redis connect failed, falling back to in-memory cache:',
+      (err as Error).message,
+    );
   });
 
   startEventSyncJob();

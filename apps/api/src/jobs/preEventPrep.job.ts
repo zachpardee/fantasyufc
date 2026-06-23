@@ -12,14 +12,19 @@ import { upsertEventPublic } from './eventSync.job';
 //   3. Generates matchups for any leagues that newly received the event
 //   4. Syncs odds from The Odds API (when ODDS_API_KEY is configured, within 7 days)
 export function startPreEventPrepJob() {
-  cron.schedule('0 */4 * * *', () => prepUpcomingEvents().catch(console.error), { timezone: 'UTC' });
+  cron.schedule('0 */4 * * *', () => prepUpcomingEvents().catch(console.error), {
+    timezone: 'UTC',
+  });
 }
 
 export async function prepUpcomingEvents(): Promise<void> {
   console.log('[PreEventPrep] Running...');
   try {
     const { rows: events } = await db.query<{
-      id: string; name: string; ufc_event_id: string; scheduled_at: string;
+      id: string;
+      name: string;
+      ufc_event_id: string;
+      scheduled_at: string;
     }>(`
       SELECT id, name, ufc_event_id, scheduled_at
       FROM ufc_events
@@ -34,7 +39,8 @@ export async function prepUpcomingEvents(): Promise<void> {
     }
 
     for (const event of events) {
-      const daysUntil = (new Date(event.scheduled_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      const daysUntil =
+        (new Date(event.scheduled_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
 
       // Refresh fight card from ESPN for events within 7 days (roster changes, order shifts)
       if (daysUntil <= 7) {
@@ -62,7 +68,8 @@ export async function prepUpcomingEvents(): Promise<void> {
           console.warn(`[PreEventPrep] Odds sync failed for "${event.name}": ${err.message}`);
           return 0;
         });
-        if (matched) console.log(`[PreEventPrep] Updated odds for ${matched} fight(s) in "${event.name}"`);
+        if (matched)
+          console.log(`[PreEventPrep] Updated odds for ${matched} fight(s) in "${event.name}"`);
       }
     }
 
@@ -73,13 +80,16 @@ export async function prepUpcomingEvents(): Promise<void> {
 }
 
 async function pushEventToAllLeagues(eventId: string): Promise<number> {
-  const { rows: leagues } = await db.query<{ id: string }>(`
+  const { rows: leagues } = await db.query<{ id: string }>(
+    `
     SELECT l.id FROM leagues l
     WHERE l.status IN ('active', 'playoffs')
       AND NOT EXISTS (
         SELECT 1 FROM league_events le WHERE le.league_id = l.id AND le.event_id = $1
       )
-  `, [eventId]);
+  `,
+    [eventId],
+  );
 
   for (const league of leagues) {
     await db.query(
@@ -94,18 +104,27 @@ async function pushEventToAllLeagues(eventId: string): Promise<number> {
   return leagues.length;
 }
 
-async function syncOddsForEvent(event: { id: string; name: string; scheduled_at: string }): Promise<number> {
+async function syncOddsForEvent(event: {
+  id: string;
+  name: string;
+  scheduled_at: string;
+}): Promise<number> {
   const apiKey = process.env.ODDS_API_KEY!;
 
   const { rows: fights } = await db.query<{
-    id: string; red_last: string; blue_last: string;
-  }>(`
+    id: string;
+    red_last: string;
+    blue_last: string;
+  }>(
+    `
     SELECT f.id, rf.last_name AS red_last, bf.last_name AS blue_last
     FROM fights f
     JOIN fighters rf ON rf.id = f.red_fighter_id
     JOIN fighters bf ON bf.id = f.blue_fighter_id
     WHERE f.event_id = $1
-  `, [event.id]);
+  `,
+    [event.id],
+  );
 
   if (!fights.length) return 0;
 
@@ -121,7 +140,7 @@ async function syncOddsForEvent(event: { id: string; name: string; scheduled_at:
     return 0;
   }
 
-  const oddsEvents = await res.json() as any[];
+  const oddsEvents = (await res.json()) as any[];
   let matched = 0;
 
   for (const fight of fights) {
@@ -130,11 +149,15 @@ async function syncOddsForEvent(event: { id: string; name: string; scheduled_at:
 
     const oddsEvent = oddsEvents.find((oe) => {
       const names = [oe.home_team?.toLowerCase() ?? '', oe.away_team?.toLowerCase() ?? ''];
-      return names.some((n) => n.includes(redLast) || n.includes(blueLast));
+      // Require BOTH fighters to appear, so we never pull a price from a different bout
+      // that merely shares one fighter (e.g. a late replacement still listed under the
+      // original opponent). No match = leave unpriced rather than wrong.
+      return names.some((n) => n.includes(redLast)) && names.some((n) => n.includes(blueLast));
     });
     if (!oddsEvent) continue;
 
-    const bookmaker = oddsEvent.bookmakers?.find((b: any) => b.key === 'draftkings') ?? oddsEvent.bookmakers?.[0];
+    const bookmaker =
+      oddsEvent.bookmakers?.find((b: any) => b.key === 'draftkings') ?? oddsEvent.bookmakers?.[0];
     const h2h = bookmaker?.markets?.find((m: any) => m.key === 'h2h');
     if (!h2h) continue;
 

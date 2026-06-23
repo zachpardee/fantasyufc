@@ -7,9 +7,9 @@ import { refreshStakingMatchupScores } from '../services/scoring.service';
 export const playoffsRouter = Router({ mergeParams: true });
 
 async function getBracket(leagueId: string) {
-  const { rows: [leagueRow] } = await db.query(
-    `SELECT league_format, weekly_budget FROM leagues WHERE id = $1`, [leagueId],
-  );
+  const {
+    rows: [leagueRow],
+  } = await db.query(`SELECT league_format, weekly_budget FROM leagues WHERE id = $1`, [leagueId]);
   const isStaking = leagueRow?.league_format === 'staking';
   const weeklyBudget = +(leagueRow?.weekly_budget ?? 100);
 
@@ -37,48 +37,66 @@ async function getBracket(leagueId: string) {
   );
 
   const sortCol = isStaking ? 'lm.staking_balance' : 'lm.total_points';
-  const { rows: seeds } = await db.query(`
+  const { rows: seeds } = await db.query(
+    `
     SELECT lm.id, lm.team_name, lm.wins, lm.losses, lm.total_points, lm.staking_balance
     FROM league_members lm
     WHERE lm.league_id = $1 AND lm.is_active = true
     ORDER BY ${sortCol} DESC, lm.wins DESC
     LIMIT 4
-  `, [leagueId]);
+  `,
+    [leagueId],
+  );
 
   let phase: 'none' | 'semis' | 'finals' | 'complete' = 'none';
   if (semis.length > 0) phase = 'semis';
   if (finals.length > 0) phase = 'finals';
   if (finals.length > 0 && finals[0].winner_id) phase = 'complete';
 
-  return { phase, seeds, semisMatchups: semis, finalsMatchup: finals[0] ?? null, isStaking, weeklyBudget };
+  return {
+    phase,
+    seeds,
+    semisMatchups: semis,
+    finalsMatchup: finals[0] ?? null,
+    isStaking,
+    weeklyBudget,
+  };
 }
 
 playoffsRouter.get('/bracket', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [member] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [member],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!member) throw new AppError(403, 'Not a member of this league');
     res.json(await getBracket(req.params.leagueId));
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [league] } = await db.query(
-      `SELECT id, commissioner_id, status FROM leagues WHERE id = $1`,
-      [req.params.leagueId],
-    );
+    const {
+      rows: [league],
+    } = await db.query(`SELECT id, commissioner_id, status FROM leagues WHERE id = $1`, [
+      req.params.leagueId,
+    ]);
     if (!league) throw new AppError(404, 'League not found');
     if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
-    if (league.status !== 'active') throw new AppError(400, 'League must be active to start playoffs');
+    if (league.status !== 'active')
+      throw new AppError(400, 'League must be active to start playoffs');
 
     const { semisEventId, memberIds } = req.body;
     if (!semisEventId) throw new AppError(400, 'semisEventId required');
 
     // Check event exists
-    const { rows: [event] } = await db.query(`SELECT id FROM ufc_events WHERE id = $1`, [semisEventId]);
+    const {
+      rows: [event],
+    } = await db.query(`SELECT id FROM ufc_events WHERE id = $1`, [semisEventId]);
     if (!event) throw new AppError(404, 'Event not found');
 
     // Check no semis already exist
@@ -88,13 +106,15 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     );
     if (existing.length > 0) throw new AppError(400, 'Playoffs already started');
 
-    const { rows: [startLeague] } = await db.query(
-      `SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId],
-    );
+    const {
+      rows: [startLeague],
+    } = await db.query(`SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId]);
     const isStartStaking = startLeague?.league_format === 'staking';
 
     // Seed top 4: staking leagues sort by wins first, then bankroll; pick'em by total_points then wins
-    const startOrderBy = isStartStaking ? 'wins DESC, staking_balance DESC' : 'total_points DESC, wins DESC';
+    const startOrderBy = isStartStaking
+      ? 'wins DESC, staking_balance DESC'
+      : 'total_points DESC, wins DESC';
 
     let topTeams: any[];
     if (Array.isArray(memberIds) && memberIds.length >= 2) {
@@ -103,16 +123,23 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
         [req.params.leagueId],
       );
       const memberMap = new Map(allMembers.map((m: any) => [m.id, m]));
-      topTeams = memberIds.slice(0, 4).map((id: string) => memberMap.get(id)).filter(Boolean);
-      if (topTeams.length < 2) throw new AppError(400, 'Invalid memberIds — need at least 2 valid members');
+      topTeams = memberIds
+        .slice(0, 4)
+        .map((id: string) => memberMap.get(id))
+        .filter(Boolean);
+      if (topTeams.length < 2)
+        throw new AppError(400, 'Invalid memberIds — need at least 2 valid members');
     } else {
-      const { rows } = await db.query(`
+      const { rows } = await db.query(
+        `
         SELECT id, team_name, wins, losses, total_points, staking_balance
         FROM league_members
         WHERE league_id = $1 AND is_active = true
         ORDER BY ${startOrderBy}
         LIMIT 4
-      `, [req.params.leagueId]);
+      `,
+        [req.params.leagueId],
+      );
       topTeams = rows;
     }
 
@@ -125,14 +152,20 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     const fullBracket = topTeams.length >= 4;
     const round = fullBracket ? 'semis' : 'finals';
     const matchupPairs: [any, any, number, number][] = fullBracket
-      ? [[s1, s4, 1, 4], [s2, s3, 2, 3]]
+      ? [
+          [s1, s4, 1, 4],
+          [s2, s3, 2, 3],
+        ]
       : [[s1, s2, 1, 2]];
 
     for (const [home, away, hs, as_] of matchupPairs) {
-      await db.query(`
+      await db.query(
+        `
         INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
         VALUES ($1, $2, $3, $4, true, $5, $6, $7)
-      `, [req.params.leagueId, semisEventId, home.id, away.id, round, hs, as_]);
+      `,
+        [req.params.leagueId, semisEventId, home.id, away.id, round, hs, as_],
+      );
     }
 
     await db.query(`UPDATE leagues SET status = 'playoffs' WHERE id = $1`, [req.params.leagueId]);
@@ -143,48 +176,55 @@ playoffsRouter.post('/start', requireAuth, async (req: AuthRequest, res, next) =
     }
 
     res.json(await getBracket(req.params.leagueId));
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Commissioner: cancel playoffs and revert league to active
 playoffsRouter.delete('/cancel', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [league] } = await db.query(
-      `SELECT id, commissioner_id, status FROM leagues WHERE id = $1`,
-      [req.params.leagueId],
-    );
+    const {
+      rows: [league],
+    } = await db.query(`SELECT id, commissioner_id, status FROM leagues WHERE id = $1`, [
+      req.params.leagueId,
+    ]);
     if (!league) throw new AppError(404, 'League not found');
     if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
     if (league.status !== 'playoffs') throw new AppError(400, 'League is not in playoffs');
 
-    await db.query(
-      `DELETE FROM matchups WHERE league_id = $1 AND is_playoffs = true`,
-      [req.params.leagueId],
-    );
+    await db.query(`DELETE FROM matchups WHERE league_id = $1 AND is_playoffs = true`, [
+      req.params.leagueId,
+    ]);
     await db.query(`UPDATE leagues SET status = 'active' WHERE id = $1`, [req.params.leagueId]);
     res.json({ ok: true });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const { rows: [league] } = await db.query(
-      `SELECT id, status FROM leagues WHERE id = $1`,
-      [req.params.leagueId],
-    );
+    const {
+      rows: [league],
+    } = await db.query(`SELECT id, status FROM leagues WHERE id = $1`, [req.params.leagueId]);
     if (!league) throw new AppError(404, 'League not found');
-    const { rows: [membership] } = await db.query(
-      `SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`,
-      [req.params.leagueId, req.user!.id],
-    );
+    const {
+      rows: [membership],
+    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+      req.params.leagueId,
+      req.user!.id,
+    ]);
     if (!membership) throw new AppError(403, 'Not a member of this league');
     if (league.status !== 'playoffs') throw new AppError(400, 'Playoffs must be started first');
 
     let { finalsEventId } = req.body;
     if (!finalsEventId) {
-      const { rows: [leagueRow] } = await db.query(
-        `SELECT playoff_finals_event_id FROM leagues WHERE id = $1`, [req.params.leagueId],
-      );
+      const {
+        rows: [leagueRow],
+      } = await db.query(`SELECT playoff_finals_event_id FROM leagues WHERE id = $1`, [
+        req.params.leagueId,
+      ]);
       finalsEventId = leagueRow?.playoff_finals_event_id;
     }
     if (!finalsEventId) throw new AppError(400, 'finalsEventId required');
@@ -197,17 +237,20 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
     if (existingFinals.length > 0) throw new AppError(400, 'Finals already created');
 
     // Get semis matchups
-    const { rows: semis } = await db.query(`
+    const { rows: semis } = await db.query(
+      `
       SELECT id, home_team_id, away_team_id, home_score, away_score, home_seed, away_seed
       FROM matchups WHERE league_id = $1 AND playoff_round = 'semis'
       ORDER BY home_seed ASC
-    `, [req.params.leagueId]);
+    `,
+      [req.params.leagueId],
+    );
 
     if (semis.length < 1) throw new AppError(400, 'No semis matchups found');
 
-    const { rows: [advLeague] } = await db.query(
-      `SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId],
-    );
+    const {
+      rows: [advLeague],
+    } = await db.query(`SELECT league_format FROM leagues WHERE id = $1`, [req.params.leagueId]);
     const isAdvStaking = advLeague?.league_format === 'staking';
 
     // Get season score for tiebreaking (staking_balance for staking leagues, total_points otherwise)
@@ -215,12 +258,18 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
       `SELECT id, total_points, staking_balance FROM league_members WHERE league_id = $1`,
       [req.params.leagueId],
     );
-    const pts = new Map(seasonPts.map((r: any) => [r.id, +(isAdvStaking ? r.staking_balance : r.total_points)]));
+    const pts = new Map(
+      seasonPts.map((r: any) => [r.id, +(isAdvStaking ? r.staking_balance : r.total_points)]),
+    );
 
     // Determine winner: higher matchup score; tie broken by season points
     function winner(m: any) {
-      const hs = +m.home_score, as_ = +m.away_score;
-      if (hs !== as_) return hs > as_ ? { id: m.home_team_id, seed: m.home_seed } : { id: m.away_team_id, seed: m.away_seed };
+      const hs = +m.home_score,
+        as_ = +m.away_score;
+      if (hs !== as_)
+        return hs > as_
+          ? { id: m.home_team_id, seed: m.home_seed }
+          : { id: m.away_team_id, seed: m.away_seed };
       return (pts.get(m.home_team_id) ?? 0) >= (pts.get(m.away_team_id) ?? 0)
         ? { id: m.home_team_id, seed: m.home_seed }
         : { id: m.away_team_id, seed: m.away_seed };
@@ -234,10 +283,20 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
     // Higher seed (lower number) is home team in finals
     const [finalsHome, finalsAway] = w1.seed <= w2.seed ? [w1, w2] : [w2, w1];
 
-    await db.query(`
+    await db.query(
+      `
       INSERT INTO matchups (league_id, event_id, home_team_id, away_team_id, is_playoffs, playoff_round, home_seed, away_seed)
       VALUES ($1, $2, $3, $4, true, 'finals', $5, $6)
-    `, [req.params.leagueId, finalsEventId, finalsHome.id, finalsAway.id, finalsHome.seed, finalsAway.seed]);
+    `,
+      [
+        req.params.leagueId,
+        finalsEventId,
+        finalsHome.id,
+        finalsAway.id,
+        finalsHome.seed,
+        finalsAway.seed,
+      ],
+    );
 
     // Initialize staking finals matchup score (members may have already placed bets)
     if (isAdvStaking) {
@@ -245,5 +304,7 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
     }
 
     res.json(await getBracket(req.params.leagueId));
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });

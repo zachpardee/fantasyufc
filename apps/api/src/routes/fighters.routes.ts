@@ -8,11 +8,20 @@ export const fightersRouter = Router();
 
 fightersRouter.get('/', async (req, res, next) => {
   try {
-    const { weightClass, status = 'active', search, limit = '50', offset = '0' } = req.query as Record<string, string>;
+    const {
+      weightClass,
+      status = 'active',
+      search,
+      limit = '50',
+      offset = '0',
+    } = req.query as Record<string, string>;
 
     const cacheKey = `fighters:${weightClass ?? 'all'}:${status}:${search ?? ''}:${limit}:${offset}`;
     const cached = await redis.get(cacheKey);
-    if (cached) { res.json(JSON.parse(cached)); return; }
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
 
     const params: unknown[] = [status];
     let query = `
@@ -39,27 +48,37 @@ fightersRouter.get('/', async (req, res, next) => {
     const { rows } = await db.query(query, params);
     await redis.setex(cacheKey, CACHE_TTL.FIGHTERS_ALL, JSON.stringify(rows));
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 fightersRouter.get('/:fighterId', async (req, res, next) => {
   try {
-    const { rows: [fighter] } = await db.query(`
+    const {
+      rows: [fighter],
+    } = await db.query(
+      `
       SELECT f.*, wc.name as weight_class_name, wc.slug as weight_class_slug,
         (SELECT COUNT(*)::int FROM fight_results fr WHERE fr.winner_id = f.id AND fr.outcome = 'ko_tko') AS ko_tko_wins,
         (SELECT COUNT(*)::int FROM fight_results fr WHERE fr.winner_id = f.id AND fr.outcome = 'submission') AS submission_wins
       FROM fighters f
       JOIN weight_classes wc ON wc.id = f.weight_class_id
       WHERE f.id = $1
-    `, [req.params.fighterId]);
+    `,
+      [req.params.fighterId],
+    );
     if (!fighter) throw new AppError(404, 'Fighter not found');
     res.json(fighter);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 fightersRouter.get('/:fighterId/history', async (req, res, next) => {
   try {
-    const { rows } = await db.query(`
+    const { rows } = await db.query(
+      `
       SELECT
         f.id as fight_id, e.name as event_name, e.scheduled_at,
         f.is_title_fight, wc.name as weight_class_name,
@@ -73,18 +92,24 @@ fightersRouter.get('/:fighterId/history', async (req, res, next) => {
       WHERE f.red_fighter_id = $1 OR f.blue_fighter_id = $1
       ORDER BY e.scheduled_at DESC
       LIMIT 20
-    `, [req.params.fighterId]);
+    `,
+      [req.params.fighterId],
+    );
     res.json(rows);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 fightersRouter.get('/:fighterId/live-stats', async (req, res, next) => {
   try {
-    const { rows: [fighter] } = await db.query(
-      `SELECT ufc_fighter_id FROM fighters WHERE id = $1`,
-      [req.params.fighterId],
-    );
-    if (!fighter?.ufc_fighter_id) { res.json({}); return; }
+    const {
+      rows: [fighter],
+    } = await db.query(`SELECT ufc_fighter_id FROM fighters WHERE id = $1`, [req.params.fighterId]);
+    if (!fighter?.ufc_fighter_id) {
+      res.json({});
+      return;
+    }
 
     const espnId = fighter.ufc_fighter_id;
     const baseUrl = `https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/athletes/${espnId}`;
@@ -108,7 +133,7 @@ fightersRouter.get('/:fighterId/live-stats', async (req, res, next) => {
     const items: any[] = recordsData?.items ?? [];
     const career = items.find((it: any) => it.type === 'total') ?? items[0] ?? {};
     const stats: Record<string, number> = {};
-    for (const stat of (career.stats ?? [])) {
+    for (const stat of career.stats ?? []) {
       if (stat.name) stats[stat.name] = stat.value ?? 0;
     }
 
@@ -123,16 +148,25 @@ fightersRouter.get('/:fighterId/live-stats', async (req, res, next) => {
       submissionWins: stats.submissions ?? null,
       submissionLosses: stats.submissionLosses ?? null,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
-fightersRouter.get('/leagues/:leagueId/free-agents', requireAuth, async (req: AuthRequest, res, next) => {
-  try {
-    const cacheKey = `free-agents:${req.params.leagueId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) { res.json(JSON.parse(cached)); return; }
+fightersRouter.get(
+  '/leagues/:leagueId/free-agents',
+  requireAuth,
+  async (req: AuthRequest, res, next) => {
+    try {
+      const cacheKey = `free-agents:${req.params.leagueId}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        res.json(JSON.parse(cached));
+        return;
+      }
 
-    const { rows } = await db.query(`
+      const { rows } = await db.query(
+        `
       SELECT f.*, wc.name as weight_class_name
       FROM fighters f
       JOIN weight_classes wc ON wc.id = f.weight_class_id
@@ -145,9 +179,14 @@ fightersRouter.get('/leagues/:leagueId/free-agents', requireAuth, async (req: Au
           WHERE lm.league_id = $1
         )
       ORDER BY f.ranking ASC NULLS LAST, f.average_fantasy_points DESC NULLS LAST
-    `, [req.params.leagueId]);
+    `,
+        [req.params.leagueId],
+      );
 
-    await redis.setex(cacheKey, CACHE_TTL.FREE_AGENTS, JSON.stringify(rows));
-    res.json(rows);
-  } catch (err) { next(err); }
-});
+      await redis.setex(cacheKey, CACHE_TTL.FREE_AGENTS, JSON.stringify(rows));
+      res.json(rows);
+    } catch (err) {
+      next(err);
+    }
+  },
+);

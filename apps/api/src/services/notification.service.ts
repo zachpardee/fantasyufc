@@ -9,15 +9,18 @@ export async function sendNotification(
   body: string,
   data?: Record<string, unknown>,
 ) {
-  const { rows: [notif] } = await db.query(
+  const {
+    rows: [notif],
+  } = await db.query(
     `INSERT INTO notifications (user_id, type, title, body, data) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
     [userId, type, title, body, data ? JSON.stringify(data) : null],
   );
 
-  const { rows: [profile] } = await db.query(
-    `SELECT push_token, notification_prefs FROM user_profiles WHERE id = $1`,
-    [userId],
-  );
+  const {
+    rows: [profile],
+  } = await db.query(`SELECT push_token, notification_prefs FROM user_profiles WHERE id = $1`, [
+    userId,
+  ]);
 
   if (!profile?.push_token || !env.EXPO_ACCESS_TOKEN) return;
 
