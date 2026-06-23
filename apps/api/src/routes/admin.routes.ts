@@ -28,6 +28,26 @@ adminRouter.get('/dashboard', requireAuth, requireAdmin, async (_req, res, next)
   }
 });
 
+// Ops metric history (trend graphs): metric -> [{ t, v }] for the last N days.
+adminRouter.get('/history', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const days = Math.min(90, Math.max(1, parseInt(String(req.query.days ?? '30'), 10) || 30));
+    const { rows } = await db.query(
+      `SELECT metric, captured_at, value FROM ops_metrics_history
+       WHERE captured_at >= now() - ($1 || ' days')::interval
+       ORDER BY captured_at ASC`,
+      [days],
+    );
+    const out: Record<string, { t: string; v: number }[]> = {};
+    for (const r of rows) {
+      (out[r.metric] ??= []).push({ t: r.captured_at, v: Number(r.value) });
+    }
+    res.json(out);
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.post('/sync/events', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     syncEvents().catch(console.error); // Fire and forget

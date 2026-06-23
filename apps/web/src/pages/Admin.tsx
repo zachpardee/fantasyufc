@@ -40,6 +40,14 @@ export function AdminPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: history } = useQuery<Record<string, { t: string; v: number }[]>>({
+    queryKey: ['admin-history'],
+    queryFn: () => apiClient.get('/admin/history?days=30'),
+    enabled: !!me?.isAdmin,
+    refetchInterval: 5 * 60_000,
+  });
+  const series = (metric: string) => (history?.[metric] ?? []).map((p) => p.v);
+
   if (meLoading) return <LoadingInline />;
   if (!me?.isAdmin) return <Navigate to="/" replace />;
 
@@ -88,6 +96,7 @@ export function AdminPage() {
                       {total > 0 && used != null && <Bar value={used} max={total} dangerHigh />}
                       <Row label="Used" value={used ?? '—'} />
                       {total > 0 && <Row label="Monthly cap" value={total} />}
+                      <Trend label="Remaining · 30d" points={series('odds_remaining')} />
                     </>
                   );
                 })()
@@ -124,6 +133,7 @@ export function AdminPage() {
                   { label: 'completed', value: data.app?.events?.completed ?? 0, color: '#555' },
                 ]}
               />
+              <Trend label="Users · 30d" points={series('users')} color="#4caf50" />
             </Card>
 
             {/* Events */}
@@ -153,13 +163,13 @@ export function AdminPage() {
               ) : data.railway?.error ? (
                 <ErrorText>{data.railway.error}</ErrorText>
               ) : (
-                <RailwayView data={data.railway?.data} />
+                <RailwayView data={data.railway?.data} memSeries={series('railway_memory')} />
               )}
             </Card>
 
             {/* Supabase */}
             <Card title="Supabase">
-              <SupabaseView data={data.supabase?.data} />
+              <SupabaseView data={data.supabase?.data} sizeSeries={series('db_size_mb')} />
               {data.supabase?.error && <ErrorText>{data.supabase.error}</ErrorText>}
             </Card>
           </div>
@@ -237,7 +247,7 @@ const RAILWAY_LABELS: Record<string, string> = {
   DISK_USAGE_GB: 'Disk',
 };
 
-function RailwayView({ data }: { data: any }) {
+function RailwayView({ data, memSeries }: { data: any; memSeries: number[] }) {
   if (!data) return <Muted>No data</Muted>;
   return (
     <>
@@ -253,12 +263,13 @@ function RailwayView({ data }: { data: any }) {
           value={Number(u.value).toFixed(u.value < 10 ? 2 : 0)}
         />
       ))}
+      <Trend label="Memory · 30d" points={memSeries} color="#e0a000" />
       <Muted>Exact credits → Railway dashboard ↓</Muted>
     </>
   );
 }
 
-function SupabaseView({ data }: { data: any }) {
+function SupabaseView({ data, sizeSeries }: { data: any; sizeSeries: number[] }) {
   if (!data) return <Muted>No data</Muted>;
   return (
     <>
@@ -271,10 +282,51 @@ function SupabaseView({ data }: { data: any }) {
           <Bar value={data.dbSizeMb} max={data.dbLimitMb} dangerHigh />
         </>
       )}
+      <Trend label="DB size · 30d" points={sizeSeries} color="#3b6cff" />
       {data.status && <Row label="Status" value={data.status} />}
       {data.region && <Row label="Region" value={data.region} />}
       {data.pgVersion && <Row label="Postgres" value={data.pgVersion} />}
     </>
+  );
+}
+
+// Inline SVG sparkline with a small label. Hidden until there are at least 2 points.
+function Trend({
+  label,
+  points,
+  color = '#c8102e',
+}: {
+  label: string;
+  points: number[];
+  color?: string;
+}) {
+  if (!points || points.length < 2) return null;
+  const h = 30;
+  const w = 100;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const step = w / (points.length - 1);
+  const path = points
+    .map((p, i) => `${(i * step).toFixed(2)},${(h - ((p - min) / range) * h).toFixed(2)}`)
+    .join(' ');
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={s.subLabel}>{label}</div>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={{ width: '100%', height: h, display: 'block' }}
+      >
+        <polyline
+          points={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
   );
 }
 

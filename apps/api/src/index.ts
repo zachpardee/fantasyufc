@@ -9,6 +9,7 @@ import { startFighterSyncJob } from './jobs/fighterSync.job';
 import { startLivePollerJob } from './jobs/livePoller.job';
 import { startAutoScheduleJob } from './jobs/autoSchedule.job';
 import { startPreEventPrepJob } from './jobs/preEventPrep.job';
+import { startOpsMetricsHistoryJob } from './jobs/opsMetricsHistory.job';
 async function main() {
   const dbClient = await db.connect();
   dbClient.release();
@@ -24,6 +25,7 @@ async function main() {
   startLivePollerJob();
   startAutoScheduleJob();
   startPreEventPrepJob();
+  startOpsMetricsHistoryJob();
 
   app.listen(env.PORT, () => {
     console.log(`API running on port ${env.PORT} (${env.NODE_ENV})`);
