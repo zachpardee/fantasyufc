@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { LoadingInline } from '../components/LoadingScreen';
+
+const WINDOWS = [7, 30, 90] as const;
 
 // External dashboards we can't (or don't) pull via API — one click out to each.
 const LINKS: { label: string; url: string; note: string }[] = [
@@ -40,9 +43,10 @@ export function AdminPage() {
     refetchInterval: 60_000,
   });
 
+  const [days, setDays] = useState<number>(30);
   const { data: history } = useQuery<Record<string, { t: string; v: number }[]>>({
-    queryKey: ['admin-history'],
-    queryFn: () => apiClient.get('/admin/history?days=30'),
+    queryKey: ['admin-history', days],
+    queryFn: () => apiClient.get(`/admin/history?days=${days}`),
     enabled: !!me?.isAdmin,
     refetchInterval: 5 * 60_000,
   });
@@ -60,9 +64,22 @@ export function AdminPage() {
           </Link>
           <h1 style={s.title}>Admin · Ops</h1>
         </div>
-        <button style={s.refreshBtn} onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div style={s.headerRight}>
+          <div style={s.toggle}>
+            {WINDOWS.map((w) => (
+              <button
+                key={w}
+                style={{ ...s.toggleBtn, ...(days === w ? s.toggleBtnActive : {}) }}
+                onClick={() => setDays(w)}
+              >
+                {w}d
+              </button>
+            ))}
+          </div>
+          <button style={s.refreshBtn} onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -96,7 +113,7 @@ export function AdminPage() {
                       {total > 0 && used != null && <Bar value={used} max={total} dangerHigh />}
                       <Row label="Used" value={used ?? '—'} />
                       {total > 0 && <Row label="Monthly cap" value={total} />}
-                      <Trend label="Remaining · 30d" points={series('odds_remaining')} />
+                      <Trend label={`Remaining · ${days}d`} points={series('odds_remaining')} />
                     </>
                   );
                 })()
@@ -133,7 +150,7 @@ export function AdminPage() {
                   { label: 'completed', value: data.app?.events?.completed ?? 0, color: '#555' },
                 ]}
               />
-              <Trend label="Users · 30d" points={series('users')} color="#4caf50" />
+              <Trend label={`Users · ${days}d`} points={series('users')} color="#4caf50" />
             </Card>
 
             {/* Events */}
@@ -163,13 +180,21 @@ export function AdminPage() {
               ) : data.railway?.error ? (
                 <ErrorText>{data.railway.error}</ErrorText>
               ) : (
-                <RailwayView data={data.railway?.data} memSeries={series('railway_memory')} />
+                <RailwayView
+                  data={data.railway?.data}
+                  memSeries={series('railway_memory')}
+                  days={days}
+                />
               )}
             </Card>
 
             {/* Supabase */}
             <Card title="Supabase">
-              <SupabaseView data={data.supabase?.data} sizeSeries={series('db_size_mb')} />
+              <SupabaseView
+                data={data.supabase?.data}
+                sizeSeries={series('db_size_mb')}
+                days={days}
+              />
               {data.supabase?.error && <ErrorText>{data.supabase.error}</ErrorText>}
             </Card>
           </div>
@@ -247,7 +272,7 @@ const RAILWAY_LABELS: Record<string, string> = {
   DISK_USAGE_GB: 'Disk',
 };
 
-function RailwayView({ data, memSeries }: { data: any; memSeries: number[] }) {
+function RailwayView({ data, memSeries, days }: { data: any; memSeries: number[]; days: number }) {
   if (!data) return <Muted>No data</Muted>;
   return (
     <>
@@ -263,13 +288,21 @@ function RailwayView({ data, memSeries }: { data: any; memSeries: number[] }) {
           value={Number(u.value).toFixed(u.value < 10 ? 2 : 0)}
         />
       ))}
-      <Trend label="Memory · 30d" points={memSeries} color="#e0a000" />
+      <Trend label={`Memory · ${days}d`} points={memSeries} color="#e0a000" />
       <Muted>Exact credits → Railway dashboard ↓</Muted>
     </>
   );
 }
 
-function SupabaseView({ data, sizeSeries }: { data: any; sizeSeries: number[] }) {
+function SupabaseView({
+  data,
+  sizeSeries,
+  days,
+}: {
+  data: any;
+  sizeSeries: number[];
+  days: number;
+}) {
   if (!data) return <Muted>No data</Muted>;
   return (
     <>
@@ -282,7 +315,7 @@ function SupabaseView({ data, sizeSeries }: { data: any; sizeSeries: number[] })
           <Bar value={data.dbSizeMb} max={data.dbLimitMb} dangerHigh />
         </>
       )}
-      <Trend label="DB size · 30d" points={sizeSeries} color="#3b6cff" />
+      <Trend label={`DB size · ${days}d`} points={sizeSeries} color="#3b6cff" />
       {data.status && <Row label="Status" value={data.status} />}
       {data.region && <Row label="Region" value={data.region} />}
       {data.pgVersion && <Row label="Postgres" value={data.pgVersion} />}
@@ -365,6 +398,24 @@ const s: Record<string, React.CSSProperties> = {
   },
   back: { color: '#888', fontSize: 13, textDecoration: 'none' },
   title: { fontSize: 24, fontWeight: 800, margin: '4px 0 0' },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
+  toggle: {
+    display: 'flex',
+    background: '#1a1a1a',
+    border: '1px solid #333',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  toggleBtn: {
+    background: 'transparent',
+    color: '#888',
+    border: 'none',
+    padding: '8px 12px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  toggleBtnActive: { background: '#c8102e', color: '#fff' },
   refreshBtn: {
     background: '#1a1a1a',
     color: '#ccc',
