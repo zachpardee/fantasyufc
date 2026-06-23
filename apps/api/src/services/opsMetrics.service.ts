@@ -100,7 +100,7 @@ async function railwayUsage(): Promise<OpsMetrics['railway']> {
       }
       project(id: "${projectId}") {
         subscriptionType
-        subscriptionPlanLimit { includedUsageDollars }
+        subscriptionPlanLimit
       }
     }`;
     const res = await fetch('https://backboard.railway.com/graphql/v2', {
