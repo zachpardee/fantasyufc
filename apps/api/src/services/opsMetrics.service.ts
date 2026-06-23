@@ -84,16 +84,25 @@ async function oddsQuota(): Promise<OpsMetrics['odds']> {
   }
 }
 
-// Best-effort Railway usage via the public GraphQL API. Needs RAILWAY_API_TOKEN (and
-// optionally RAILWAY_PROJECT_ID). Degrades gracefully — the dashboard also deep-links out.
+// Best-effort Railway usage via the public GraphQL API. Needs RAILWAY_API_TOKEN and
+// RAILWAY_PROJECT_ID (the latter is auto-injected in the Railway runtime). Railway exposes
+// estimated resource usage + plan limits, but not a current dollar/credit figure — the
+// dashboard deep-link is authoritative for exact credits.
 async function railwayUsage(): Promise<OpsMetrics['railway']> {
   const token = process.env.RAILWAY_API_TOKEN;
-  if (!token) return { configured: false };
   const projectId = process.env.RAILWAY_PROJECT_ID;
+  if (!token) return { configured: false };
+  if (!projectId) return { configured: true, error: 'RAILWAY_PROJECT_ID not set' };
   try {
-    const query = projectId
-      ? `query { project(id: "${projectId}") { name estimatedUsage { estimatedValue measurement } } }`
-      : `query { me { email projects { edges { node { id name } } } } }`;
+    const query = `query {
+      estimatedUsage(projectId: "${projectId}", measurements: [CPU_USAGE, MEMORY_USAGE_GB, NETWORK_TX_GB, DISK_USAGE_GB]) {
+        measurement estimatedValue
+      }
+      project(id: "${projectId}") {
+        subscriptionType
+        subscriptionPlanLimit { includedUsageDollars }
+      }
+    }`;
     const res = await fetch('https://backboard.railway.com/graphql/v2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -102,37 +111,66 @@ async function railwayUsage(): Promise<OpsMetrics['railway']> {
     });
     const json: any = await res.json();
     if (json.errors) return { configured: true, error: JSON.stringify(json.errors) };
-    return { configured: true, data: json.data };
+    return {
+      configured: true,
+      data: {
+        plan: json.data?.project?.subscriptionType ?? null,
+        includedUsageDollars:
+          json.data?.project?.subscriptionPlanLimit?.includedUsageDollars ?? null,
+        usage: (json.data?.estimatedUsage ?? []).map((u: any) => ({
+          measurement: u.measurement,
+          value: u.estimatedValue,
+        })),
+      },
+    };
   } catch (err: any) {
     return { configured: true, error: err?.message ?? 'fetch failed' };
   }
 }
 
-// Best-effort Supabase usage via the Management API. Needs SUPABASE_ACCESS_TOKEN and the
-// project ref (SUPABASE_PROJECT_REF, or derived from SUPABASE_URL).
+// Supabase metrics. DB size comes from our own connection (no token, reliable, vs the
+// 500 MB free-tier limit). Project health/region/version come from the Management API
+// (SUPABASE_ACCESS_TOKEN + project ref) when available.
 async function supabaseUsage(): Promise<OpsMetrics['supabase']> {
+  const data: Record<string, unknown> = { dbLimitMb: 500 };
+  let error: string | undefined;
+
+  // DB size — always available via our own connection.
+  try {
+    const {
+      rows: [r],
+    } = await db.query(`SELECT pg_database_size(current_database()) AS bytes`);
+    data.dbSizeMb = Number(r.bytes) / 1e6;
+  } catch (err: any) {
+    error = `db size: ${err?.message ?? 'failed'}`;
+  }
+
+  // Project health/region/version via the Management API (optional token).
   const token = process.env.SUPABASE_ACCESS_TOKEN;
-  if (!token) return { configured: false };
   const ref =
     process.env.SUPABASE_PROJECT_REF ??
     process.env.SUPABASE_URL?.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ??
     null;
-  if (!ref) return { configured: true, error: 'Could not resolve project ref' };
-  try {
-    const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/usage`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      return {
-        configured: true,
-        error: `Supabase API ${res.status}: ${await res.text().catch(() => '')}`,
-      };
+  if (token && ref) {
+    try {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${ref}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (res.ok) {
+        const p: any = await res.json();
+        data.status = p.status;
+        data.region = p.region;
+        data.pgVersion = p.database?.version;
+      } else {
+        error = `Supabase API ${res.status}`;
+      }
+    } catch (err: any) {
+      error = err?.message ?? 'fetch failed';
     }
-    return { configured: true, data: await res.json() };
-  } catch (err: any) {
-    return { configured: true, error: err?.message ?? 'fetch failed' };
   }
+
+  return { configured: true, data, error };
 }
 
 export async function getOpsMetrics(): Promise<OpsMetrics> {

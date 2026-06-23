@@ -153,19 +153,14 @@ export function AdminPage() {
               ) : data.railway?.error ? (
                 <ErrorText>{data.railway.error}</ErrorText>
               ) : (
-                <UsageView data={data.railway?.data} />
+                <RailwayView data={data.railway?.data} />
               )}
             </Card>
 
             {/* Supabase */}
             <Card title="Supabase">
-              {data.supabase?.configured === false ? (
-                <Muted>Set SUPABASE_ACCESS_TOKEN to enable. Use the link below for now.</Muted>
-              ) : data.supabase?.error ? (
-                <ErrorText>{data.supabase.error}</ErrorText>
-              ) : (
-                <UsageView data={data.supabase?.data} />
-              )}
+              <SupabaseView data={data.supabase?.data} />
+              {data.supabase?.error && <ErrorText>{data.supabase.error}</ErrorText>}
             </Card>
           </div>
         </>
@@ -235,37 +230,50 @@ function StackedBar({ segments }: { segments: { label: string; value: number; co
 
 // Renders an external usage payload (Railway/Supabase): any numeric { usage/used, limit/total }
 // pairs become bars; everything else falls back to a JSON view.
-function UsageView({ data }: { data: unknown }) {
-  const rows: { label: string; used: number; limit: number }[] = [];
-  const walk = (obj: any, prefix = '') => {
-    if (!obj || typeof obj !== 'object') return;
-    for (const [k, v] of Object.entries(obj)) {
-      if (v && typeof v === 'object') {
-        const o = v as any;
-        const used = o.usage ?? o.used ?? o.current ?? o.value ?? o.estimatedValue;
-        const limit = o.limit ?? o.total ?? o.max ?? o.included ?? o.quota;
-        if (typeof used === 'number' && typeof limit === 'number' && limit > 0) {
-          rows.push({ label: prefix + k, used, limit });
-        } else {
-          walk(v, prefix + k + '.');
-        }
-      }
-    }
-  };
-  try {
-    walk(data);
-  } catch {
-    /* ignore */
-  }
-  if (rows.length === 0) return <Pre>{JSON.stringify(data, null, 2)}</Pre>;
+const RAILWAY_LABELS: Record<string, string> = {
+  CPU_USAGE: 'CPU',
+  MEMORY_USAGE_GB: 'Memory',
+  NETWORK_TX_GB: 'Network out',
+  DISK_USAGE_GB: 'Disk',
+};
+
+function RailwayView({ data }: { data: any }) {
+  if (!data) return <Muted>No data</Muted>;
   return (
     <>
-      {rows.map((r) => (
-        <div key={r.label} style={{ marginBottom: 8 }}>
-          <Row label={r.label} value={`${r.used} / ${r.limit}`} />
-          <Bar value={r.used} max={r.limit} dangerHigh />
-        </div>
+      {data.plan && <Row label="Plan" value={data.plan} />}
+      {data.includedUsageDollars != null && (
+        <Row label="Included usage" value={`$${data.includedUsageDollars}`} />
+      )}
+      {(data.usage ?? []).length > 0 && <div style={s.subLabel}>Est. usage this period</div>}
+      {(data.usage ?? []).map((u: any) => (
+        <Row
+          key={u.measurement}
+          label={RAILWAY_LABELS[u.measurement] ?? u.measurement}
+          value={Number(u.value).toFixed(u.value < 10 ? 2 : 0)}
+        />
       ))}
+      <Muted>Exact credits → Railway dashboard ↓</Muted>
+    </>
+  );
+}
+
+function SupabaseView({ data }: { data: any }) {
+  if (!data) return <Muted>No data</Muted>;
+  return (
+    <>
+      {data.dbSizeMb != null && (
+        <>
+          <Row
+            label="DB size"
+            value={`${Number(data.dbSizeMb).toFixed(1)} / ${data.dbLimitMb} MB`}
+          />
+          <Bar value={data.dbSizeMb} max={data.dbLimitMb} dangerHigh />
+        </>
+      )}
+      {data.status && <Row label="Status" value={data.status} />}
+      {data.region && <Row label="Region" value={data.region} />}
+      {data.pgVersion && <Row label="Postgres" value={data.pgVersion} />}
     </>
   );
 }
@@ -294,7 +302,6 @@ const Muted = ({ children }: { children: React.ReactNode }) => (
 const ErrorText = ({ children }: { children: React.ReactNode }) => (
   <div style={s.errorText}>{children}</div>
 );
-const Pre = ({ children }: { children: React.ReactNode }) => <pre style={s.pre}>{children}</pre>;
 
 const s: Record<string, React.CSSProperties> = {
   page: { maxWidth: 900, margin: '0 auto', padding: '24px 16px 64px', color: '#fff' },
@@ -365,14 +372,13 @@ const s: Record<string, React.CSSProperties> = {
     padding: 16,
     fontSize: 13,
   },
-  pre: {
-    color: '#9fcaff',
-    fontSize: 11,
-    margin: 0,
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    maxHeight: 160,
-    overflow: 'auto',
+  subLabel: {
+    color: '#666',
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    margin: '8px 0 2px',
   },
   sectionTitle: { fontSize: 16, fontWeight: 700, margin: '28px 0 12px' },
   linksRow: {
