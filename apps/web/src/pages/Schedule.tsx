@@ -92,8 +92,9 @@ export function SchedulePage() {
     .filter((ev) => !scheduleIds.has(ev.id))
     .map((ev) => ({ ...ev, isOnSchedule: false, matchupCount: 0, isAdded: false }));
 
-  const sorted = [...scheduleRows, ...availableRows, ...recentPastRows]
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const sorted = [...scheduleRows, ...availableRows, ...recentPastRows].sort(
+    (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+  );
 
   // Only the first live event is active; only the first non-completed schedule event
   // shows the "On Schedule" badge — subsequent league events show as plain upcoming.
@@ -115,7 +116,9 @@ export function SchedulePage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
+        <Link to={`/league/${leagueId}`} style={styles.back}>
+          ← League
+        </Link>
         <span style={styles.title}>Schedule</span>
       </nav>
 
@@ -130,9 +133,22 @@ export function SchedulePage() {
           const isLive = ev.status === 'live';
           const isDone = ev.status === 'completed';
           return (
-            <div key={ev.id} style={{ ...styles.eventCard, ...(isLive ? styles.eventCardLive : {}), ...(isDone ? styles.eventCardDone : {}) }}>
+            <div
+              key={ev.id}
+              style={{
+                ...styles.eventCard,
+                ...(isLive ? styles.eventCardLive : {}),
+                ...(isDone ? styles.eventCardDone : {}),
+              }}
+            >
               <div style={styles.eventInfo}>
-                <div style={{ ...styles.eventName, ...(isLive ? styles.eventNameLive : {}), ...(isDone ? styles.eventNameDone : {}) }}>
+                <div
+                  style={{
+                    ...styles.eventName,
+                    ...(isLive ? styles.eventNameLive : {}),
+                    ...(isDone ? styles.eventNameDone : {}),
+                  }}
+                >
                   {ev.name}
                 </div>
                 <div style={styles.eventMeta}>
@@ -141,8 +157,12 @@ export function SchedulePage() {
                 <div style={styles.eventStats}>
                   {isLive && <span style={styles.liveBadge}>LIVE</span>}
                   {isDone && <span style={styles.doneBadge}>COMPLETED</span>}
-                  {ev.isOnSchedule && !isLive && !isDone && <span style={styles.onScheduleBadge}>On Schedule</span>}
-                  {ev.matchupCount > 0 && <span style={styles.stat}>{ev.matchupCount} matchups</span>}
+                  {ev.isOnSchedule && !isLive && !isDone && (
+                    <span style={styles.onScheduleBadge}>On Schedule</span>
+                  )}
+                  {ev.matchupCount > 0 && (
+                    <span style={styles.stat}>{ev.matchupCount} matchups</span>
+                  )}
                   {ev.fightCount > 0 && <span style={styles.stat}>{ev.fightCount} fights</span>}
                 </div>
               </div>
@@ -151,7 +171,8 @@ export function SchedulePage() {
         })}
 
         <div style={styles.note}>
-          Events within the season window (Jan 1 – Jun 30) are added automatically ~2 days after each event ends.
+          Events within the season window (Jan 1 – Jun 30) are added automatically ~2 days after
+          each event ends.
         </div>
       </div>
     </div>
@@ -160,23 +181,47 @@ export function SchedulePage() {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   nav: {
-    position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const,
-    display: 'flex', alignItems: 'center', gap: 16,
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
   },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontWeight: 700, fontSize: 18 },
   content: { maxWidth: 700, margin: '0 auto', padding: 24 },
-  empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: '40px 0' },
+  empty: {
+    color: '#555',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: '40px 0',
+  },
   eventCard: {
-    background: '#141414', border: '1px solid #242424', borderRadius: 12,
-    padding: '16px 20px', marginBottom: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: '16px 20px',
+    marginBottom: 8,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
   },
   eventCardLive: { border: '1px solid #c8102e', background: '#1a0808' },
   eventInfo: {},
@@ -186,9 +231,32 @@ const styles: Record<string, React.CSSProperties> = {
   eventStats: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
   eventCardDone: { opacity: 0.45 },
   eventNameDone: { color: '#888' },
-  liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
-  doneBadge: { background: '#1a1a1a', color: '#555', border: '1px solid #333', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
-  onScheduleBadge: { background: '#1a2a1a', color: '#4caf50', border: '1px solid #2a4a2a', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4 },
+  liveBadge: {
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+  },
+  doneBadge: {
+    background: '#1a1a1a',
+    color: '#555',
+    border: '1px solid #333',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+  },
+  onScheduleBadge: {
+    background: '#1a2a1a',
+    color: '#4caf50',
+    border: '1px solid #2a4a2a',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 4,
+  },
   stat: { color: '#555', fontSize: 12 },
   note: { color: '#444', fontSize: 12, textAlign: 'center', marginTop: 24 },
 };

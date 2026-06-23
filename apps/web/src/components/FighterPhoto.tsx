@@ -12,25 +12,34 @@ export function FighterPhoto({ imageUrl, name, style, onClick }: FighterPhotoPro
     return <img src={imageUrl} alt={name ?? ''} style={style} onClick={onClick} />;
   }
 
-  const { width, height, borderRadius, flexShrink, objectFit, objectPosition, background, ...rest } = style ?? {};
+  const {
+    width,
+    height,
+    borderRadius,
+    flexShrink,
+    objectFit,
+    objectPosition,
+    background,
+    ...rest
+  } = style ?? {};
 
   return (
     <div
       style={{
-        width, height, borderRadius, flexShrink,
+        width,
+        height,
+        borderRadius,
+        flexShrink,
         background: '#181818',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
         overflow: 'hidden',
         ...rest,
       }}
       onClick={onClick}
     >
-      <svg
-        viewBox="0 0 44 54"
-        width="100%"
-        height="88%"
-        preserveAspectRatio="xMidYMax meet"
-      >
+      <svg viewBox="0 0 44 54" width="100%" height="88%" preserveAspectRatio="xMidYMax meet">
         {/* Head */}
         <circle cx="22" cy="14" r="8" fill="#2a2a2a" />
         {/* Shoulders / torso silhouette */}

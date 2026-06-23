@@ -15,7 +15,12 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div style={styles.row}>
       <span style={styles.rowLabel}>{label}</span>
-      <span style={{ ...styles.rowValue, color: isNeutral ? '#444' : value.startsWith('-') ? '#c8102e' : '#fff' }}>
+      <span
+        style={{
+          ...styles.rowValue,
+          color: isNeutral ? '#444' : value.startsWith('-') ? '#c8102e' : '#fff',
+        }}
+      >
         {value}
       </span>
     </div>
@@ -38,7 +43,11 @@ function pts(n: number | undefined) {
 
 function fmtDate(iso: string | undefined) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 export function LeagueRulesPage() {
@@ -67,30 +76,43 @@ export function LeagueRulesPage() {
     enabled: !!league?.playoffFinalsEventId,
   });
 
-  const seasonActive = league?.status === 'active' || league?.status === 'playoffs' || league?.status === 'completed';
+  const seasonActive =
+    league?.status === 'active' || league?.status === 'playoffs' || league?.status === 'completed';
   const isStaking = league?.leagueFormat === 'staking';
   const weeklyBudget = league?.weeklyBudget ?? 100;
 
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
+        <Link to={`/league/${leagueId}`} style={styles.back}>
+          ← League
+        </Link>
         <span style={styles.title}>Rules & Scoring</span>
       </nav>
 
       {league && (
         <Section title="Season">
           <Row label="Format" value={isStaking ? 'Staking' : "Pick 'em"} />
-          <Row label="Season length" value={league.seasonLengthMonths ? `${league.seasonLengthMonths} months` : '—'} />
-          <Row label="Status" value={league.status.charAt(0).toUpperCase() + league.status.slice(1)} />
-          {seasonActive && (
-            <Row label="Regular season ends" value={fmtDate(league.seasonEndsAt)} />
-          )}
+          <Row
+            label="Season length"
+            value={league.seasonLengthMonths ? `${league.seasonLengthMonths} months` : '—'}
+          />
+          <Row
+            label="Status"
+            value={league.status.charAt(0).toUpperCase() + league.status.slice(1)}
+          />
+          {seasonActive && <Row label="Regular season ends" value={fmtDate(league.seasonEndsAt)} />}
           {semisEvent && (
-            <Row label="Semifinals" value={`${semisEvent.name} · ${fmtDate(semisEvent.scheduledAt)}`} />
+            <Row
+              label="Semifinals"
+              value={`${semisEvent.name} · ${fmtDate(semisEvent.scheduledAt)}`}
+            />
           )}
           {finalsEvent && (
-            <Row label="Finals" value={`${finalsEvent.name} · ${fmtDate(finalsEvent.scheduledAt)}`} />
+            <Row
+              label="Finals"
+              value={`${finalsEvent.name} · ${fmtDate(finalsEvent.scheduledAt)}`}
+            />
           )}
           <Row label="Max teams" value={String(league.maxTeams)} />
         </Section>
@@ -122,7 +144,10 @@ export function LeagueRulesPage() {
 
           <Section title="Event Payout (Your Score)">
             <Row label="Formula" value="Unbet budget + winnings from settled bets" />
-            <Row label="Example" value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130" />
+            <Row
+              label="Example"
+              value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130"
+            />
           </Section>
 
           <Section title="Matchups">
@@ -145,8 +170,14 @@ export function LeagueRulesPage() {
             <Row label="Picks per event" value="Top 6 fights (main card + top prelims)" />
             <Row label="Pick deadline" value="10 min before prelims begin" />
             <Row label="Scoring" value="Points for correct winner + method" />
-            <Row label="Prelims scoring" value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'} />
-            <Row label="Early prelims" value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'} />
+            <Row
+              label="Prelims scoring"
+              value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'}
+            />
+            <Row
+              label="Early prelims"
+              value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'}
+            />
           </Section>
 
           <Section title="Pick Scoring">
@@ -188,12 +219,41 @@ export function LeagueRulesPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+  },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontWeight: 700, fontSize: 18 },
   section: { margin: '0 24px 8px' },
-  sectionTitle: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, padding: '20px 0 8px', borderBottom: '1px solid #1a1a1a', marginBottom: 2 },
-  row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #111' },
+  sectionTitle: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    padding: '20px 0 8px',
+    borderBottom: '1px solid #1a1a1a',
+    marginBottom: 2,
+  },
+  row: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '9px 0',
+    borderBottom: '1px solid #111',
+  },
   rowLabel: { color: '#888', fontSize: 14 },
   rowValue: { color: '#fff', fontSize: 14, fontWeight: 600, textAlign: 'right', maxWidth: '60%' },
   spacer: { height: 40 },

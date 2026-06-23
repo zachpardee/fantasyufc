@@ -5,8 +5,12 @@ import { useAuthStore } from '../store/auth.store';
 import { LoadingScreen } from '../components/LoadingScreen';
 
 const METHOD_SHORT: Record<string, string> = {
-  ko_tko: 'KO', submission: 'SUB', decision: 'DEC',
-  decision_unanimous: 'DEC', decision_split: 'DEC', decision_majority: 'DEC',
+  ko_tko: 'KO',
+  submission: 'SUB',
+  decision: 'DEC',
+  decision_unanimous: 'DEC',
+  decision_split: 'DEC',
+  decision_majority: 'DEC',
   disqualification: 'DQ',
 };
 
@@ -28,14 +32,16 @@ export function PicksComparisonPage() {
     queryKey: ['picks-all', leagueId, currentEvent?.id],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}/all`),
     enabled: !!currentEvent?.id,
-    refetchInterval: (query) => query.state.data?.event?.status === 'live' ? 30_000 : false,
+    refetchInterval: (query) => (query.state.data?.event?.status === 'live' ? 30_000 : false),
   });
 
   if (!currentEvent) {
     return (
       <div style={styles.page}>
         <nav style={styles.nav}>
-          <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+          <Link to={`/league/${leagueId}/picks`} style={styles.back}>
+            ← Picks
+          </Link>
           <span style={styles.title}>Pick Comparison</span>
         </nav>
         <div style={styles.empty}>No upcoming event scheduled.</div>
@@ -54,7 +60,9 @@ export function PicksComparisonPage() {
     return (
       <div style={styles.page}>
         <nav style={styles.nav}>
-          <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+          <Link to={`/league/${leagueId}/picks`} style={styles.back}>
+            ← Picks
+          </Link>
           <span style={styles.title}>Pick Comparison</span>
         </nav>
         <div style={styles.empty}>Pick comparison is only available once the event starts.</div>
@@ -65,7 +73,9 @@ export function PicksComparisonPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}/picks`} style={styles.back}>← Picks</Link>
+        <Link to={`/league/${leagueId}/picks`} style={styles.back}>
+          ← Picks
+        </Link>
         <span style={styles.title}>Pick Comparison</span>
         {isLive && <span style={styles.liveBadge}>LIVE</span>}
       </nav>
@@ -74,7 +84,9 @@ export function PicksComparisonPage() {
         <div style={styles.eventName}>{event.name}</div>
         <div style={styles.eventDate}>
           {new Date(event.scheduledAt).toLocaleDateString('en-US', {
-            weekday: 'long', month: 'long', day: 'numeric',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
           })}
         </div>
       </div>
@@ -108,7 +120,11 @@ export function PicksComparisonPage() {
                   {members.map((m: any) => {
                     const pick = fight.picks[m.id];
                     if (!pick) {
-                      return <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>—</td>;
+                      return (
+                        <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>
+                          —
+                        </td>
+                      );
                     }
                     const pickedRed = pick.pickedFighterId === fight.redFighterId;
                     const method = METHOD_SHORT[pick.pickedMethod] ?? pick.pickedMethod;
@@ -149,23 +165,36 @@ export function PicksComparisonPage() {
               </td>
               {members.map((m: any) => {
                 const cp = championPicks?.[m.id];
-                if (!cp) return <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>—</td>;
+                if (!cp)
+                  return (
+                    <td key={m.id} style={{ ...styles.td, ...styles.noPick }}>
+                      —
+                    </td>
+                  );
                 const won = cp.pointsEarned > 0;
                 const pending = cp.resultWinnerId === null;
                 const resolved = isCompleted || (isLive && cp.resultWinnerId !== null);
                 return (
-                  <td key={m.id} style={{
-                    ...styles.td,
-                    ...(resolved && won ? styles.champCorrect : {}),
-                    ...(resolved && !won ? styles.champWrong : {}),
-                  }}>
-                    <div style={styles.champName}>{cp.firstName} {cp.lastName}</div>
-                    {resolved
-                      ? won
-                        ? <div style={styles.champPts}>+30</div>
-                        : <div style={styles.champMiss}>✗</div>
-                      : pending && <div style={styles.champPending}>—</div>
-                    }
+                  <td
+                    key={m.id}
+                    style={{
+                      ...styles.td,
+                      ...(resolved && won ? styles.champCorrect : {}),
+                      ...(resolved && !won ? styles.champWrong : {}),
+                    }}
+                  >
+                    <div style={styles.champName}>
+                      {cp.firstName} {cp.lastName}
+                    </div>
+                    {resolved ? (
+                      won ? (
+                        <div style={styles.champPts}>+30</div>
+                      ) : (
+                        <div style={styles.champMiss}>✗</div>
+                      )
+                    ) : (
+                      pending && <div style={styles.champPending}>—</div>
+                    )}
                   </td>
                 );
               })}
@@ -182,13 +211,17 @@ export function PicksComparisonPage() {
               const p = f.picks[m.id];
               return sum + (p?.pointsEarned ? +p.pointsEarned : 0);
             }, 0);
-            const champPts = championPicks?.[m.id]?.pointsEarned ? +championPicks[m.id].pointsEarned : 0;
+            const champPts = championPicks?.[m.id]?.pointsEarned
+              ? +championPicks[m.id].pointsEarned
+              : 0;
             const total = pickPts + champPts;
             const correct = fights.filter((f: any) => f.picks[m.id]?.isCorrect === true).length;
             return (
               <div key={m.id} style={styles.totalsCell}>
                 <div style={styles.totalsPts}>{total.toFixed(0)}</div>
-                <div style={styles.totalsCorrect}>{correct}/{fights.length} correct</div>
+                <div style={styles.totalsCorrect}>
+                  {correct}/{fights.length} correct
+                </div>
               </div>
             );
           })}
@@ -200,17 +233,47 @@ export function PicksComparisonPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+  },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontWeight: 700, fontSize: 18, flex: 1 },
-  liveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4 },
+  liveBadge: {
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: 4,
+  },
   header: { background: '#111', borderBottom: '1px solid #1a1a1a', padding: '20px 24px' },
   eventName: { color: '#fff', fontSize: 18, fontWeight: 700 },
   eventDate: { color: '#666', fontSize: 14, marginTop: 4 },
   empty: { color: '#555', textAlign: 'center', padding: 60, fontSize: 14 },
   tableWrap: { overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', minWidth: 500 },
-  th: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #222', whiteSpace: 'nowrap' },
+  th: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    padding: '12px 16px',
+    textAlign: 'center',
+    borderBottom: '1px solid #222',
+    whiteSpace: 'nowrap',
+  },
   fightCol: { textAlign: 'left', minWidth: 160 },
   memberName: { color: '#aaa', fontSize: 12, fontWeight: 700 },
   td: { padding: '12px 16px', textAlign: 'center', verticalAlign: 'middle' },
@@ -240,8 +303,24 @@ const styles: Record<string, React.CSSProperties> = {
   champPending: { color: '#555', fontSize: 12, marginTop: 3 },
   champCorrect: { background: '#0a1a0a' },
   champWrong: { background: '#1a0808', opacity: 0.6 },
-  totalsRow: { display: 'flex', alignItems: 'stretch', borderTop: '2px solid #222', background: '#111', padding: '16px 24px', gap: 0 },
-  totalsLabel: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, flex: '0 0 160px', display: 'flex', alignItems: 'center' },
+  totalsRow: {
+    display: 'flex',
+    alignItems: 'stretch',
+    borderTop: '2px solid #222',
+    background: '#111',
+    padding: '16px 24px',
+    gap: 0,
+  },
+  totalsLabel: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: '0 0 160px',
+    display: 'flex',
+    alignItems: 'center',
+  },
   totalsCell: { flex: 1, textAlign: 'center' },
   totalsPts: { color: '#c8102e', fontSize: 20, fontWeight: 700 },
   totalsCorrect: { color: '#555', fontSize: 12, marginTop: 2 },

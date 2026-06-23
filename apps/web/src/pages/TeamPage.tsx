@@ -27,7 +27,9 @@ export function TeamPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}/standings`} style={styles.back}>← Standings</Link>
+        <Link to={`/league/${leagueId}/standings`} style={styles.back}>
+          ← Standings
+        </Link>
         <span style={styles.title}>{member?.teamName ?? 'Team'}</span>
       </nav>
 
@@ -35,14 +37,28 @@ export function TeamPage() {
         <div style={styles.statBar}>
           <div style={styles.stat}>
             <span style={styles.statLabel}>{isStaking ? 'Season Bankroll' : 'Season Points'}</span>
-            <span style={{ ...styles.statValue, color: isStaking ? ((member.stakingBalance ?? 0) >= 0 ? '#4caf50' : '#ff5252') : '#fff' }}>
-              {isStaking ? fmtBankroll(+(member.stakingBalance ?? 0)) : (+(member.totalPoints ?? 0)).toFixed(1)}
+            <span
+              style={{
+                ...styles.statValue,
+                color: isStaking
+                  ? (member.stakingBalance ?? 0) >= 0
+                    ? '#4caf50'
+                    : '#ff5252'
+                  : '#fff',
+              }}
+            >
+              {isStaking
+                ? fmtBankroll(+(member.stakingBalance ?? 0))
+                : (+(member.totalPoints ?? 0)).toFixed(1)}
             </span>
           </div>
           <div style={styles.statDivider} />
           <div style={styles.stat}>
             <span style={styles.statLabel}>Record</span>
-            <span style={styles.statValue}>{member.wins}-{member.losses}{member.ties > 0 ? `-${member.ties}` : ''}</span>
+            <span style={styles.statValue}>
+              {member.wins}-{member.losses}
+              {member.ties > 0 ? `-${member.ties}` : ''}
+            </span>
           </div>
           <div style={styles.statDivider} />
           <div style={styles.stat}>
@@ -57,12 +73,39 @@ export function TeamPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+  },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontSize: 18, fontWeight: 700 },
-  statBar: { background: '#111', borderBottom: '1px solid #1e1e1e', padding: '20px 24px', display: 'flex', gap: 0, alignItems: 'center' },
+  statBar: {
+    background: '#111',
+    borderBottom: '1px solid #1e1e1e',
+    padding: '20px 24px',
+    display: 'flex',
+    gap: 0,
+    alignItems: 'center',
+  },
   stat: { display: 'flex', flexDirection: 'column', gap: 4, padding: '0 28px 0 0' },
-  statLabel: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
+  statLabel: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   statValue: { color: '#fff', fontSize: 20, fontWeight: 700 },
   statDivider: { width: 1, height: 36, background: '#2a2a2a', marginRight: 28 },
 };

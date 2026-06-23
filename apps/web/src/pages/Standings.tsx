@@ -43,7 +43,9 @@ export function StandingsPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <Link to={`/league/${leagueId}`} style={styles.back}>← League</Link>
+        <Link to={`/league/${leagueId}`} style={styles.back}>
+          ← League
+        </Link>
         <span style={styles.title}>Standings</span>
       </nav>
 
@@ -54,7 +56,9 @@ export function StandingsPage() {
             {!isLoading && (
               <tr>
                 {headers.map((h) => (
-                  <th key={h} style={styles.th}>{h}</th>
+                  <th key={h} style={styles.th}>
+                    {h}
+                  </th>
                 ))}
               </tr>
             )}
@@ -66,12 +70,20 @@ export function StandingsPage() {
               return (
                 <tr
                   key={member.id}
-                  style={{ ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd), ...(isMe ? styles.rowMe : {}), cursor: 'pointer' }}
+                  style={{
+                    ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd),
+                    ...(isMe ? styles.rowMe : {}),
+                    cursor: 'pointer',
+                  }}
                   onClick={() => navigate(`/league/${leagueId}/team/${member.id}`)}
                 >
                   <td style={styles.td}>
                     <span style={i < 3 ? styles.medal : undefined}>
-                      {i < 3 ? <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][i]} /> : i + 1}
+                      {i < 3 ? (
+                        <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][i]} />
+                      ) : (
+                        i + 1
+                      )}
                     </span>
                   </td>
                   <td style={styles.tdTeam}>
@@ -82,7 +94,13 @@ export function StandingsPage() {
                     <div style={styles.username}>@{member.username}</div>
                   </td>
                   {isStaking ? (
-                    <td style={{ ...styles.td, color: bankroll > 0 ? '#4caf50' : bankroll < 0 ? '#ff5252' : '#555', fontWeight: 700 }}>
+                    <td
+                      style={{
+                        ...styles.td,
+                        color: bankroll > 0 ? '#4caf50' : bankroll < 0 ? '#ff5252' : '#555',
+                        fontWeight: 700,
+                      }}
+                    >
                       {fmtBankroll(bankroll)}
                     </td>
                   ) : (
@@ -94,11 +112,13 @@ export function StandingsPage() {
                   <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>
                   <td style={styles.td}>{member.ties}</td>
                   <td style={styles.td}>
-                    {member.streak > 0
-                      ? <span style={styles.winStreak}>W{member.streak}</span>
-                      : member.streak < 0
-                      ? <span style={styles.lossStreak}>L{Math.abs(member.streak)}</span>
-                      : <span style={styles.noStreak}>--</span>}
+                    {member.streak > 0 ? (
+                      <span style={styles.winStreak}>W{member.streak}</span>
+                    ) : member.streak < 0 ? (
+                      <span style={styles.lossStreak}>L{Math.abs(member.streak)}</span>
+                    ) : (
+                      <span style={styles.noStreak}>--</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -115,21 +135,57 @@ export function StandingsPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16 },
+  nav: {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+  },
   back: { color: '#c8102e', textDecoration: 'none', fontSize: 14 },
   title: { color: '#fff', fontWeight: 700, fontSize: 18 },
   content: { padding: 24, maxWidth: 900, margin: '0 auto' },
   empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: 40 },
   table: { width: '100%', borderCollapse: 'collapse' },
-  th: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', padding: '10px 14px', textAlign: 'left', borderBottom: '1px solid #222' },
+  th: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    padding: '10px 14px',
+    textAlign: 'left',
+    borderBottom: '1px solid #222',
+  },
   td: { color: '#ccc', padding: '14px', fontSize: 14, textAlign: 'left' },
   tdTeam: { padding: '10px 14px' },
   rowEven: { background: '#0f0f0f' },
   rowOdd: { background: '#0a0a0a' },
   rowMe: { background: '#1a1200' },
-  teamName: { color: '#fff', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 },
+  teamName: {
+    color: '#fff',
+    fontWeight: 600,
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
   username: { color: '#666', fontSize: 12 },
-  youBadge: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3 },
+  youBadge: {
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 700,
+    padding: '2px 6px',
+    borderRadius: 3,
+  },
   medal: {},
   win: { color: '#4caf50', fontWeight: 700 },
   loss: { color: '#ff5252', fontWeight: 700 },

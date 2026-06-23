@@ -10,12 +10,32 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import type { League, LeagueMember, Matchup } from '@fantasy-ufc/shared';
 import { BeltHalo, MemberSheet, hasBelt, hasBmfBelt } from '../components/MemberSheet';
-import { MatchupFightList, MatchupPickPanel, StakingBetsSection, FighterModal, LiveFightCard, type PhotoClickHandler } from '../components/MatchupComponents';
+import {
+  MatchupFightList,
+  MatchupPickPanel,
+  StakingBetsSection,
+  FighterModal,
+  LiveFightCard,
+  type PhotoClickHandler,
+} from '../components/MatchupComponents';
 import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
 import { MemberAvatar } from '../components/MemberAvatar';
 import {
-  Home, Bell, X, Settings, Target, Swords, BarChart3, Calendar,
-  Trophy, ClipboardList, Dumbbell, Gavel, Pencil, ChevronUp, ChevronDown,
+  Home,
+  Bell,
+  X,
+  Settings,
+  Target,
+  Swords,
+  BarChart3,
+  Calendar,
+  Trophy,
+  ClipboardList,
+  Dumbbell,
+  Gavel,
+  Pencil,
+  ChevronUp,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -40,11 +60,16 @@ export function LeagueHomePage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordMsg, setPasswordMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [passwordMsg, setPasswordMsg] = useState<{
+    type: 'error' | 'success';
+    text: string;
+  } | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [newEmail, setNewEmail] = useState('');
-  const [emailMsg, setEmailMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [emailMsg, setEmailMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(
+    null,
+  );
   const [emailLoading, setEmailLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showFightCard, setShowFightCard] = useState(false);
@@ -59,14 +84,21 @@ export function LeagueHomePage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: myProfile } = useQuery<{ username: string; displayName?: string; avatarUrl?: string; avatarColor?: string }>({
+  const { data: myProfile } = useQuery<{
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    avatarColor?: string;
+  }>({
     queryKey: ['my-profile'],
     queryFn: () => apiClient.get('/auth/me'),
     enabled: !!session,
     staleTime: 5 * 60_000,
   });
 
-  const { data: members = [] } = useQuery<(LeagueMember & { username: string; displayName?: string })[]>({
+  const { data: members = [] } = useQuery<
+    (LeagueMember & { username: string; displayName?: string })[]
+  >({
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
     refetchInterval: 30_000,
@@ -78,27 +110,50 @@ export function LeagueHomePage() {
     refetchInterval: 60_000,
   });
 
-  const { data: notifications = [], refetch: refetchNotifs } = useQuery<import('@fantasy-ufc/shared').Notification[]>({
+  const { data: notifications = [], refetch: refetchNotifs } = useQuery<
+    import('@fantasy-ufc/shared').Notification[]
+  >({
     queryKey: ['notifications'],
     queryFn: () => apiClient.get('/notifications'),
     enabled: showNotifs,
   });
 
-  const { data: currentEvent } = useQuery<{ id: string; name: string; venue: string; location: string; scheduledAt: string; prelimsAt?: string; status: string } | null>({
+  const { data: currentEvent } = useQuery<{
+    id: string;
+    name: string;
+    venue: string;
+    location: string;
+    scheduledAt: string;
+    prelimsAt?: string;
+    status: string;
+  } | null>({
     queryKey: ['current-event', leagueId],
     queryFn: async () => {
-      try { return await apiClient.get(`/leagues/${leagueId}/picks/current-event`) as any; }
-      catch { return null; }
+      try {
+        return (await apiClient.get(`/leagues/${leagueId}/picks/current-event`)) as any;
+      } catch {
+        return null;
+      }
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
 
-
-  const { data: matchup, refetch: refetchMatchup } = useQuery<(Matchup & { homeTeamName: string; awayTeamName: string; eventName: string; eventStatus: string }) | null>({
+  const { data: matchup, refetch: refetchMatchup } = useQuery<
+    | (Matchup & {
+        homeTeamName: string;
+        awayTeamName: string;
+        eventName: string;
+        eventStatus: string;
+      })
+    | null
+  >({
     queryKey: ['matchup-current', leagueId],
     queryFn: async () => {
-      try { return await apiClient.get(`/leagues/${leagueId}/matchups/current`) as any; }
-      catch { return null; }
+      try {
+        return (await apiClient.get(`/leagues/${leagueId}/matchups/current`)) as any;
+      } catch {
+        return null;
+      }
     },
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
     refetchInterval: (query) => {
@@ -115,14 +170,21 @@ export function LeagueHomePage() {
     enabled: !!league && (league.status === 'active' || league.status === 'playoffs'),
   });
 
-  const [enlargedPhoto, setEnlargedPhoto] = useState<{ url: string; name: string; fighterId?: string } | null>(null);
-  const openPhoto: PhotoClickHandler = (url, name, fighterId) => setEnlargedPhoto({ url, name, fighterId });
+  const [enlargedPhoto, setEnlargedPhoto] = useState<{
+    url: string;
+    name: string;
+    fighterId?: string;
+  } | null>(null);
+  const openPhoto: PhotoClickHandler = (url, name, fighterId) =>
+    setEnlargedPhoto({ url, name, fighterId });
 
   // Build the user's matchup list (sorted newest-first) and compute the viewed matchup
   const myMemberId = members.find((m) => m.userId === session?.user.id)?.id;
   const myMatchups = (allMatchups as any[])
     .filter((m: any) => myMemberId && (m.homeTeamId === myMemberId || m.awayTeamId === myMemberId))
-    .sort((a: any, b: any) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+    .sort(
+      (a: any, b: any) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
+    );
   const currentMatchupIdx = matchup ? myMatchups.findIndex((m: any) => m.id === matchup.id) : -1;
   const effectiveIdx = viewedMatchupIdx ?? Math.max(0, currentMatchupIdx);
   const effectiveMatchup: typeof matchup = myMatchups[effectiveIdx] ?? matchup ?? null;
@@ -131,12 +193,14 @@ export function LeagueHomePage() {
   const matchupHomeId = effectiveMatchup?.homeTeamId;
   const matchupAwayId = effectiveMatchup?.awayTeamId;
   const fightCardEventId = matchupEventId ?? currentEvent?.id;
-  const eventIsLive = effectiveMatchup?.eventStatus === 'live' || effectiveMatchup?.eventStatus === 'completed';
+  const eventIsLive =
+    effectiveMatchup?.eventStatus === 'live' || effectiveMatchup?.eventStatus === 'completed';
 
   const leagueIsStaking = (league as any)?.leagueFormat === 'staking';
 
   // Only live-poll when showing the actual live matchup
-  const liveRefetchInterval = (viewedMatchupIdx === null && matchup?.eventStatus === 'live') ? 30_000 : false as const;
+  const liveRefetchInterval =
+    viewedMatchupIdx === null && matchup?.eventStatus === 'live' ? 30_000 : (false as const);
 
   const { data: fightCardData } = useQuery<{ fights: any[] }>({
     queryKey: ['fight-card', leagueId, fightCardEventId],
@@ -146,56 +210,78 @@ export function LeagueHomePage() {
 
   const { data: homePicks } = useQuery<any>({
     queryKey: ['home-picks', leagueId, matchupEventId, matchupHomeId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupHomeId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupHomeId}`),
     enabled: !!matchupEventId && !!matchupHomeId && !leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
   const { data: awayPicks } = useQuery<any>({
     queryKey: ['away-picks', leagueId, matchupEventId, matchupAwayId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupAwayId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}?memberId=${matchupAwayId}`),
     enabled: !!matchupEventId && !!matchupAwayId && !leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
   const { data: homeChampion } = useQuery<any>({
     queryKey: ['home-champion', leagueId, matchupEventId, matchupHomeId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupHomeId}`),
+    queryFn: () =>
+      apiClient.get(
+        `/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupHomeId}`,
+      ),
     enabled: !!matchupEventId && !!matchupHomeId && !leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
   const { data: awayChampion } = useQuery<any>({
     queryKey: ['away-champion', leagueId, matchupEventId, matchupAwayId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupAwayId}`),
+    queryFn: () =>
+      apiClient.get(
+        `/leagues/${leagueId}/picks/${matchupEventId}/champion?memberId=${matchupAwayId}`,
+      ),
     enabled: !!matchupEventId && !!matchupAwayId && !leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
   const { data: homeStaking } = useQuery<any>({
     queryKey: ['home-staking', leagueId, matchupEventId, matchupHomeId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupHomeId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupHomeId}`),
     enabled: !!matchupEventId && !!matchupHomeId && leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
   const { data: awayStaking } = useQuery<any>({
     queryKey: ['away-staking', leagueId, matchupEventId, matchupAwayId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupAwayId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/staking/${matchupEventId}?memberId=${matchupAwayId}`),
     enabled: !!matchupEventId && !!matchupAwayId && leagueIsStaking,
     refetchInterval: liveRefetchInterval,
   });
 
   // Reset to current matchup when the underlying current matchup changes (e.g. event goes live)
-  useEffect(() => { setViewedMatchupIdx(null); }, [matchup?.id]);
+  useEffect(() => {
+    setViewedMatchupIdx(null);
+  }, [matchup?.id]);
 
   // Real-time score sync: subscribe to matchup DB updates just like the Matchup page does
   useEffect(() => {
     if (!matchup?.id) return;
-    const channel = supabase.channel(`home-matchup:${matchup.id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matchups', filter: `id=eq.${matchup.id}` }, () => refetchMatchup())
+    const channel = supabase
+      .channel(`home-matchup:${matchup.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'matchups', filter: `id=eq.${matchup.id}` },
+        () => refetchMatchup(),
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [matchup?.id, refetchMatchup]);
 
   const markAllReadMutation = useMutation({
     mutationFn: () => apiClient.post('/notifications/read-all', {}),
-    onSuccess: () => { refetchUnread(); refetchNotifs(); },
+    onSuccess: () => {
+      refetchUnread();
+      refetchNotifs();
+    },
   });
 
   const { data: messages = [], refetch: refetchMessages } = useQuery<any[]>({
@@ -207,11 +293,15 @@ export function LeagueHomePage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: (body: string) => apiClient.post(`/leagues/${leagueId}/messages`, { body }),
-    onSuccess: () => { refetchMessages(); setMsgInput(''); },
+    onSuccess: () => {
+      refetchMessages();
+      setMsgInput('');
+    },
   });
 
   const deleteMessageMutation = useMutation({
-    mutationFn: (messageId: string) => apiClient.delete(`/leagues/${leagueId}/messages/${messageId}`),
+    mutationFn: (messageId: string) =>
+      apiClient.delete(`/leagues/${leagueId}/messages/${messageId}`),
     onSuccess: () => refetchMessages(),
   });
 
@@ -244,7 +334,8 @@ export function LeagueHomePage() {
   });
 
   const renameTeamMutation = useMutation({
-    mutationFn: (teamName: string) => apiClient.patch(`/leagues/${leagueId}/members/me`, { teamName }),
+    mutationFn: (teamName: string) =>
+      apiClient.patch(`/leagues/${leagueId}/members/me`, { teamName }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['league-members', leagueId] });
       setEditingTeamName(false);
@@ -296,7 +387,9 @@ export function LeagueHomePage() {
   });
 
   const membersRef = useRef(members);
-  useEffect(() => { membersRef.current = members; }, [members]);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
 
   // Track presence: who's on this league page right now
   // Only re-run when leagueId/session change — not on every members refetch,
@@ -312,7 +405,9 @@ export function LeagueHomePage() {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ userId: string; teamName: string }>();
         const seen = new Map<string, { userId: string; teamName: string }>();
-        Object.values(state).flatMap((s) => s).forEach((u) => seen.set(u.userId, u));
+        Object.values(state)
+          .flatMap((s) => s)
+          .forEach((u) => seen.set(u.userId, u));
         setOnlineUsers(Array.from(seen.values()));
       })
       .subscribe(async (status) => {
@@ -323,7 +418,9 @@ export function LeagueHomePage() {
         }
       });
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [leagueId, session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -337,18 +434,25 @@ export function LeagueHomePage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showLeagueMenu]);
 
-  if (!league) return (
-    <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
-      <nav style={styles.nav}>
-        <Link to="/" style={styles.logoLink}><img src="/logo.jpg" alt="FFL" style={styles.logo} /></Link>
-        <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>
-      </nav>
-      <SkeletonLeagueHeader />
-      <div style={{ padding: '0 24px' }}>
-        {[0, 1, 2, 3, 4].map((i) => <SkeletonFightRow key={i} />)}
+  if (!league)
+    return (
+      <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
+        <nav style={styles.nav}>
+          <Link to="/" style={styles.logoLink}>
+            <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+          </Link>
+          <Link to="/" style={styles.homeBtn}>
+            <Home size={15} /> User Home
+          </Link>
+        </nav>
+        <SkeletonLeagueHeader />
+        <div style={{ padding: '0 24px' }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <SkeletonFightRow key={i} />
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   const isCommissioner = session?.user.id === league.commissionerId;
   const canActivate = isCommissioner && league.status === 'setup' && (league.memberCount ?? 0) >= 2;
@@ -367,14 +471,18 @@ export function LeagueHomePage() {
     const scored = picks.filter((p) => p.isCorrect !== null);
     if (scored.length === 0) return 0;
     const correct = scored.filter((p) => p.isCorrect === true);
-    const pts = picks.reduce((s: number, p: any) => s + (+(p.pointsEarned ?? 0)), 0);
-    const sweep = correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
+    const pts = picks.reduce((s: number, p: any) => s + +(p.pointsEarned ?? 0), 0);
+    const sweep =
+      correct.length === 6 ? 20 : correct.length === 5 ? 10 : correct.length === 4 ? 5 : 0;
     return pts + sweep + championPts;
   }
 
   const champion = members.find((m) => m.isChampion);
-  const showChampionBanner = league.status === 'completed' && !!champion && !!league.completedAt
-    && Date.now() - new Date(league.completedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+  const showChampionBanner =
+    league.status === 'completed' &&
+    !!champion &&
+    !!league.completedAt &&
+    Date.now() - new Date(league.completedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 
   function copyInviteCode() {
     navigator.clipboard.writeText(league!.inviteCode);
@@ -384,7 +492,10 @@ export function LeagueHomePage() {
 
   async function changeEmail() {
     const trimmed = newEmail.trim().toLowerCase();
-    if (!trimmed.includes('@')) { setEmailMsg({ type: 'error', text: 'Enter a valid email address' }); return; }
+    if (!trimmed.includes('@')) {
+      setEmailMsg({ type: 'error', text: 'Enter a valid email address' });
+      return;
+    }
     setEmailLoading(true);
     setEmailMsg(null);
     const { error } = await supabase.auth.updateUser({ email: trimmed });
@@ -394,13 +505,22 @@ export function LeagueHomePage() {
     } else {
       setEmailMsg({ type: 'success', text: 'Confirmation sent to ' + trimmed });
       setNewEmail('');
-      setTimeout(() => { setShowEmailForm(false); setEmailMsg(null); }, 2500);
+      setTimeout(() => {
+        setShowEmailForm(false);
+        setEmailMsg(null);
+      }, 2500);
     }
   }
 
   async function changePassword() {
-    if (newPassword.length < 8) { setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' }); return; }
-    if (newPassword !== confirmPassword) { setPasswordMsg({ type: 'error', text: 'Passwords do not match' }); return; }
+    if (newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
     setPasswordLoading(true);
     setPasswordMsg(null);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
@@ -411,20 +531,59 @@ export function LeagueHomePage() {
       setPasswordMsg({ type: 'success', text: 'Password updated!' });
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => { setShowPasswordForm(false); setPasswordMsg(null); }, 1800);
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setPasswordMsg(null);
+      }, 1800);
     }
   }
 
-  const navLinks: { label: string; path?: string; icon: LucideIcon; external?: boolean; show: boolean; onClick?: () => void }[] = [
-    { label: isStaking ? 'Bets' : 'Picks', path: isStaking ? 'staking' : 'picks', icon: Target, show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Matchup', path: 'matchup', icon: Swords, show: league.status === 'active' || league.status === 'playoffs' },
+  const navLinks: {
+    label: string;
+    path?: string;
+    icon: LucideIcon;
+    external?: boolean;
+    show: boolean;
+    onClick?: () => void;
+  }[] = [
+    {
+      label: isStaking ? 'Bets' : 'Picks',
+      path: isStaking ? 'staking' : 'picks',
+      icon: Target,
+      show: league.status === 'active' || league.status === 'playoffs',
+    },
+    {
+      label: 'Matchup',
+      path: 'matchup',
+      icon: Swords,
+      show: league.status === 'active' || league.status === 'playoffs',
+    },
     { label: 'Standings', path: 'standings', icon: BarChart3, show: league.status !== 'setup' },
-    { label: 'Schedule', path: 'schedule', icon: Calendar, show: league.status === 'active' || league.status === 'playoffs' },
-    { label: 'Playoffs', path: 'playoffs', icon: Trophy, show: league.status === 'playoffs' || league.status === 'active' },
+    {
+      label: 'Schedule',
+      path: 'schedule',
+      icon: Calendar,
+      show: league.status === 'active' || league.status === 'playoffs',
+    },
+    {
+      label: 'Playoffs',
+      path: 'playoffs',
+      icon: Trophy,
+      show: league.status === 'playoffs' || league.status === 'active',
+    },
     { label: 'Rules', path: 'rules', icon: ClipboardList, show: true },
     { label: 'Fighters', path: '/fighters', icon: Dumbbell, external: true, show: true },
     { label: 'Commissioner', path: 'commissioner', icon: Gavel, show: isCommissioner },
-    { label: 'Settings', icon: Settings, show: !!myMember, onClick: () => { setSettingsTeamName(myMember!.teamName); setSettingsColor((myMember as any).avatarColor ?? '#5555ff'); setShowSettings(true); } },
+    {
+      label: 'Settings',
+      icon: Settings,
+      show: !!myMember,
+      onClick: () => {
+        setSettingsTeamName(myMember!.teamName);
+        setSettingsColor((myMember as any).avatarColor ?? '#5555ff');
+        setShowSettings(true);
+      },
+    },
   ];
 
   return (
@@ -436,35 +595,58 @@ export function LeagueHomePage() {
             <Link to="/" style={styles.logoLink}>
               <img src="/logo.jpg" alt="FFL" style={styles.logo} />
             </Link>
-            {!isMobile && <Link to="/" style={styles.homeBtn}><Home size={15} /> User Home</Link>}
+            {!isMobile && (
+              <Link to="/" style={styles.homeBtn}>
+                <Home size={15} /> User Home
+              </Link>
+            )}
             <div ref={leagueMenuRef} style={{ position: 'relative' }}>
-              <button
-                style={styles.leagueMenuBtn}
-                onClick={() => setShowLeagueMenu((v) => !v)}
-              >
+              <button style={styles.leagueMenuBtn} onClick={() => setShowLeagueMenu((v) => !v)}>
                 League {showLeagueMenu ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
               {showLeagueMenu && (
                 <div style={styles.leagueMenuDropdown}>
-                  <Link to={`/league/${leagueId}`} style={styles.leagueMenuItem} onClick={() => setShowLeagueMenu(false)}>
-                    <span style={styles.leagueMenuIcon}><Home size={15} /></span>League Home
+                  <Link
+                    to={`/league/${leagueId}`}
+                    style={styles.leagueMenuItem}
+                    onClick={() => setShowLeagueMenu(false)}
+                  >
+                    <span style={styles.leagueMenuIcon}>
+                      <Home size={15} />
+                    </span>
+                    League Home
                   </Link>
-                  {navLinks.filter((l) => l.show).map((item) =>
-                    item.onClick ? (
-                      <button key={item.label} style={styles.leagueMenuItem} onClick={() => { item.onClick!(); setShowLeagueMenu(false); }}>
-                        <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                      </button>
-                    ) : (
-                      <Link
-                        key={item.label}
-                        to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
-                        style={styles.leagueMenuItem}
-                        onClick={() => setShowLeagueMenu(false)}
-                      >
-                        <span style={styles.leagueMenuIcon}><item.icon size={15} /></span>{item.label}
-                      </Link>
-                    )
-                  )}
+                  {navLinks
+                    .filter((l) => l.show)
+                    .map((item) =>
+                      item.onClick ? (
+                        <button
+                          key={item.label}
+                          style={styles.leagueMenuItem}
+                          onClick={() => {
+                            item.onClick!();
+                            setShowLeagueMenu(false);
+                          }}
+                        >
+                          <span style={styles.leagueMenuIcon}>
+                            <item.icon size={15} />
+                          </span>
+                          {item.label}
+                        </button>
+                      ) : (
+                        <Link
+                          key={item.label}
+                          to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
+                          style={styles.leagueMenuItem}
+                          onClick={() => setShowLeagueMenu(false)}
+                        >
+                          <span style={styles.leagueMenuIcon}>
+                            <item.icon size={15} />
+                          </span>
+                          {item.label}
+                        </Link>
+                      ),
+                    )}
                 </div>
               )}
             </div>
@@ -476,9 +658,22 @@ export function LeagueHomePage() {
                 const isOnline = onlineUsers.some((u) => u.userId === m.userId);
                 return (
                   <div key={m.id} style={{ position: 'relative', display: 'inline-flex' }}>
-                    <MemberAvatar teamName={m.teamName} color={color} size={30} avatarUrl={(m as any).avatarUrl} title={m.teamName} onClick={() => setSelectedMember(m)} />
+                    <MemberAvatar
+                      teamName={m.teamName}
+                      color={color}
+                      size={30}
+                      avatarUrl={(m as any).avatarUrl}
+                      title={m.teamName}
+                      onClick={() => setSelectedMember(m)}
+                    />
                     {hasBelt(m, members, league) && <BeltHalo size={30} />}
-                    {hasBmfBelt(m, league) && <BeltHalo size={30} variant="bmf" position={hasBelt(m, members, league) ? 'bottom' : 'top'} />}
+                    {hasBmfBelt(m, league) && (
+                      <BeltHalo
+                        size={30}
+                        variant="bmf"
+                        position={hasBelt(m, members, league) ? 'bottom' : 'top'}
+                      />
+                    )}
                     {isOnline && <span style={styles.onlineDot} title="Online" />}
                   </div>
                 );
@@ -517,22 +712,37 @@ export function LeagueHomePage() {
                 <div style={styles.notifPanel}>
                   <div style={styles.notifHeader}>
                     <span style={styles.notifTitle}>Notifications</span>
-                    <button style={styles.notifClose} onClick={() => setShowNotifs(false)}><X size={15} /></button>
+                    <button style={styles.notifClose} onClick={() => setShowNotifs(false)}>
+                      <X size={15} />
+                    </button>
                   </div>
-                  {notifications.length === 0
-                    ? <div style={styles.notifEmpty}>No notifications yet</div>
-                    : notifications.map((n) => (
-                      <div key={n.id} style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}>
+                  {notifications.length === 0 ? (
+                    <div style={styles.notifEmpty}>No notifications yet</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        style={{ ...styles.notifItem, ...(!n.isRead ? styles.notifUnread : {}) }}
+                      >
                         <div style={styles.notifItemTitle}>{n.title}</div>
                         <div style={styles.notifItemBody}>{n.body}</div>
-                        <div style={styles.notifItemTime}>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                        <div style={styles.notifItemTime}>
+                          {new Date(n.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </div>
                       </div>
                     ))
-                  }
+                  )}
                 </div>
               )}
             </div>
-            {!isMobile && <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>}
+            {!isMobile && (
+              <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
+            )}
           </div>
         </div>
       </nav>
@@ -544,7 +754,10 @@ export function LeagueHomePage() {
           {editingName ? (
             <form
               style={styles.nameForm}
-              onSubmit={(e) => { e.preventDefault(); renameMutation.mutate(nameInput.trim()); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                renameMutation.mutate(nameInput.trim());
+              }}
             >
               <input
                 style={styles.nameInput}
@@ -553,28 +766,53 @@ export function LeagueHomePage() {
                 autoFocus
                 maxLength={100}
               />
-              <button type="submit" style={styles.nameSaveBtn} disabled={renameMutation.isPending || !nameInput.trim()}>Save</button>
-              <button type="button" style={styles.nameCancelBtn} onClick={() => setEditingName(false)}>Cancel</button>
+              <button
+                type="submit"
+                style={styles.nameSaveBtn}
+                disabled={renameMutation.isPending || !nameInput.trim()}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={styles.nameCancelBtn}
+                onClick={() => setEditingName(false)}
+              >
+                Cancel
+              </button>
             </form>
           ) : (
             <div style={styles.leagueNameRow}>
               <span style={styles.leagueName}>{league.name}</span>
               {isCommissioner && (
-                <button style={styles.editNameBtn} onClick={() => { setNameInput(league.name); setEditingName(true); }}><Pencil size={13} /></button>
+                <button
+                  style={styles.editNameBtn}
+                  onClick={() => {
+                    setNameInput(league.name);
+                    setEditingName(true);
+                  }}
+                >
+                  <Pencil size={13} />
+                </button>
               )}
             </div>
           )}
           <div style={styles.leagueMeta}>
             <span>
-              {((league as any).seasonEndsAt && seasonByRegularEnd(new Date((league as any).seasonEndsAt))?.label)
-                ?? `Season ${league.seasonYear}`}
+              {((league as any).seasonEndsAt &&
+                seasonByRegularEnd(new Date((league as any).seasonEndsAt))?.label) ??
+                `Season ${league.seasonYear}`}
             </span>
             <span style={styles.metaDot}>·</span>
-            <span>{league.memberCount} / {league.maxTeams} teams</span>
+            <span>
+              {league.memberCount} / {league.maxTeams} teams
+            </span>
             {league.status === 'setup' && (
               <>
                 <span style={styles.metaDot}>·</span>
-                <span style={styles.inviteInline}>Code: <strong>{league.inviteCode}</strong></span>
+                <span style={styles.inviteInline}>
+                  Code: <strong>{league.inviteCode}</strong>
+                </span>
               </>
             )}
           </div>
@@ -583,7 +821,10 @@ export function LeagueHomePage() {
               {editingTeamName ? (
                 <form
                   style={styles.teamNameForm}
-                  onSubmit={(e) => { e.preventDefault(); renameTeamMutation.mutate(teamNameInput.trim()); }}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    renameTeamMutation.mutate(teamNameInput.trim());
+                  }}
                 >
                   <input
                     style={styles.teamNameInput}
@@ -592,16 +833,33 @@ export function LeagueHomePage() {
                     autoFocus
                     maxLength={100}
                   />
-                  <button type="submit" style={styles.nameSaveBtn} disabled={renameTeamMutation.isPending || !teamNameInput.trim()}>Save</button>
-                  <button type="button" style={styles.nameCancelBtn} onClick={() => setEditingTeamName(false)}>Cancel</button>
+                  <button
+                    type="submit"
+                    style={styles.nameSaveBtn}
+                    disabled={renameTeamMutation.isPending || !teamNameInput.trim()}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.nameCancelBtn}
+                    onClick={() => setEditingTeamName(false)}
+                  >
+                    Cancel
+                  </button>
                 </form>
               ) : (
                 <>
                   <span style={styles.myTeamName}>{myMember.teamName}</span>
                   <button
                     style={styles.editNameBtn}
-                    onClick={() => { setTeamNameInput(myMember.teamName); setEditingTeamName(true); }}
-                  ><Pencil size={13} /></button>
+                    onClick={() => {
+                      setTeamNameInput(myMember.teamName);
+                      setEditingTeamName(true);
+                    }}
+                  >
+                    <Pencil size={13} />
+                  </button>
                   <span style={styles.myTeamDot}>·</span>
                   <span style={styles.myTeamPts}>
                     {isStaking
@@ -609,7 +867,9 @@ export function LeagueHomePage() {
                       : `${(+myMember.totalPoints).toFixed(0)} pts`}
                   </span>
                   <span style={styles.myTeamDot}>·</span>
-                  <span style={styles.myTeamRecord}>{myMember.wins}–{myMember.losses}</span>
+                  <span style={styles.myTeamRecord}>
+                    {myMember.wins}–{myMember.losses}
+                  </span>
                 </>
               )}
             </div>
@@ -618,224 +878,564 @@ export function LeagueHomePage() {
       </div>
 
       {/* Current matchup + event card */}
-      {(effectiveMatchup || currentEvent) && (() => {
-        const home = !isStaking && effectiveMatchup
-          ? calcPicksScore(
-              homePicks?.fights ?? [],
-              homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0,
-              homePicks != null ? null : +effectiveMatchup.homeScore,
-            )
-          : effectiveMatchup ? +effectiveMatchup.homeScore : 0;
-        const away = !isStaking && effectiveMatchup
-          ? calcPicksScore(
-              awayPicks?.fights ?? [],
-              awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
-              awayPicks != null ? null : +effectiveMatchup.awayScore,
-            )
-          : effectiveMatchup ? +effectiveMatchup.awayScore : 0;
-        const isLive = effectiveMatchup?.eventStatus === 'live' || (viewedMatchupIdx === null && currentEvent?.status === 'live');
-        const diff = effectiveMatchup ? Math.abs(home - away) : 0;
-        const leading = effectiveMatchup ? (home > away ? effectiveMatchup.homeTeamName : away > home ? effectiveMatchup.awayTeamName : null) : null;
-        const eventName = effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Current Event';
+      {(effectiveMatchup || currentEvent) &&
+        (() => {
+          const home =
+            !isStaking && effectiveMatchup
+              ? calcPicksScore(
+                  homePicks?.fights ?? [],
+                  homeChampion?.pointsEarned ? +homeChampion.pointsEarned : 0,
+                  homePicks != null ? null : +effectiveMatchup.homeScore,
+                )
+              : effectiveMatchup
+                ? +effectiveMatchup.homeScore
+                : 0;
+          const away =
+            !isStaking && effectiveMatchup
+              ? calcPicksScore(
+                  awayPicks?.fights ?? [],
+                  awayChampion?.pointsEarned ? +awayChampion.pointsEarned : 0,
+                  awayPicks != null ? null : +effectiveMatchup.awayScore,
+                )
+              : effectiveMatchup
+                ? +effectiveMatchup.awayScore
+                : 0;
+          const isLive =
+            effectiveMatchup?.eventStatus === 'live' ||
+            (viewedMatchupIdx === null && currentEvent?.status === 'live');
+          const diff = effectiveMatchup ? Math.abs(home - away) : 0;
+          const leading = effectiveMatchup
+            ? home > away
+              ? effectiveMatchup.homeTeamName
+              : away > home
+                ? effectiveMatchup.awayTeamName
+                : null
+            : null;
+          const eventName = effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Current Event';
 
-        const hasPrev = myMatchups.length > 1 && effectiveIdx < myMatchups.length - 1;
-        const hasNext = myMatchups.length > 1 && effectiveIdx > 0;
-        const isViewingCurrent = viewedMatchupIdx === null || currentMatchupIdx === -1 || effectiveIdx === currentMatchupIdx;
-        const bannerLabel =
-          isViewingCurrent ? 'CURRENT MATCHUP'
-          : effectiveIdx < currentMatchupIdx ? 'UPCOMING MATCHUP'
-          : 'VIEWING PREVIOUS MATCHUP';
+          const hasPrev = myMatchups.length > 1 && effectiveIdx < myMatchups.length - 1;
+          const hasNext = myMatchups.length > 1 && effectiveIdx > 0;
+          const isViewingCurrent =
+            viewedMatchupIdx === null ||
+            currentMatchupIdx === -1 ||
+            effectiveIdx === currentMatchupIdx;
+          const bannerLabel = isViewingCurrent
+            ? 'CURRENT MATCHUP'
+            : effectiveIdx < currentMatchupIdx
+              ? 'UPCOMING MATCHUP'
+              : 'VIEWING PREVIOUS MATCHUP';
 
-        const homeMember = members.find(m => m.teamName === effectiveMatchup?.homeTeamName);
-        const awayMember = members.find(m => m.teamName === effectiveMatchup?.awayTeamName);
-        const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
-        const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
+          const homeMember = members.find((m) => m.teamName === effectiveMatchup?.homeTeamName);
+          const awayMember = members.find((m) => m.teamName === effectiveMatchup?.awayTeamName);
+          const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
+          const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
 
-        // Always show the logged-in user on the left
-        const leftIsHome = !effectiveMatchup || effectiveMatchup.homeTeamId === myMemberId;
-        const leftMember = leftIsHome ? homeMember : awayMember;
-        const rightMember = leftIsHome ? awayMember : homeMember;
-        const leftColor = leftIsHome ? homeColor : awayColor;
-        const rightColor = leftIsHome ? awayColor : homeColor;
-        const leftScore = leftIsHome ? home : away;
-        const rightScore = leftIsHome ? away : home;
-        const leftTeamName = leftIsHome ? effectiveMatchup?.homeTeamName : effectiveMatchup?.awayTeamName;
-        const rightTeamName = leftIsHome ? effectiveMatchup?.awayTeamName : effectiveMatchup?.homeTeamName;
+          // Always show the logged-in user on the left
+          const leftIsHome = !effectiveMatchup || effectiveMatchup.homeTeamId === myMemberId;
+          const leftMember = leftIsHome ? homeMember : awayMember;
+          const rightMember = leftIsHome ? awayMember : homeMember;
+          const leftColor = leftIsHome ? homeColor : awayColor;
+          const rightColor = leftIsHome ? awayColor : homeColor;
+          const leftScore = leftIsHome ? home : away;
+          const rightScore = leftIsHome ? away : home;
+          const leftTeamName = leftIsHome
+            ? effectiveMatchup?.homeTeamName
+            : effectiveMatchup?.awayTeamName;
+          const rightTeamName = leftIsHome
+            ? effectiveMatchup?.awayTeamName
+            : effectiveMatchup?.homeTeamName;
 
-        return (
-          <>
-            {/* Mobile: prev/next as a row above the banner */}
-            {isMobile && myMatchups.length > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 6px' }}>
-                <button
-                  onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
-                  disabled={!hasPrev}
-                  style={{ background: 'none', border: 'none', color: hasPrev ? '#bbb' : '#333', cursor: hasPrev ? 'pointer' : 'default', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
+          return (
+            <>
+              {/* Mobile: prev/next as a row above the banner */}
+              {isMobile && myMatchups.length > 1 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 12px 6px',
+                  }}
                 >
-                  ‹ Prev
-                </button>
-                <span style={{ fontSize: 10, color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  {myMatchups.length - effectiveIdx} / {myMatchups.length}
-                </span>
-                <button
-                  onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
-                  disabled={!hasNext}
-                  style={{ background: 'none', border: 'none', color: hasNext ? '#bbb' : '#333', cursor: hasNext ? 'pointer' : 'default', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}
-                >
-                  Next ›
-                </button>
-              </div>
-            )}
-            <div style={{ ...styles.matchupBanner, position: 'relative', overflow: 'hidden', ...(isMobile ? { margin: '0 12px 16px', padding: '12px 16px' } : { paddingLeft: 56, paddingRight: 56 }) }}>
-              {effectiveMatchup && (
-                <>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${leftColor}, transparent)` }} />
-                  <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, background: `linear-gradient(180deg, ${rightColor}, transparent)` }} />
-                </>
-              )}
-              {/* Previous/next arrows — desktop only */}
-              {!isMobile && (
-                <>
                   <button
-                    onClick={() => setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))}
+                    onClick={() =>
+                      setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))
+                    }
                     disabled={!hasPrev}
-                    style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', background: hasPrev ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasPrev ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 12px', color: hasPrev ? '#bbb' : '#2a2a2a' }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: hasPrev ? '#bbb' : '#333',
+                      cursor: hasPrev ? 'pointer' : 'default',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 0',
+                    }}
                   >
-                    <span style={{ fontSize: 26, lineHeight: 1 }}>‹</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Prev</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+                    ‹ Prev
                   </button>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: '#666',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {myMatchups.length - effectiveIdx} / {myMatchups.length}
+                  </span>
                   <button
                     onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
                     disabled={!hasNext}
-                    style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: hasNext ? '#1a1a1a' : 'none', border: 'none', borderRadius: 8, cursor: hasNext ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '8px 12px', color: hasNext ? '#bbb' : '#2a2a2a' }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: hasNext ? '#bbb' : '#333',
+                      cursor: hasNext ? 'pointer' : 'default',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 0',
+                    }}
                   >
-                    <span style={{ fontSize: 26, lineHeight: 1 }}>›</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Next</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 1.2, textAlign: 'center' }}>Matchup</span>
+                    Next ›
                   </button>
-                </>
+                </div>
               )}
-
-              <div style={styles.matchupLabelRow}>
-                <span style={styles.matchupLabel}>{bannerLabel}</span>
-                {isLive && (
-                  <span style={styles.livePip}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', animation: 'livePulse 1.2s ease-in-out infinite' }} />
-                    LIVE
-                  </span>
+              <div
+                style={{
+                  ...styles.matchupBanner,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  ...(isMobile
+                    ? { margin: '0 12px 16px', padding: '12px 16px' }
+                    : { paddingLeft: 56, paddingRight: 56 }),
+                }}
+              >
+                {effectiveMatchup && (
+                  <>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        background: `linear-gradient(180deg, ${leftColor}, transparent)`,
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        background: `linear-gradient(180deg, ${rightColor}, transparent)`,
+                      }}
+                    />
+                  </>
                 )}
-              </div>
-              <span style={styles.matchupEventTitle} onClick={() => setShowFightCard(true)} title="View fight card">{eventName} ›</span>
-              {viewedMatchupIdx === null && currentEvent && isMobile && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 4 }}>
-                  {(currentEvent.venue || currentEvent.location) && (
-                    <span style={styles.eventCardLocation}>
-                      {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-                    </span>
-                  )}
-                  {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
-                    <span style={styles.eventDate}>
-                      {(() => {
-                        const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
-                        return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-                      })()}
+                {/* Previous/next arrows — desktop only */}
+                {!isMobile && (
+                  <>
+                    <button
+                      onClick={() =>
+                        setViewedMatchupIdx(Math.min(effectiveIdx + 1, myMatchups.length - 1))
+                      }
+                      disabled={!hasPrev}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: hasPrev ? '#1a1a1a' : 'none',
+                        border: 'none',
+                        borderRadius: 8,
+                        cursor: hasPrev ? 'pointer' : 'default',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                        padding: '8px 12px',
+                        color: hasPrev ? '#bbb' : '#2a2a2a',
+                      }}
+                    >
+                      <span style={{ fontSize: 26, lineHeight: 1 }}>‹</span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          lineHeight: 1.2,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Prev
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          lineHeight: 1.2,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Matchup
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setViewedMatchupIdx(Math.max(effectiveIdx - 1, 0))}
+                      disabled={!hasNext}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: hasNext ? '#1a1a1a' : 'none',
+                        border: 'none',
+                        borderRadius: 8,
+                        cursor: hasNext ? 'pointer' : 'default',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                        padding: '8px 12px',
+                        color: hasNext ? '#bbb' : '#2a2a2a',
+                      }}
+                    >
+                      <span style={{ fontSize: 26, lineHeight: 1 }}>›</span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          lineHeight: 1.2,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Next
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                          lineHeight: 1.2,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Matchup
+                      </span>
+                    </button>
+                  </>
+                )}
+
+                <div style={styles.matchupLabelRow}>
+                  <span style={styles.matchupLabel}>{bannerLabel}</span>
+                  {isLive && (
+                    <span style={styles.livePip}>
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          animation: 'livePulse 1.2s ease-in-out infinite',
+                        }}
+                      />
+                      LIVE
                     </span>
                   )}
                 </div>
-              )}
-              {(() => {
-                const avatarSize = isMobile ? 32 : 50;
-                const scoreFontSize = isMobile ? (isStaking ? 22 : 28) : 34;
-                const beltGap = Math.ceil(avatarSize * 0.45) + 6;
-                const baseGap = isMobile ? 6 : 12;
-                const leftHasBeltOrBmf = !!(leftMember && (hasBelt(leftMember, members, league) || hasBmfBelt(leftMember, league)));
-                const rightHasBeltOrBmf = !!(rightMember && (hasBelt(rightMember, members, league) || hasBmfBelt(rightMember, league)));
-                const homeTeamGap = leftHasBeltOrBmf ? beltGap : baseGap;
-                const awayTeamGap = rightHasBeltOrBmf ? beltGap : baseGap;
-                return (
-                  <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
-                    <div style={{ ...styles.matchupTeam, gap: homeTeamGap, overflow: 'hidden', justifyContent: 'center' }}>
-                      {effectiveMatchup && (
-                        <>
-                          <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <MemberAvatar teamName={leftTeamName ?? ''} color={leftColor} size={avatarSize} avatarUrl={(leftMember as any)?.avatarUrl} onClick={() => leftMember && setSelectedMember(leftMember)} />
-                            {leftMember && hasBelt(leftMember, members, league) && <BeltHalo size={avatarSize} />}
-                            {leftMember && hasBmfBelt(leftMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(leftMember, members, league) ? 'bottom' : 'top'} />}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{leftTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: leftScore > rightScore ? '#fff' : '#666' }}>{fmtScore(leftScore)}</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 32px' : 1 }}>
-                      {isMobile ? (
-                        <span style={{ color: '#333', fontSize: 11, fontWeight: 700 }}>VS</span>
-                      ) : (
-                        <>
-                          {viewedMatchupIdx === null && currentEvent && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                              {(currentEvent.venue || currentEvent.location) && (
-                                <span style={styles.eventCardLocation}>
-                                  {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
-                                </span>
+                <span
+                  style={styles.matchupEventTitle}
+                  onClick={() => setShowFightCard(true)}
+                  title="View fight card"
+                >
+                  {eventName} ›
+                </span>
+                {viewedMatchupIdx === null && currentEvent && isMobile && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {(currentEvent.venue || currentEvent.location) && (
+                      <span style={styles.eventCardLocation}>
+                        {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
+                    {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
+                      <span style={styles.eventDate}>
+                        {(() => {
+                          const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
+                          return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {(() => {
+                  const avatarSize = isMobile ? 32 : 50;
+                  const scoreFontSize = isMobile ? (isStaking ? 22 : 28) : 34;
+                  const beltGap = Math.ceil(avatarSize * 0.45) + 6;
+                  const baseGap = isMobile ? 6 : 12;
+                  const leftHasBeltOrBmf = !!(
+                    leftMember &&
+                    (hasBelt(leftMember, members, league) || hasBmfBelt(leftMember, league))
+                  );
+                  const rightHasBeltOrBmf = !!(
+                    rightMember &&
+                    (hasBelt(rightMember, members, league) || hasBmfBelt(rightMember, league))
+                  );
+                  const homeTeamGap = leftHasBeltOrBmf ? beltGap : baseGap;
+                  const awayTeamGap = rightHasBeltOrBmf ? beltGap : baseGap;
+                  return (
+                    <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          ...styles.matchupTeam,
+                          gap: homeTeamGap,
+                          overflow: 'hidden',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {effectiveMatchup && (
+                          <>
+                            <div
+                              style={{
+                                position: 'relative',
+                                display: 'inline-flex',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <MemberAvatar
+                                teamName={leftTeamName ?? ''}
+                                color={leftColor}
+                                size={avatarSize}
+                                avatarUrl={(leftMember as any)?.avatarUrl}
+                                onClick={() => leftMember && setSelectedMember(leftMember)}
+                              />
+                              {leftMember && hasBelt(leftMember, members, league) && (
+                                <BeltHalo size={avatarSize} />
                               )}
-                              {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
-                                <span style={styles.eventDate}>
-                                  {(() => {
-                                    const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt);
-                                    return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-                                  })()}
-                                </span>
+                              {leftMember && hasBmfBelt(leftMember, league) && (
+                                <BeltHalo
+                                  size={avatarSize}
+                                  variant="bmf"
+                                  position={hasBelt(leftMember, members, league) ? 'bottom' : 'top'}
+                                />
                               )}
                             </div>
-                          )}
-                          {viewedMatchupIdx !== null && (effectiveMatchup as any)?.scheduledAt && (
-                            <span style={styles.eventDate}>
-                              {new Date((effectiveMatchup as any).scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                          )}
-                        </>
-                      )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 2,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  ...styles.matchupTeamName,
+                                  fontSize: isMobile ? 10 : 12,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap' as const,
+                                }}
+                              >
+                                {leftTeamName}
+                              </div>
+                              <div
+                                style={{
+                                  ...styles.matchupScore,
+                                  fontSize: scoreFontSize,
+                                  whiteSpace: 'nowrap' as const,
+                                  color: leftScore > rightScore ? '#fff' : '#666',
+                                }}
+                              >
+                                {fmtScore(leftScore)}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ ...styles.matchupCenter, flex: isMobile ? '0 0 32px' : 1 }}>
+                        {isMobile ? (
+                          <span style={{ color: '#333', fontSize: 11, fontWeight: 700 }}>VS</span>
+                        ) : (
+                          <>
+                            {viewedMatchupIdx === null && currentEvent && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                }}
+                              >
+                                {(currentEvent.venue || currentEvent.location) && (
+                                  <span style={styles.eventCardLocation}>
+                                    {[currentEvent.venue, currentEvent.location]
+                                      .filter(Boolean)
+                                      .join(' · ')}
+                                  </span>
+                                )}
+                                {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
+                                  <span style={styles.eventDate}>
+                                    {(() => {
+                                      const d = new Date(
+                                        currentEvent.prelimsAt ?? currentEvent.scheduledAt,
+                                      );
+                                      return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                                    })()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {viewedMatchupIdx !== null &&
+                              (effectiveMatchup as any)?.scheduledAt && (
+                                <span style={styles.eventDate}>
+                                  {new Date(
+                                    (effectiveMatchup as any).scheduledAt,
+                                  ).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })}
+                                </span>
+                              )}
+                          </>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          ...styles.matchupTeam,
+                          gap: awayTeamGap,
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {effectiveMatchup && (
+                          <>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 2,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  ...styles.matchupTeamName,
+                                  fontSize: isMobile ? 10 : 12,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap' as const,
+                                }}
+                              >
+                                {rightTeamName}
+                              </div>
+                              <div
+                                style={{
+                                  ...styles.matchupScore,
+                                  fontSize: scoreFontSize,
+                                  whiteSpace: 'nowrap' as const,
+                                  color: rightScore > leftScore ? '#fff' : '#666',
+                                }}
+                              >
+                                {fmtScore(rightScore)}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                position: 'relative',
+                                display: 'inline-flex',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <MemberAvatar
+                                teamName={rightTeamName ?? ''}
+                                color={rightColor}
+                                size={avatarSize}
+                                avatarUrl={(rightMember as any)?.avatarUrl}
+                                onClick={() => rightMember && setSelectedMember(rightMember)}
+                              />
+                              {rightMember && hasBelt(rightMember, members, league) && (
+                                <BeltHalo size={avatarSize} />
+                              )}
+                              {rightMember && hasBmfBelt(rightMember, league) && (
+                                <BeltHalo
+                                  size={avatarSize}
+                                  variant="bmf"
+                                  position={
+                                    hasBelt(rightMember, members, league) ? 'bottom' : 'top'
+                                  }
+                                />
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div style={{ ...styles.matchupTeam, gap: awayTeamGap, justifyContent: 'center', overflow: 'hidden' }}>
-                      {effectiveMatchup && (
-                        <>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                            <div style={{ ...styles.matchupTeamName, fontSize: isMobile ? 10 : 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{rightTeamName}</div>
-                            <div style={{ ...styles.matchupScore, fontSize: scoreFontSize, whiteSpace: 'nowrap' as const, color: rightScore > leftScore ? '#fff' : '#666' }}>{fmtScore(rightScore)}</div>
-                          </div>
-                          <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                            <MemberAvatar teamName={rightTeamName ?? ''} color={rightColor} size={avatarSize} avatarUrl={(rightMember as any)?.avatarUrl} onClick={() => rightMember && setSelectedMember(rightMember)} />
-                            {rightMember && hasBelt(rightMember, members, league) && <BeltHalo size={avatarSize} />}
-                            {rightMember && hasBmfBelt(rightMember, league) && <BeltHalo size={avatarSize} variant="bmf" position={hasBelt(rightMember, members, league) ? 'bottom' : 'top'} />}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-              {isViewingCurrent && <Link to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`} style={styles.eventPicksLink}>{isStaking ? 'Place Bets →' : 'Make Picks →'}</Link>}
-              {effectiveMatchup && <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>Matchup Details →</Link>}
-            </div>
-            {effectiveMatchup && (
-              <div style={styles.matchupSubRow}>
-                {leading
-                  ? <span style={styles.matchupLeadLabel}>{leading} leads by {fmtScore(diff)}</span>
-                  : <span style={styles.matchupTiedLabel}>TIED</span>}
+                  );
+                })()}
+                {isViewingCurrent && (
+                  <Link
+                    to={`/league/${leagueId}/${isStaking ? 'staking' : 'picks'}`}
+                    style={styles.eventPicksLink}
+                  >
+                    {isStaking ? 'Place Bets →' : 'Make Picks →'}
+                  </Link>
+                )}
+                {effectiveMatchup && (
+                  <Link to={`/league/${leagueId}/matchup`} style={styles.matchupDetailsLink}>
+                    Matchup Details →
+                  </Link>
+                )}
               </div>
-            )}
-          </>
-        );
-      })()}
+              {effectiveMatchup && (
+                <div style={styles.matchupSubRow}>
+                  {leading ? (
+                    <span style={styles.matchupLeadLabel}>
+                      {leading} leads by {fmtScore(diff)}
+                    </span>
+                  ) : (
+                    <span style={styles.matchupTiedLabel}>TIED</span>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
       {/* Champion banner */}
       {showChampionBanner && (
         <div style={styles.championBanner}>
-          <span style={styles.championTrophy}><Trophy size={26} color="#ffd700" /></span>
+          <span style={styles.championTrophy}>
+            <Trophy size={26} color="#ffd700" />
+          </span>
           <div style={styles.championText}>
             <span style={styles.championLabel}>League Champion</span>
             <span style={styles.championName}>{champion!.teamName}</span>
@@ -850,7 +1450,9 @@ export function LeagueHomePage() {
             <>
               <div style={styles.newSeasonText}>
                 <span style={styles.newSeasonTitle}>Start a new season?</span>
-                <span style={styles.newSeasonSub}>Resets all stats, rosters, and matchups. Same teams, new draft.</span>
+                <span style={styles.newSeasonSub}>
+                  Resets all stats, rosters, and matchups. Same teams, new draft.
+                </span>
               </div>
               <button style={styles.newSeasonBtn} onClick={() => setConfirmNewSeason(true)}>
                 New Season →
@@ -859,13 +1461,25 @@ export function LeagueHomePage() {
           ) : (
             <>
               <div style={styles.newSeasonText}>
-                <span style={styles.newSeasonTitle}>Start Season {(league.seasonYear ?? 0) + 1}?</span>
-                <span style={styles.newSeasonSub}>All stats, picks, and rosters will be permanently cleared.</span>
+                <span style={styles.newSeasonTitle}>
+                  Start Season {(league.seasonYear ?? 0) + 1}?
+                </span>
+                <span style={styles.newSeasonSub}>
+                  All stats, picks, and rosters will be permanently cleared.
+                </span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button style={styles.newSeasonCancelBtn} onClick={() => setConfirmNewSeason(false)}>Cancel</button>
                 <button
-                  style={{ ...styles.newSeasonConfirmBtn, opacity: newSeasonMutation.isPending ? 0.6 : 1 }}
+                  style={styles.newSeasonCancelBtn}
+                  onClick={() => setConfirmNewSeason(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  style={{
+                    ...styles.newSeasonConfirmBtn,
+                    opacity: newSeasonMutation.isPending ? 0.6 : 1,
+                  }}
                   onClick={() => newSeasonMutation.mutate()}
                   disabled={newSeasonMutation.isPending}
                 >
@@ -883,7 +1497,9 @@ export function LeagueHomePage() {
           <div style={styles.lobbyHeader}>
             <div>
               <p style={styles.lobbyTitle}>Waiting for players</p>
-              <p style={styles.lobbyMeta}>{league.memberCount} / {league.maxTeams} teams joined</p>
+              <p style={styles.lobbyMeta}>
+                {league.memberCount} / {league.maxTeams} teams joined
+              </p>
             </div>
             <div style={styles.inviteSection}>
               <p style={styles.inviteLabel}>Invite code</p>
@@ -919,23 +1535,34 @@ export function LeagueHomePage() {
                 <p style={styles.draftHint}>Need at least 2 teams to start the season</p>
               )}
               <button
-                style={{ ...styles.startDraftBtn, ...(!canActivate ? styles.startDraftDisabled : {}) }}
+                style={{
+                  ...styles.startDraftBtn,
+                  ...(!canActivate ? styles.startDraftDisabled : {}),
+                }}
                 onClick={() => activateMutation.mutate()}
                 disabled={!canActivate || activateMutation.isPending}
               >
-                {activateMutation.isPending ? 'Starting...' : `Start Season (${league.memberCount} teams)`}
+                {activateMutation.isPending
+                  ? 'Starting...'
+                  : `Start Season (${league.memberCount} teams)`}
               </button>
               {activateMutation.isError && (
-                <p style={styles.error}>{(activateMutation.error as any)?.error ?? 'Failed to start season'}</p>
+                <p style={styles.error}>
+                  {(activateMutation.error as any)?.error ?? 'Failed to start season'}
+                </p>
               )}
               <div style={styles.deleteDivider} />
               {!confirmDelete ? (
-                <button style={styles.deleteLeagueBtn} onClick={() => setConfirmDelete(true)}>Delete League</button>
+                <button style={styles.deleteLeagueBtn} onClick={() => setConfirmDelete(true)}>
+                  Delete League
+                </button>
               ) : (
                 <div style={styles.deleteConfirm}>
                   <p style={styles.deleteConfirmText}>Permanently delete this league?</p>
                   <div style={styles.deleteConfirmRow}>
-                    <button style={styles.deleteCancelBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+                    <button style={styles.deleteCancelBtn} onClick={() => setConfirmDelete(false)}>
+                      Cancel
+                    </button>
                     <button
                       style={styles.deleteConfirmBtn}
                       onClick={() => deleteLeagueMutation.mutate()}
@@ -945,7 +1572,9 @@ export function LeagueHomePage() {
                     </button>
                   </div>
                   {deleteLeagueMutation.isError && (
-                    <p style={styles.error}>{(deleteLeagueMutation.error as any)?.error ?? 'Failed to delete'}</p>
+                    <p style={styles.error}>
+                      {(deleteLeagueMutation.error as any)?.error ?? 'Failed to delete'}
+                    </p>
                   )}
                 </div>
               )}
@@ -965,98 +1594,138 @@ export function LeagueHomePage() {
       )}
 
       {/* Picks / bets section above nav */}
-      {effectiveMatchup && (league.status === 'active' || league.status === 'playoffs') && (() => {
-        const isMeHome = !!myMember && myMember.id === effectiveMatchup.homeTeamId;
-        const isMeAway = !!myMember && myMember.id === effectiveMatchup.awayTeamId;
-        const fights: any[] = homePicks?.fights ?? homeStaking?.fights ?? awayStaking?.fights ?? [];
-        return (
-          <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px' }}>
-              <span style={{ color: '#444', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1 }}>
-                FIGHT CARD
-              </span>
-              {homePicks?.locked && <span style={{ background: '#222', color: '#555', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3 }}>LOCKED</span>}
-            </div>
-            {(() => {
-              // Show logged-in user's picks/bets on the left
-              const flipSides = isMeAway;
-              const leftTeamName = flipSides ? effectiveMatchup.awayTeamName : effectiveMatchup.homeTeamName;
-              const rightTeamName = flipSides ? effectiveMatchup.homeTeamName : effectiveMatchup.awayTeamName;
-              const leftPicks = flipSides ? awayPicks : homePicks;
-              const rightPicks = flipSides ? homePicks : awayPicks;
-              const leftChampion = flipSides ? awayChampion : homeChampion;
-              const rightChampion = flipSides ? homeChampion : awayChampion;
-              const leftStaking = flipSides ? awayStaking : homeStaking;
-              const rightStaking = flipSides ? homeStaking : awayStaking;
-              const leftIsOwn = flipSides ? isMeAway : isMeHome;
-              const rightIsOwn = flipSides ? isMeHome : isMeAway;
-              return isStaking ? (
-                <StakingBetsSection
-                  fights={fights}
-                  homeStaking={leftStaking}
-                  awayStaking={rightStaking}
-                  homeTeamName={leftTeamName}
-                  awayTeamName={rightTeamName}
-                  isMeHome={leftIsOwn}
-                  isMeAway={rightIsOwn}
-                  isEventLive={eventIsLive}
-                  leagueId={leagueId}
-                  onPhotoClick={openPhoto}
-                />
-              ) : (
-                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <MatchupFightList fights={fights} onPhotoClick={openPhoto} isEventLive={effectiveMatchup?.eventStatus === 'live'} />
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
-                    <MatchupPickPanel
-                      teamName={leftTeamName}
-                      fights={leftPicks?.fights ?? []}
-                      champion={leftChampion}
-                      isLocked={!leftIsOwn && !eventIsLive}
-                      isOwn={leftIsOwn}
-                      leagueId={leagueId}
-                      locked={leftPicks?.locked}
+      {effectiveMatchup &&
+        (league.status === 'active' || league.status === 'playoffs') &&
+        (() => {
+          const isMeHome = !!myMember && myMember.id === effectiveMatchup.homeTeamId;
+          const isMeAway = !!myMember && myMember.id === effectiveMatchup.awayTeamId;
+          const fights: any[] =
+            homePicks?.fights ?? homeStaking?.fights ?? awayStaking?.fights ?? [];
+          return (
+            <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px' }}
+              >
+                <span
+                  style={{
+                    color: '#444',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: 1,
+                  }}
+                >
+                  FIGHT CARD
+                </span>
+                {homePicks?.locked && (
+                  <span
+                    style={{
+                      background: '#222',
+                      color: '#555',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: 3,
+                    }}
+                  >
+                    LOCKED
+                  </span>
+                )}
+              </div>
+              {(() => {
+                // Show logged-in user's picks/bets on the left
+                const flipSides = isMeAway;
+                const leftTeamName = flipSides
+                  ? effectiveMatchup.awayTeamName
+                  : effectiveMatchup.homeTeamName;
+                const rightTeamName = flipSides
+                  ? effectiveMatchup.homeTeamName
+                  : effectiveMatchup.awayTeamName;
+                const leftPicks = flipSides ? awayPicks : homePicks;
+                const rightPicks = flipSides ? homePicks : awayPicks;
+                const leftChampion = flipSides ? awayChampion : homeChampion;
+                const rightChampion = flipSides ? homeChampion : awayChampion;
+                const leftStaking = flipSides ? awayStaking : homeStaking;
+                const rightStaking = flipSides ? homeStaking : awayStaking;
+                const leftIsOwn = flipSides ? isMeAway : isMeHome;
+                const rightIsOwn = flipSides ? isMeHome : isMeAway;
+                return isStaking ? (
+                  <StakingBetsSection
+                    fights={fights}
+                    homeStaking={leftStaking}
+                    awayStaking={rightStaking}
+                    homeTeamName={leftTeamName}
+                    awayTeamName={rightTeamName}
+                    isMeHome={leftIsOwn}
+                    isMeAway={rightIsOwn}
+                    isEventLive={eventIsLive}
+                    leagueId={leagueId}
+                    onPhotoClick={openPhoto}
+                  />
+                ) : (
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <MatchupFightList
+                      fights={fights}
+                      onPhotoClick={openPhoto}
+                      isEventLive={effectiveMatchup?.eventStatus === 'live'}
                     />
-                    <MatchupPickPanel
-                      teamName={rightTeamName}
-                      fights={rightPicks?.fights ?? []}
-                      champion={rightChampion}
-                      isLocked={!rightIsOwn && !eventIsLive}
-                      isOwn={rightIsOwn}
-                      leagueId={leagueId}
-                      locked={rightPicks?.locked}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
+                      <MatchupPickPanel
+                        teamName={leftTeamName}
+                        fights={leftPicks?.fights ?? []}
+                        champion={leftChampion}
+                        isLocked={!leftIsOwn && !eventIsLive}
+                        isOwn={leftIsOwn}
+                        leagueId={leagueId}
+                        locked={leftPicks?.locked}
+                      />
+                      <MatchupPickPanel
+                        teamName={rightTeamName}
+                        fights={rightPicks?.fights ?? []}
+                        champion={rightChampion}
+                        isLocked={!rightIsOwn && !eventIsLive}
+                        isOwn={rightIsOwn}
+                        leagueId={leagueId}
+                        locked={rightPicks?.locked}
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
-          </div>
-        );
-      })()}
+                );
+              })()}
+            </div>
+          );
+        })()}
 
       {/* Nav grid (shown when past setup) */}
       {league.status !== 'setup' && (
         <div style={{ ...styles.navGrid, ...(isMobile ? styles.navGridMobile : {}) }}>
-          {navLinks.filter((l) => l.show).map((item) => (
-            item.onClick ? (
-              <button key={item.label} style={styles.navCardBtn} onClick={item.onClick}>
-                <span style={styles.navIcon}><item.icon size={26} /></span>
-                <span style={styles.navLabel}>{item.label}</span>
-              </button>
-            ) : (
-              <Link
-                key={item.label}
-                to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
-                style={styles.navCard}
-              >
-                <span style={styles.navIcon}><item.icon size={26} /></span>
-                <span style={styles.navLabel}>{item.label}</span>
-              </Link>
-            )
-          ))}
+          {navLinks
+            .filter((l) => l.show)
+            .map((item) =>
+              item.onClick ? (
+                <button key={item.label} style={styles.navCardBtn} onClick={item.onClick}>
+                  <span style={styles.navIcon}>
+                    <item.icon size={26} />
+                  </span>
+                  <span style={styles.navLabel}>{item.label}</span>
+                </button>
+              ) : (
+                <Link
+                  key={item.label}
+                  to={item.external ? item.path! : `/league/${leagueId}/${item.path}`}
+                  style={styles.navCard}
+                >
+                  <span style={styles.navIcon}>
+                    <item.icon size={26} />
+                  </span>
+                  <span style={styles.navLabel}>{item.label}</span>
+                </Link>
+              ),
+            )}
         </div>
       )}
 
-{/* Message board */}
+      {/* Message board */}
       {league.status !== 'setup' && (
         <div style={styles.msgBoard}>
           <p style={styles.msgBoardTitle}>League Chat</p>
@@ -1082,9 +1751,21 @@ export function LeagueHomePage() {
                     const msgMember = members.find((mm) => mm.id === msg.memberId);
                     return (
                       <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-                        <MemberAvatar teamName={msg.teamName ?? '?'} color={color} size={28} avatarUrl={(msgMember as any)?.avatarUrl} onClick={() => msgMember && setSelectedMember(msgMember)} />
+                        <MemberAvatar
+                          teamName={msg.teamName ?? '?'}
+                          color={color}
+                          size={28}
+                          avatarUrl={(msgMember as any)?.avatarUrl}
+                          onClick={() => msgMember && setSelectedMember(msgMember)}
+                        />
                         {msgMember && hasBelt(msgMember, members, league) && <BeltHalo size={28} />}
-                        {msgMember && hasBmfBelt(msgMember, league) && <BeltHalo size={28} variant="bmf" position={hasBelt(msgMember, members, league) ? 'bottom' : 'top'} />}
+                        {msgMember && hasBmfBelt(msgMember, league) && (
+                          <BeltHalo
+                            size={28}
+                            variant="bmf"
+                            position={hasBelt(msgMember, members, league) ? 'bottom' : 'top'}
+                          />
+                        )}
                       </div>
                     );
                   })()}
@@ -1097,7 +1778,9 @@ export function LeagueHomePage() {
                           style={styles.msgDelete}
                           onClick={() => deleteMessageMutation.mutate(msg.id)}
                           title="Delete"
-                        ><X size={15} /></button>
+                        >
+                          <X size={15} />
+                        </button>
                       )}
                     </div>
                     <div style={styles.msgBody}>{msg.body}</div>
@@ -1124,7 +1807,10 @@ export function LeagueHomePage() {
             />
             <button
               type="submit"
-              style={{ ...styles.msgSendBtn, opacity: !msgInput.trim() || sendMessageMutation.isPending ? 0.4 : 1 }}
+              style={{
+                ...styles.msgSendBtn,
+                opacity: !msgInput.trim() || sendMessageMutation.isPending ? 0.4 : 1,
+              }}
               disabled={!msgInput.trim() || sendMessageMutation.isPending}
             >
               Send
@@ -1135,11 +1821,33 @@ export function LeagueHomePage() {
 
       {/* Settings modal */}
       {showSettings && (
-        <div style={styles.modalOverlay} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}>
+        <div
+          style={styles.modalOverlay}
+          onClick={() => {
+            setShowSettings(false);
+            setConfirmLeave(false);
+            setShowPasswordForm(false);
+            setPasswordMsg(null);
+            setShowEmailForm(false);
+            setEmailMsg(null);
+          }}
+        >
           <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <span style={styles.modalTitle}>Team Settings</span>
-              <button style={styles.modalClose} onClick={() => { setShowSettings(false); setConfirmLeave(false); setShowPasswordForm(false); setPasswordMsg(null); setShowEmailForm(false); setEmailMsg(null); }}><X size={15} /></button>
+              <button
+                style={styles.modalClose}
+                onClick={() => {
+                  setShowSettings(false);
+                  setConfirmLeave(false);
+                  setShowPasswordForm(false);
+                  setPasswordMsg(null);
+                  setShowEmailForm(false);
+                  setEmailMsg(null);
+                }}
+              >
+                <X size={15} />
+              </button>
             </div>
 
             <div style={styles.modalBody}>
@@ -1156,13 +1864,27 @@ export function LeagueHomePage() {
 
               <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Profile Picture</label>
-                <AvatarModal ref={avatarRef} inline currentUrl={myProfile?.avatarUrl} onClose={() => {}} />
+                <AvatarModal
+                  ref={avatarRef}
+                  inline
+                  currentUrl={myProfile?.avatarUrl}
+                  onClose={() => {}}
+                />
               </div>
 
               <div style={styles.settingsSection}>
                 <label style={styles.settingsLabel}>Avatar Border Color</label>
                 <div style={styles.colorSwatches}>
-                  {['#5555ff','#c8102e','#4caf50','#ff8c42','#ffd700','#00bcd4','#e040fb','#ffffff'].map((c) => (
+                  {[
+                    '#5555ff',
+                    '#c8102e',
+                    '#4caf50',
+                    '#ff8c42',
+                    '#ffd700',
+                    '#00bcd4',
+                    '#e040fb',
+                    '#ffffff',
+                  ].map((c) => (
                     <button
                       key={c}
                       style={{
@@ -1183,13 +1905,19 @@ export function LeagueHomePage() {
               <div style={styles.settingsSection}>
                 <button
                   style={styles.avatarUploadBtn}
-                  onClick={() => { setShowEmailForm((v) => !v); setEmailMsg(null); setNewEmail(''); }}
+                  onClick={() => {
+                    setShowEmailForm((v) => !v);
+                    setEmailMsg(null);
+                    setNewEmail('');
+                  }}
                 >
                   {showEmailForm ? 'Cancel Email Change' : 'Change Email Address'}
                 </button>
                 {showEmailForm && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                    <div style={{ fontSize: 11, color: '#555' }}>Current: {session?.user.email}</div>
+                    <div style={{ fontSize: 11, color: '#555' }}>
+                      Current: {session?.user.email}
+                    </div>
                     <input
                       style={styles.settingsInput}
                       type="email"
@@ -1200,7 +1928,12 @@ export function LeagueHomePage() {
                       onKeyDown={(e) => e.key === 'Enter' && changeEmail()}
                     />
                     {emailMsg && (
-                      <span style={{ fontSize: 12, color: emailMsg.type === 'error' ? '#ff5252' : '#4caf50' }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: emailMsg.type === 'error' ? '#ff5252' : '#4caf50',
+                        }}
+                      >
                         {emailMsg.text}
                       </span>
                     )}
@@ -1218,7 +1951,12 @@ export function LeagueHomePage() {
               <div style={styles.settingsSection}>
                 <button
                   style={styles.avatarUploadBtn}
-                  onClick={() => { setShowPasswordForm((v) => !v); setPasswordMsg(null); setNewPassword(''); setConfirmPassword(''); }}
+                  onClick={() => {
+                    setShowPasswordForm((v) => !v);
+                    setPasswordMsg(null);
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
                 >
                   {showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
                 </button>
@@ -1242,7 +1980,12 @@ export function LeagueHomePage() {
                       onKeyDown={(e) => e.key === 'Enter' && changePassword()}
                     />
                     {passwordMsg && (
-                      <span style={{ fontSize: 12, color: passwordMsg.type === 'error' ? '#ff5252' : '#4caf50' }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: passwordMsg.type === 'error' ? '#ff5252' : '#4caf50',
+                        }}
+                      >
                         {passwordMsg.text}
                       </span>
                     )}
@@ -1258,11 +2001,17 @@ export function LeagueHomePage() {
               </div>
 
               <button
-                style={{ ...styles.saveSettingsBtn, opacity: saveSettingsMutation.isPending ? 0.6 : 1 }}
+                style={{
+                  ...styles.saveSettingsBtn,
+                  opacity: saveSettingsMutation.isPending ? 0.6 : 1,
+                }}
                 disabled={saveSettingsMutation.isPending || !settingsTeamName.trim()}
                 onClick={async () => {
                   if (avatarRef.current?.hasPendingChange) await avatarRef.current.save();
-                  saveSettingsMutation.mutate({ teamName: settingsTeamName.trim(), avatarColor: settingsColor });
+                  saveSettingsMutation.mutate({
+                    teamName: settingsTeamName.trim(),
+                    avatarColor: settingsColor,
+                  });
                 }}
               >
                 {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
@@ -1278,7 +2027,9 @@ export function LeagueHomePage() {
                 <div style={styles.leaveConfirm}>
                   <p style={styles.leaveConfirmText}>Are you sure you want to leave this league?</p>
                   <div style={styles.leaveConfirmRow}>
-                    <button style={styles.leaveCancelBtn} onClick={() => setConfirmLeave(false)}>Cancel</button>
+                    <button style={styles.leaveCancelBtn} onClick={() => setConfirmLeave(false)}>
+                      Cancel
+                    </button>
                     <button
                       style={styles.leaveConfirmBtn}
                       onClick={() => leagueMutation.mutate()}
@@ -1288,7 +2039,9 @@ export function LeagueHomePage() {
                     </button>
                   </div>
                   {leagueMutation.isError && (
-                    <p style={styles.error}>{(leagueMutation.error as any)?.error ?? 'Failed to leave'}</p>
+                    <p style={styles.error}>
+                      {(leagueMutation.error as any)?.error ?? 'Failed to leave'}
+                    </p>
                   )}
                 </div>
               )}
@@ -1320,66 +2073,116 @@ export function LeagueHomePage() {
           <div style={styles.bottomSheet} onClick={(e) => e.stopPropagation()}>
             <div style={styles.sheetHandle} />
             <div style={styles.sheetHeader}>
-              <span style={styles.sheetTitle}>{effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Fight Card'}</span>
-              <button style={styles.modalClose} onClick={() => setShowFightCard(false)}><X size={15} /></button>
+              <span style={styles.sheetTitle}>
+                {effectiveMatchup?.eventName ?? currentEvent?.name ?? 'Fight Card'}
+              </span>
+              <button style={styles.modalClose} onClick={() => setShowFightCard(false)}>
+                <X size={15} />
+              </button>
             </div>
             {viewedMatchupIdx === null && currentEvent && (
               <div style={styles.sheetSubtitle}>
                 {[currentEvent.venue, currentEvent.location].filter(Boolean).join(' · ')}
                 {(currentEvent.prelimsAt ?? currentEvent.scheduledAt) && (
-                  <> · {(() => {
-                    const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt!);
-                    return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-                  })()}</>
+                  <>
+                    {' '}
+                    ·{' '}
+                    {(() => {
+                      const d = new Date(currentEvent.prelimsAt ?? currentEvent.scheduledAt!);
+                      return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                    })()}
+                  </>
                 )}
               </div>
             )}
             <div style={styles.sheetBody}>
               {!fightCardEventId ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No event available</div>
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>
+                  No event available
+                </div>
               ) : !fightCardData ? (
-                <div style={{ paddingTop: 8 }}>{[0, 1, 2, 3, 4, 5].map((i) => <SkeletonFightRow key={i} />)}</div>
+                <div style={{ paddingTop: 8 }}>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <SkeletonFightRow key={i} />
+                  ))}
+                </div>
               ) : fightCardData.fights.length === 0 ? (
-                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>No fight card available yet</div>
-              ) : (() => {
-                const segments = ['main', 'prelims', 'early_prelims'] as const;
-                const segmentLabel: Record<string, string> = { main: 'Main Card', prelims: 'Prelims', early_prelims: 'Early Prelims' };
-                return segments.map((seg) => {
-                  const fights = fightCardData.fights.filter((f: any) => f.cardSegment === seg);
-                  if (!fights.length) return null;
-                  return (
-                    <div key={seg}>
-                      <div style={styles.cardSegmentLabel}>{segmentLabel[seg]}</div>
-                      {fights.map((f: any) => {
-                        const redOdds = f.redFighterOdds != null ? (f.redFighterOdds > 0 ? `+${f.redFighterOdds}` : `${f.redFighterOdds}`) : null;
-                        const blueOdds = f.blueFighterOdds != null ? (f.blueFighterOdds > 0 ? `+${f.blueFighterOdds}` : `${f.blueFighterOdds}`) : null;
-                        return (
-                          <div key={f.id} style={styles.fightRow}>
-                            <div style={styles.fightRowFighter}>
-                              <FighterPhoto imageUrl={f.redImageUrl} name={`${f.redFirstName} ${f.redLastName}`} style={styles.fightRowImg} />
-                              <div style={styles.fightRowInfo}>
-                                <span style={styles.fightRowName}>{f.redFirstName} {f.redLastName}</span>
-                                {redOdds && <span style={styles.fightRowOdds}>{redOdds}</span>}
+                <div style={{ color: '#555', textAlign: 'center', padding: '32px 0' }}>
+                  No fight card available yet
+                </div>
+              ) : (
+                (() => {
+                  const segments = ['main', 'prelims', 'early_prelims'] as const;
+                  const segmentLabel: Record<string, string> = {
+                    main: 'Main Card',
+                    prelims: 'Prelims',
+                    early_prelims: 'Early Prelims',
+                  };
+                  return segments.map((seg) => {
+                    const fights = fightCardData.fights.filter((f: any) => f.cardSegment === seg);
+                    if (!fights.length) return null;
+                    return (
+                      <div key={seg}>
+                        <div style={styles.cardSegmentLabel}>{segmentLabel[seg]}</div>
+                        {fights.map((f: any) => {
+                          const redOdds =
+                            f.redFighterOdds != null
+                              ? f.redFighterOdds > 0
+                                ? `+${f.redFighterOdds}`
+                                : `${f.redFighterOdds}`
+                              : null;
+                          const blueOdds =
+                            f.blueFighterOdds != null
+                              ? f.blueFighterOdds > 0
+                                ? `+${f.blueFighterOdds}`
+                                : `${f.blueFighterOdds}`
+                              : null;
+                          return (
+                            <div key={f.id} style={styles.fightRow}>
+                              <div style={styles.fightRowFighter}>
+                                <FighterPhoto
+                                  imageUrl={f.redImageUrl}
+                                  name={`${f.redFirstName} ${f.redLastName}`}
+                                  style={styles.fightRowImg}
+                                />
+                                <div style={styles.fightRowInfo}>
+                                  <span style={styles.fightRowName}>
+                                    {f.redFirstName} {f.redLastName}
+                                  </span>
+                                  {redOdds && <span style={styles.fightRowOdds}>{redOdds}</span>}
+                                </div>
+                              </div>
+                              <div style={styles.fightRowCenter}>
+                                <span style={styles.fightRowVs}>VS</span>
+                                <span style={styles.fightRowWeight}>{f.weightClassName}</span>
+                              </div>
+                              <div
+                                style={{
+                                  ...styles.fightRowFighter,
+                                  flexDirection: 'row-reverse',
+                                  textAlign: 'right' as const,
+                                }}
+                              >
+                                <FighterPhoto
+                                  imageUrl={f.blueImageUrl}
+                                  name={`${f.blueFirstName} ${f.blueLastName}`}
+                                  style={styles.fightRowImg}
+                                />
+                                <div style={{ ...styles.fightRowInfo, alignItems: 'flex-end' }}>
+                                  <span style={styles.fightRowName}>
+                                    {f.blueFirstName} {f.blueLastName}
+                                  </span>
+                                  {blueOdds && <span style={styles.fightRowOdds}>{blueOdds}</span>}
+                                </div>
                               </div>
                             </div>
-                            <div style={styles.fightRowCenter}>
-                              <span style={styles.fightRowVs}>VS</span>
-                              <span style={styles.fightRowWeight}>{f.weightClassName}</span>
-                            </div>
-                            <div style={{ ...styles.fightRowFighter, flexDirection: 'row-reverse', textAlign: 'right' as const }}>
-                              <FighterPhoto imageUrl={f.blueImageUrl} name={`${f.blueFirstName} ${f.blueLastName}`} style={styles.fightRowImg} />
-                              <div style={{ ...styles.fightRowInfo, alignItems: 'flex-end' }}>
-                                <span style={styles.fightRowName}>{f.blueFirstName} {f.blueLastName}</span>
-                                {blueOdds && <span style={styles.fightRowOdds}>{blueOdds}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                });
-              })()}
+                          );
+                        })}
+                      </div>
+                    );
+                  });
+                })()
+              )}
             </div>
           </div>
         </div>
@@ -1393,7 +2196,9 @@ export function LeagueHomePage() {
             {members.map((m) => (
               <div key={m.id} style={styles.teamPill}>
                 <span style={styles.teamPillName}>{m.teamName}</span>
-                <span style={styles.teamPillRecord}>{m.wins}-{m.losses}</span>
+                <span style={styles.teamPillRecord}>
+                  {m.wins}-{m.losses}
+                </span>
               </div>
             ))}
           </div>
@@ -1408,7 +2213,6 @@ export function LeagueHomePage() {
           onClose={() => setEnlargedPhoto(null)}
         />
       )}
-
     </div>
   );
 }
@@ -1422,110 +2226,539 @@ function statusStyle(status: string): React.CSSProperties {
     completed: '#888',
   };
   return {
-    fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
-    background: '#222', color: colors[status] ?? '#888',
+    fontSize: 12,
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: 4,
+    background: '#222',
+    color: colors[status] ?? '#888',
   };
 }
 
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   loading: { color: '#888', padding: 40 },
-  nav: { position: 'sticky' as const, top: 0, zIndex: 100, background: 'rgba(17,17,17,0.92)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid #222', padding: '8px 20px', minHeight: 52, boxSizing: 'border-box' as const, display: 'flex', alignItems: 'center', gap: 16, overflow: 'visible' },
+  nav: {
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(17,17,17,0.92)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid #222',
+    padding: '8px 20px',
+    minHeight: 52,
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    overflow: 'visible',
+  },
   logoLink: { display: 'flex', alignItems: 'center', textDecoration: 'none' },
-  homeBtn: { color: '#aaa', textDecoration: 'none', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 },
-  leagueMenuBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: 14, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 },
-  leagueMenuDropdown: { position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, minWidth: 180, zIndex: 200, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' },
-  leagueMenuItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', color: '#ccc', fontSize: 13, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' as const },
-  leagueMenuIcon: { width: 18, color: '#c8102e', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  homeBtn: {
+    color: '#aaa',
+    textDecoration: 'none',
+    fontSize: 14,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  leagueMenuBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#aaa',
+    fontSize: 14,
+    padding: 0,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  leagueMenuDropdown: {
+    position: 'absolute' as const,
+    top: 'calc(100% + 6px)',
+    left: 0,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 8,
+    minWidth: 180,
+    zIndex: 200,
+    overflow: 'hidden',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+  },
+  leagueMenuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '10px 14px',
+    color: '#ccc',
+    fontSize: 13,
+    textDecoration: 'none',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    width: '100%',
+    textAlign: 'left' as const,
+  },
+  leagueMenuIcon: {
+    width: 18,
+    color: '#c8102e',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logo: { height: 30, width: 'auto', objectFit: 'contain' as const },
-  leagueHeader: { padding: '20px 24px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  leagueHeader: {
+    padding: '20px 24px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
   leagueHeaderCenter: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 },
   navMobile: { padding: '8px 12px' },
   navRow1: { display: 'flex', alignItems: 'center', gap: 12, width: '100%' },
   navLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
-  navRight: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, justifyContent: 'flex-end' },
-  memberStrip: { display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' },
-  memberStripMobile: { display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto' as const, paddingBottom: 2, scrollbarWidth: 'none' as const },
-  onlineDot: {
-    position: 'absolute', bottom: -1, right: -1, width: 9, height: 9,
-    borderRadius: '50%', background: '#4caf50', border: '2px solid #111',
+  navRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'flex-end',
   },
-  memberAvatar: { width: 32, height: 32, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0 },
-  settingsBtn: { background: 'none', border: 'none', color: '#555', fontSize: 18, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
-  modalOverlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modalSheet: { background: '#141414', border: '1px solid #242424', borderRadius: 16, width: '90%', maxWidth: 420, maxHeight: '85vh', overflowY: 'auto' as const, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' },
-  modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' },
+  memberStrip: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: '0 0 auto',
+  },
+  memberStripMobile: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    overflowX: 'auto' as const,
+    paddingBottom: 2,
+    scrollbarWidth: 'none' as const,
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 9,
+    height: 9,
+    borderRadius: '50%',
+    background: '#4caf50',
+    border: '2px solid #111',
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    border: '2px solid',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#fff',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  settingsBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#555',
+    fontSize: 18,
+    cursor: 'pointer',
+    padding: '2px 4px',
+    lineHeight: 1,
+  },
+  modalOverlay: {
+    position: 'fixed' as const,
+    inset: 0,
+    background: 'rgba(0,0,0,0.7)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSheet: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 420,
+    maxHeight: '85vh',
+    overflowY: 'auto' as const,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '20px 24px 0',
+  },
   modalTitle: { color: '#fff', fontWeight: 700, fontSize: 16 },
-  modalClose: { background: 'none', border: 'none', color: '#555', fontSize: 18, cursor: 'pointer' },
-  modalBody: { padding: '20px 24px 40px', display: 'flex', flexDirection: 'column' as const, gap: 20 },
+  modalClose: {
+    background: 'none',
+    border: 'none',
+    color: '#555',
+    fontSize: 18,
+    cursor: 'pointer',
+  },
+  modalBody: {
+    padding: '20px 24px 40px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 20,
+  },
   settingsSection: { display: 'flex', flexDirection: 'column' as const, gap: 8 },
-  settingsLabel: { color: '#666', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
-  settingsInput: { background: '#111', border: '1px solid #333', borderRadius: 8, color: '#fff', fontSize: 15, fontWeight: 600, padding: '10px 14px', outline: 'none' },
+  settingsLabel: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
+  settingsInput: {
+    background: '#111',
+    border: '1px solid #333',
+    borderRadius: 8,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 600,
+    padding: '10px 14px',
+    outline: 'none',
+  },
   colorSwatches: { display: 'flex', gap: 10, flexWrap: 'wrap' as const },
-  colorSwatch: { width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0 },
-  avatarUploadBtn: { background: '#222', border: '1px solid #333', borderRadius: 8, color: '#ccc', fontSize: 13, padding: '10px 12px', cursor: 'pointer', textAlign: 'left' as const, width: '100%' },
-  saveSettingsBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  colorSwatch: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    border: 'none',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  avatarUploadBtn: {
+    background: '#222',
+    border: '1px solid #333',
+    borderRadius: 8,
+    color: '#ccc',
+    fontSize: 13,
+    padding: '10px 12px',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    width: '100%',
+  },
+  saveSettingsBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    padding: '12px',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
   settingsDivider: { height: 1, background: '#2a2a2a' },
-  leaveBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 8, color: '#ff5252', fontSize: 14, padding: '11px', cursor: 'pointer', fontWeight: 600 },
-  leaveConfirm: { background: '#1a1010', border: '1px solid #3a1a1a', borderRadius: 8, padding: '16px' },
+  leaveBtn: {
+    background: 'transparent',
+    border: '1px solid #3a1a1a',
+    borderRadius: 8,
+    color: '#ff5252',
+    fontSize: 14,
+    padding: '11px',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+  leaveConfirm: {
+    background: '#1a1010',
+    border: '1px solid #3a1a1a',
+    borderRadius: 8,
+    padding: '16px',
+  },
   leaveConfirmText: { color: '#ccc', fontSize: 14, margin: '0 0 12px' },
   leaveConfirmRow: { display: 'flex', gap: 8 },
-  leaveCancelBtn: { flex: 1, background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 14, padding: '9px', cursor: 'pointer' },
-  leaveConfirmBtn: { flex: 1, background: '#3a1a1a', border: '1px solid #ff525444', borderRadius: 6, color: '#ff5252', fontSize: 14, fontWeight: 700, padding: '9px', cursor: 'pointer' },
-  leagueName: { color: '#fff', fontWeight: 700, fontSize: 24, display: 'inline-flex', alignItems: 'center', gap: 8 },
-  leagueNameRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 },
-  leagueMeta: { color: '#555', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' as const, marginBottom: 4 },
+  leaveCancelBtn: {
+    flex: 1,
+    background: '#2a2a2a',
+    border: 'none',
+    borderRadius: 6,
+    color: '#aaa',
+    fontSize: 14,
+    padding: '9px',
+    cursor: 'pointer',
+  },
+  leaveConfirmBtn: {
+    flex: 1,
+    background: '#3a1a1a',
+    border: '1px solid #ff525444',
+    borderRadius: 6,
+    color: '#ff5252',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '9px',
+    cursor: 'pointer',
+  },
+  leagueName: {
+    color: '#fff',
+    fontWeight: 700,
+    fontSize: 24,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  leagueNameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  leagueMeta: {
+    color: '#555',
+    fontSize: 12,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    flexWrap: 'wrap' as const,
+    marginBottom: 4,
+  },
   metaDot: { color: '#333' },
   inviteInline: { color: '#888' },
-  myTeamRow: { marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  myTeamRow: {
+    marginTop: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   myTeamName: { color: '#888', fontSize: 14, fontWeight: 600 },
   myTeamDot: { color: '#444', fontSize: 14 },
   myTeamPts: { color: '#888', fontSize: 14 },
   myTeamRecord: { color: '#888', fontSize: 14 },
   teamNameForm: { display: 'flex', alignItems: 'center', gap: 6 },
-  teamNameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 14, fontWeight: 600, padding: '3px 8px', outline: 'none', width: 160 },
-  editNameBtn: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer', padding: '2px 4px', lineHeight: 1 },
+  teamNameInput: {
+    background: '#222',
+    border: '1px solid #444',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 600,
+    padding: '3px 8px',
+    outline: 'none',
+    width: 160,
+  },
+  editNameBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#555',
+    fontSize: 14,
+    cursor: 'pointer',
+    padding: '2px 4px',
+    lineHeight: 1,
+  },
   nameForm: { display: 'flex', alignItems: 'center', gap: 8, flex: 1 },
-  nameInput: { background: '#222', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 16, fontWeight: 700, padding: '4px 10px', outline: 'none', flex: 1, maxWidth: 320 },
-  nameSaveBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
-  nameCancelBtn: { background: 'transparent', color: '#888', border: '1px solid #444', borderRadius: 6, padding: '5px 12px', fontSize: 14, cursor: 'pointer' },
+  nameInput: {
+    background: '#222',
+    border: '1px solid #444',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 700,
+    padding: '4px 10px',
+    outline: 'none',
+    flex: 1,
+    maxWidth: 320,
+  },
+  nameSaveBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '5px 14px',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  nameCancelBtn: {
+    background: 'transparent',
+    color: '#888',
+    border: '1px solid #444',
+    borderRadius: 6,
+    padding: '5px 12px',
+    fontSize: 14,
+    cursor: 'pointer',
+  },
   matchupBanner: {
-    margin: '0 24px 16px', background: 'linear-gradient(180deg, #1d1d21 0%, #121215 100%)',
-    border: '1px solid #2c2c31', borderRadius: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
-    padding: '18px 24px 16px', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 5, textAlign: 'center',
+    margin: '0 24px 16px',
+    background: 'linear-gradient(180deg, #1d1d21 0%, #121215 100%)',
+    border: '1px solid #2c2c31',
+    borderRadius: 14,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
+    padding: '18px 24px 16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+    textAlign: 'center',
   },
   matchupLabelRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  matchupLabel: { color: '#777', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: 1.4 },
-  livePip: { background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 999, letterSpacing: 0.8, display: 'inline-flex', alignItems: 'center', gap: 4 },
-  matchupEventTitle: { color: '#fff', fontSize: 17, fontWeight: 800, letterSpacing: -0.2, cursor: 'pointer' },
+  matchupLabel: {
+    color: '#777',
+    fontSize: 10,
+    fontWeight: 800,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1.4,
+  },
+  livePip: {
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 800,
+    padding: '2px 8px',
+    borderRadius: 999,
+    letterSpacing: 0.8,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  matchupEventTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: 800,
+    letterSpacing: -0.2,
+    cursor: 'pointer',
+  },
   matchupScoreRow: { display: 'flex', alignItems: 'center', width: '100%' },
-  matchupTeam: { flex: 1, display: 'flex', flexDirection: 'row' as const, alignItems: 'center', gap: 12 },
-  matchupCenter: { flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1 },
-  matchupAvatar: { width: 50, height: 50, borderRadius: '50%', background: '#1a1a3a', border: '2px solid #5555ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff', flexShrink: 0 },
-  matchupTeamName: { color: '#999', fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.6 },
-  matchupScore: { fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums' as const },
+  matchupTeam: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 12,
+  },
+  matchupCenter: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 1,
+  },
+  matchupAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: '50%',
+    background: '#1a1a3a',
+    border: '2px solid #5555ff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 20,
+    fontWeight: 700,
+    color: '#fff',
+    flexShrink: 0,
+  },
+  matchupTeamName: {
+    color: '#999',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.6,
+  },
+  matchupScore: {
+    fontSize: 34,
+    fontWeight: 800,
+    lineHeight: 1,
+    letterSpacing: '-0.03em',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
   matchupLeadLabel: {
-    color: '#bbb', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' as const,
-    background: '#16161a', border: '1px solid #26262b', borderRadius: 999, padding: '4px 14px',
+    color: '#bbb',
+    fontSize: 12,
+    fontWeight: 600,
+    whiteSpace: 'nowrap' as const,
+    background: '#16161a',
+    border: '1px solid #26262b',
+    borderRadius: 999,
+    padding: '4px 14px',
   },
   matchupTiedLabel: {
-    color: '#ffd700', fontSize: 12, fontWeight: 700,
-    background: '#16161a', border: '1px solid #26262b', borderRadius: 999, padding: '4px 14px',
+    color: '#ffd700',
+    fontSize: 12,
+    fontWeight: 700,
+    background: '#16161a',
+    border: '1px solid #26262b',
+    borderRadius: 999,
+    padding: '4px 14px',
   },
-  matchupSubRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 24px 0' },
+  matchupSubRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px 24px 0',
+  },
   matchupDetailsLink: { color: '#c8102e', textDecoration: 'none', fontSize: 14, fontWeight: 600 },
-  lobbyCard: { margin: 24, background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
-  lobbyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  lobbyCard: {
+    margin: 24,
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: 28,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+  },
+  lobbyHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
   lobbyTitle: { color: '#fff', fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 4 },
   lobbyMeta: { color: '#666', fontSize: 14, margin: 0 },
   inviteSection: { textAlign: 'right' },
-  inviteLabel: { color: '#666', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 6px' },
+  inviteLabel: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    margin: '0 0 6px',
+  },
   inviteRow: { display: 'flex', alignItems: 'center', gap: 10 },
-  inviteCode: { color: '#fff', fontFamily: 'monospace', fontSize: 20, fontWeight: 700, letterSpacing: 2 },
-  copyBtn: { background: '#2a2a2a', border: '1px solid #444', borderRadius: 6, color: '#ccc', padding: '5px 12px', cursor: 'pointer', fontSize: 12 },
-  memberGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10, marginBottom: 24 },
-  memberCard: { background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 4 },
+  inviteCode: {
+    color: '#fff',
+    fontFamily: 'monospace',
+    fontSize: 20,
+    fontWeight: 700,
+    letterSpacing: 2,
+  },
+  copyBtn: {
+    background: '#2a2a2a',
+    border: '1px solid #444',
+    borderRadius: 6,
+    color: '#ccc',
+    padding: '5px 12px',
+    cursor: 'pointer',
+    fontSize: 12,
+  },
+  memberGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gap: 10,
+    marginBottom: 24,
+  },
+  memberCard: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: 14,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
   memberCardEmpty: { borderStyle: 'dashed', opacity: 0.4 },
   memberTeam: { color: '#fff', fontSize: 14, fontWeight: 600 },
   memberUser: { color: '#666', fontSize: 12 },
@@ -1533,51 +2766,245 @@ const styles: Record<string, React.CSSProperties> = {
   commBadge: { color: '#c8102e', fontSize: 10, fontWeight: 700, marginTop: 4 },
   commActions: { display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' },
   draftHint: { color: '#888', fontSize: 14, margin: 0 },
-  startDraftBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontSize: 15, fontWeight: 700, cursor: 'pointer' },
+  startDraftBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    padding: '12px 28px',
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
   startDraftDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   deleteDivider: { width: '100%', height: 1, background: '#2a2a2a', margin: '4px 0' },
-  deleteLeagueBtn: { background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 6, color: '#ff5252', fontSize: 14, padding: '8px 16px', cursor: 'pointer' },
-  deleteConfirm: { background: '#1a1010', border: '1px solid #3a1a1a', borderRadius: 8, padding: '12px 16px', width: '100%', boxSizing: 'border-box' as const },
-  memberSheetBody: { padding: '24px 24px 36px', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 },
-  memberSheetAvatar: { width: 72, height: 72, borderRadius: '50%', border: '3px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#fff', marginBottom: 8 },
+  deleteLeagueBtn: {
+    background: 'transparent',
+    border: '1px solid #3a1a1a',
+    borderRadius: 6,
+    color: '#ff5252',
+    fontSize: 14,
+    padding: '8px 16px',
+    cursor: 'pointer',
+  },
+  deleteConfirm: {
+    background: '#1a1010',
+    border: '1px solid #3a1a1a',
+    borderRadius: 8,
+    padding: '12px 16px',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+  },
+  memberSheetBody: {
+    padding: '24px 24px 36px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 8,
+  },
+  memberSheetAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: '50%',
+    border: '3px solid',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 28,
+    fontWeight: 700,
+    color: '#fff',
+    marginBottom: 8,
+  },
   memberSheetName: { color: '#fff', fontSize: 20, fontWeight: 700 },
   memberSheetUser: { color: '#555', fontSize: 14 },
-  memberSheetStats: { display: 'flex', alignItems: 'center', gap: 0, marginTop: 20, background: '#111', border: '1px solid #222', borderRadius: 12, overflow: 'hidden', width: '100%' },
-  memberSheetStat: { flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4, padding: '16px 0' },
+  memberSheetStats: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0,
+    marginTop: 20,
+    background: '#111',
+    border: '1px solid #222',
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  memberSheetStat: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 4,
+    padding: '16px 0',
+  },
   memberSheetStatVal: { color: '#fff', fontSize: 20, fontWeight: 700 },
-  memberSheetStatLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.8 },
+  memberSheetStatLabel: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+  },
   memberSheetStatDivider: { width: 1, height: 40, background: '#222', flexShrink: 0 },
   memberSheetStreak: { fontSize: 14, fontWeight: 700, marginTop: 4 },
   memberSheetRank: { color: '#555', fontSize: 12, marginTop: 2 },
-  memberSheetBragRow: { marginTop: 16, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 },
-  memberSheetBragUfc: { background: '#2a2000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 14, fontWeight: 700, padding: '8px 18px' },
-  memberSheetBragBmf: { background: '#0f0f0f', border: '1px solid #c8a00066', borderRadius: 8, color: '#c8a000', fontSize: 14, fontWeight: 700, padding: '8px 18px', letterSpacing: 0.5 },
-  memberSheetBragBoth: { background: '#1a1000', border: '1px solid #ffd70066', borderRadius: 8, color: '#ffd700', fontSize: 14, fontWeight: 700, padding: '8px 18px', textAlign: 'center' as const },
-  msgBoard: { margin: '0 24px 24px', background: '#141414', border: '1px solid #242424', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
-  msgBoardTitle: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, padding: '14px 16px 10px', borderBottom: '1px solid #1a1a1a', margin: 0 },
-  msgList: { maxHeight: 320, overflowY: 'auto' as const, padding: '8px 0', display: 'flex', flexDirection: 'column' as const, gap: 2 },
-  msgEmpty: { color: '#444', fontSize: 14, fontStyle: 'italic', textAlign: 'center' as const, padding: '24px 16px', margin: 0 },
-  msgRow: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 14px', borderRadius: 6 },
+  memberSheetBragRow: {
+    marginTop: 16,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 6,
+  },
+  memberSheetBragUfc: {
+    background: '#2a2000',
+    border: '1px solid #ffd70066',
+    borderRadius: 8,
+    color: '#ffd700',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '8px 18px',
+  },
+  memberSheetBragBmf: {
+    background: '#0f0f0f',
+    border: '1px solid #c8a00066',
+    borderRadius: 8,
+    color: '#c8a000',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '8px 18px',
+    letterSpacing: 0.5,
+  },
+  memberSheetBragBoth: {
+    background: '#1a1000',
+    border: '1px solid #ffd70066',
+    borderRadius: 8,
+    color: '#ffd700',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '8px 18px',
+    textAlign: 'center' as const,
+  },
+  msgBoard: {
+    margin: '0 24px 24px',
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+  },
+  msgBoardTitle: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    padding: '14px 16px 10px',
+    borderBottom: '1px solid #1a1a1a',
+    margin: 0,
+  },
+  msgList: {
+    maxHeight: 320,
+    overflowY: 'auto' as const,
+    padding: '8px 0',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 2,
+  },
+  msgEmpty: {
+    color: '#444',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center' as const,
+    padding: '24px 16px',
+    margin: 0,
+  },
+  msgRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+    padding: '8px 14px',
+    borderRadius: 6,
+  },
   msgRowMe: { background: '#0f0f1a' },
-  msgAvatar: { width: 28, height: 28, borderRadius: '50%', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', marginTop: 1 },
+  msgAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    border: '2px solid',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#fff',
+    marginTop: 1,
+  },
   msgContent: { flex: 1, minWidth: 0 },
   msgMeta: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 },
   msgTeam: { color: '#888', fontSize: 12, fontWeight: 700 },
   msgTime: { color: '#444', fontSize: 12 },
-  msgDelete: { background: 'none', border: 'none', color: '#333', fontSize: 12, cursor: 'pointer', padding: '0 2px', lineHeight: 1, marginLeft: 'auto' as const },
+  msgDelete: {
+    background: 'none',
+    border: 'none',
+    color: '#333',
+    fontSize: 12,
+    cursor: 'pointer',
+    padding: '0 2px',
+    lineHeight: 1,
+    marginLeft: 'auto' as const,
+  },
   msgBody: { color: '#ccc', fontSize: 14, wordBreak: 'break-word' as const, lineHeight: 1.4 },
   msgForm: { display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid #1a1a1a' },
-  msgInput: { flex: 1, background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: 8, color: '#fff', fontSize: 14, padding: '9px 12px', outline: 'none' },
-  msgSendBtn: { background: '#c8102e', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0 },
+  msgInput: {
+    flex: 1,
+    background: '#0f0f0f',
+    border: '1px solid #2a2a2a',
+    borderRadius: 8,
+    color: '#fff',
+    fontSize: 14,
+    padding: '9px 12px',
+    outline: 'none',
+  },
+  msgSendBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    padding: '9px 18px',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
   deleteConfirmText: { color: '#ccc', fontSize: 14, margin: '0 0 10px' },
   deleteConfirmRow: { display: 'flex', gap: 8 },
-  deleteCancelBtn: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 14, padding: '7px 14px', cursor: 'pointer' },
-  deleteConfirmBtn: { background: '#3a1a1a', border: '1px solid #ff525444', borderRadius: 6, color: '#ff5252', fontSize: 14, fontWeight: 700, padding: '7px 14px', cursor: 'pointer' },
+  deleteCancelBtn: {
+    background: '#2a2a2a',
+    border: 'none',
+    borderRadius: 6,
+    color: '#aaa',
+    fontSize: 14,
+    padding: '7px 14px',
+    cursor: 'pointer',
+  },
+  deleteConfirmBtn: {
+    background: '#3a1a1a',
+    border: '1px solid #ff525444',
+    borderRadius: 6,
+    color: '#ff5252',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '7px 14px',
+    cursor: 'pointer',
+  },
   waitingMsg: { color: '#666', fontSize: 14, margin: 0, fontStyle: 'italic' },
   error: { color: '#ff6b6b', fontSize: 14, margin: 0 },
   draftingBanner: {
-    background: '#1a2a1a', borderBottom: '1px solid #4caf5044',
-    padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12,
+    background: '#1a2a1a',
+    borderBottom: '1px solid #4caf5044',
+    padding: '14px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
   },
   draftingDot: { width: 8, height: 8, borderRadius: '50%', background: '#ffd700' },
   draftingText: { color: '#ffd700', fontWeight: 700, fontSize: 14, flex: 1 },
@@ -1585,77 +3012,312 @@ const styles: Record<string, React.CSSProperties> = {
   navGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 24 },
   navGridMobile: { gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, padding: 16 },
   navCard: {
-    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: 24, textDecoration: 'none', color: '#fff', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: 12,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: 24,
+    textDecoration: 'none',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
   },
   navCardBtn: {
-    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10,
-    padding: 24, cursor: 'pointer', color: '#fff', display: 'flex', flexDirection: 'column' as const,
-    alignItems: 'center', gap: 12,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: 24,
+    cursor: 'pointer',
+    color: '#fff',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 12,
   },
   navIcon: { color: '#c8102e', display: 'flex' },
   navLabel: { color: '#fff', fontWeight: 600, fontSize: 14 },
   memberSection: { padding: '0 24px 20px' },
-  memberSectionTitle: { color: '#555', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' },
+  memberSectionTitle: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    margin: '0 0 10px',
+  },
   teamsRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  teamPill: { background: '#141414', border: '1px solid #242424', borderRadius: 20, padding: '6px 14px', display: 'flex', gap: 10, alignItems: 'center' },
+  teamPill: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 20,
+    padding: '6px 14px',
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+  },
   teamPillName: { color: '#ddd', fontSize: 14, fontWeight: 600 },
   teamPillRecord: { color: '#555', fontSize: 12 },
-  eventCard: { margin: '0 24px 16px', background: '#141414', border: '1px solid #242424', borderRadius: 12, padding: '20px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.4)' },
+  eventCard: {
+    margin: '0 24px 16px',
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: '20px 24px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 5,
+    textAlign: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+  },
   eventCardNameRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  eventCardLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 },
+  eventCardLabel: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   eventCardName: { color: '#fff', fontSize: 16, fontWeight: 700 },
   eventCardLocation: { color: '#555', fontSize: 12 },
   eventDate: { color: '#888', fontSize: 14, fontWeight: 600 },
-  eventLiveBadge: { background: '#c8102e', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 3 },
-  eventPicksLink: { color: '#c8102e', textDecoration: 'none', fontSize: 14, fontWeight: 600, marginTop: 8 },
-  userPill: { display: 'flex', alignItems: 'center', gap: 7, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, padding: '4px 10px 4px 4px', maxWidth: 200 },
-  userPillEmail: { color: '#888', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+  eventLiveBadge: {
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 3,
+  },
+  eventPicksLink: {
+    color: '#c8102e',
+    textDecoration: 'none',
+    fontSize: 14,
+    fontWeight: 600,
+    marginTop: 8,
+  },
+  userPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 7,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 20,
+    padding: '4px 10px 4px 4px',
+    maxWidth: 200,
+  },
+  userPillEmail: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
   bellWrap: { position: 'relative' as const },
-  bellBtn: { background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '2px 4px', position: 'relative' as const, lineHeight: 1, display: 'inline-flex', alignItems: 'center' },
-  bellBadge: { position: 'absolute' as const, top: -4, right: -4, background: '#c8102e', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 4px', minWidth: 14, textAlign: 'center' as const },
-  notifPanel: { position: 'absolute' as const, top: 36, right: 0, width: 320, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', zIndex: 100, maxHeight: 400, overflowY: 'auto' as const },
-  notifHeader: { padding: '12px 16px', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  bellBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#aaa',
+    cursor: 'pointer',
+    padding: '2px 4px',
+    position: 'relative' as const,
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
+  bellBadge: {
+    position: 'absolute' as const,
+    top: -4,
+    right: -4,
+    background: '#c8102e',
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 700,
+    borderRadius: 8,
+    padding: '1px 4px',
+    minWidth: 14,
+    textAlign: 'center' as const,
+  },
+  notifPanel: {
+    position: 'absolute' as const,
+    top: 36,
+    right: 0,
+    width: 320,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+    zIndex: 100,
+    maxHeight: 400,
+    overflowY: 'auto' as const,
+  },
+  notifHeader: {
+    padding: '12px 16px',
+    borderBottom: '1px solid #2a2a2a',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   notifTitle: { color: '#fff', fontWeight: 700, fontSize: 14 },
-  notifClose: { background: 'none', border: 'none', color: '#555', fontSize: 14, cursor: 'pointer' },
-  notifEmpty: { color: '#555', fontSize: 14, padding: '24px 16px', textAlign: 'center' as const, fontStyle: 'italic' },
+  notifClose: {
+    background: 'none',
+    border: 'none',
+    color: '#555',
+    fontSize: 14,
+    cursor: 'pointer',
+  },
+  notifEmpty: {
+    color: '#555',
+    fontSize: 14,
+    padding: '24px 16px',
+    textAlign: 'center' as const,
+    fontStyle: 'italic',
+  },
   notifItem: { padding: '12px 16px', borderBottom: '1px solid #1f1f1f' },
   notifUnread: { background: '#1f1010' },
   notifItemTitle: { color: '#fff', fontSize: 14, fontWeight: 600, marginBottom: 2 },
   notifItemBody: { color: '#888', fontSize: 12, marginBottom: 4 },
   notifItemTime: { color: '#444', fontSize: 12 },
-  sheetOverlay: { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  bottomSheet: { background: '#141414', border: '1px solid #242424', borderRadius: 16, width: '90%', maxWidth: 560, maxHeight: '70vh', display: 'flex', flexDirection: 'column' as const, boxShadow: '0 8px 32px rgba(0,0,0,0.6)' },
+  sheetOverlay: {
+    position: 'fixed' as const,
+    inset: 0,
+    background: 'rgba(0,0,0,0.7)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomSheet: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 560,
+    maxHeight: '70vh',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+  },
   sheetHandle: { display: 'none' },
-  sheetHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 4px' },
+  sheetHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 20px 4px',
+  },
   sheetTitle: { color: '#fff', fontWeight: 700, fontSize: 16 },
   sheetSubtitle: { color: '#555', fontSize: 12, padding: '0 20px 12px' },
-  sheetBody: { overflowY: 'auto' as const, flex: 1, padding: '0 20px 32px', display: 'flex', flexDirection: 'column' as const, gap: 4 },
-  cardSegmentLabel: { color: '#555', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1, padding: '16px 0 8px' },
-  fightRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderBottom: '1px solid #1f1f1f' },
+  sheetBody: {
+    overflowY: 'auto' as const,
+    flex: 1,
+    padding: '0 20px 32px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 4,
+  },
+  cardSegmentLabel: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    padding: '16px 0 8px',
+  },
+  fightRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 0',
+    borderBottom: '1px solid #1f1f1f',
+  },
   fightRowFighter: { flex: 1, display: 'flex', alignItems: 'center', gap: 8 },
-  fightRowImg: { width: 36, height: 44, objectFit: 'cover' as const, objectPosition: 'top center', borderRadius: 4, background: '#111', flexShrink: 0 },
+  fightRowImg: {
+    width: 36,
+    height: 44,
+    objectFit: 'cover' as const,
+    objectPosition: 'top center',
+    borderRadius: 4,
+    background: '#111',
+    flexShrink: 0,
+  },
   fightRowInfo: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
   fightRowName: { color: '#ddd', fontSize: 14, fontWeight: 600, lineHeight: 1.2 },
   fightRowOdds: { color: '#555', fontSize: 12 },
-  fightRowCenter: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2, flexShrink: 0, minWidth: 64, padding: '0 8px' },
+  fightRowCenter: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
+    minWidth: 64,
+    padding: '0 8px',
+  },
   fightRowVs: { color: '#555', fontSize: 10, fontWeight: 700, letterSpacing: 1 },
   fightRowWeight: { color: '#444', fontSize: 10, textAlign: 'center' as const, lineHeight: 1.3 },
-  newSeasonCard: { margin: '0 24px 16px', background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  newSeasonCard: {
+    margin: '0 24px 16px',
+    background: '#111',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: '16px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
   newSeasonText: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
   newSeasonTitle: { color: '#fff', fontSize: 14, fontWeight: 700 },
   newSeasonSub: { color: '#555', fontSize: 12 },
-  newSeasonBtn: { background: '#1a1a1a', border: '1px solid #333', borderRadius: 8, color: '#c8102e', fontSize: 14, fontWeight: 700, padding: '9px 18px', cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 },
-  newSeasonCancelBtn: { background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#aaa', fontSize: 14, padding: '8px 14px', cursor: 'pointer' },
-  newSeasonConfirmBtn: { background: '#c8102e', border: 'none', borderRadius: 6, color: '#fff', fontSize: 14, fontWeight: 700, padding: '8px 14px', cursor: 'pointer' },
+  newSeasonBtn: {
+    background: '#1a1a1a',
+    border: '1px solid #333',
+    borderRadius: 8,
+    color: '#c8102e',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '9px 18px',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+  },
+  newSeasonCancelBtn: {
+    background: '#2a2a2a',
+    border: 'none',
+    borderRadius: 6,
+    color: '#aaa',
+    fontSize: 14,
+    padding: '8px 14px',
+    cursor: 'pointer',
+  },
+  newSeasonConfirmBtn: {
+    background: '#c8102e',
+    border: 'none',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 700,
+    padding: '8px 14px',
+    cursor: 'pointer',
+  },
   championBanner: {
     background: 'linear-gradient(135deg, #1a0a0a 0%, #2a1010 50%, #1a0a0a 100%)',
-    border: '1px solid #c8102e66', borderLeft: '4px solid #c8102e',
-    padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20,
+    border: '1px solid #c8102e66',
+    borderLeft: '4px solid #c8102e',
+    padding: '20px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 20,
   },
   championTrophy: { fontSize: 40, lineHeight: 1, flexShrink: 0 },
   championText: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
-  championLabel: { color: '#c8102e', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 1 },
+  championLabel: {
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+  },
   championName: { color: '#fff', fontSize: 20, fontWeight: 700 },
 };

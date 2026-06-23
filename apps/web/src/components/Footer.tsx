@@ -1,9 +1,5 @@
 export function Footer() {
-  return (
-    <footer style={styles.footer}>
-      © 2026 Fantasy Fighter League. All rights reserved.
-    </footer>
-  );
+  return <footer style={styles.footer}>© 2026 Fantasy Fighter League. All rights reserved.</footer>;
 }
 
 const styles: Record<string, React.CSSProperties> = {

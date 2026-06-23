@@ -8,7 +8,15 @@ interface Props {
   onClick?: () => void;
 }
 
-export function MemberAvatar({ teamName, color, size, avatarUrl, borderWidth = 2, title, onClick }: Props) {
+export function MemberAvatar({
+  teamName,
+  color,
+  size,
+  avatarUrl,
+  borderWidth = 2,
+  title,
+  onClick,
+}: Props) {
   const base: React.CSSProperties = {
     width: size,
     height: size,

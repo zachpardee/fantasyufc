@@ -4,7 +4,9 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 }
 import { supabase } from './api/supabase';
@@ -16,6 +18,7 @@ import { LeagueHomePage } from './pages/LeagueHome';
 import { MatchupPage } from './pages/Matchup';
 import { StandingsPage } from './pages/Standings';
 import { FighterBrowserPage } from './pages/FighterBrowser';
+import { AdminPage } from './pages/Admin';
 import { SchedulePage } from './pages/Schedule';
 import { CreateLeaguePage } from './pages/CreateLeague';
 import { PicksPage } from './pages/Picks';
@@ -31,17 +34,51 @@ import { UserBadge } from './components/UserBadge';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null };
-  static getDerivedStateFromError(err: Error) { return { error: err.message }; }
-  componentDidCatch(err: Error) { Sentry.captureException(err); }
+  static getDerivedStateFromError(err: Error) {
+    return { error: err.message };
+  }
+  componentDidCatch(err: Error) {
+    Sentry.captureException(err);
+  }
   render() {
     if (this.state.error) {
       return (
-        <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#1a1a1a', border: '1px solid #c8102e', borderRadius: 10, padding: 32, maxWidth: 480 }}>
-            <p style={{ color: '#c8102e', fontWeight: 700, marginBottom: 8 }}>Something went wrong</p>
-            <p style={{ color: '#888', fontSize: 13, fontFamily: 'monospace' }}>{this.state.error}</p>
-            <button onClick={() => window.location.reload()}
-              style={{ marginTop: 16, background: '#c8102e', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', cursor: 'pointer' }}>
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#0a0a0a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              background: '#1a1a1a',
+              border: '1px solid #c8102e',
+              borderRadius: 10,
+              padding: 32,
+              maxWidth: 480,
+            }}
+          >
+            <p style={{ color: '#c8102e', fontWeight: 700, marginBottom: 8 }}>
+              Something went wrong
+            </p>
+            <p style={{ color: '#888', fontSize: 13, fontFamily: 'monospace' }}>
+              {this.state.error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: 16,
+                background: '#c8102e',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '8px 20px',
+                cursor: 'pointer',
+              }}
+            >
               Reload
             </button>
           </div>
@@ -68,7 +105,9 @@ export default function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_e, session) => {
       setSession(session);
 
       // Complete profile creation after email confirmation redirect
@@ -93,31 +132,73 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <BrowserRouter>
-      <ScrollToTop />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-        <Route path="/league/create" element={<RequireAuth><CreateLeaguePage /></RequireAuth>} />
-        <Route path="/league/:leagueId" element={<RequireAuth><LeagueHomePage /></RequireAuth>} />
-        <Route element={<RequireAuth><LeagueSubLayout /></RequireAuth>}>
-          <Route path="/league/:leagueId/matchup" element={<MatchupPage />} />
-          <Route path="/league/:leagueId/standings" element={<StandingsPage />} />
-          <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
-          <Route path="/league/:leagueId/picks" element={<PicksPage />} />
-          <Route path="/league/:leagueId/picks/comparison" element={<PicksComparisonPage />} />
-          <Route path="/league/:leagueId/staking" element={<StakingPicksPage />} />
-          <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
-          <Route path="/league/:leagueId/rules" element={<LeagueRulesPage />} />
-          <Route path="/league/:leagueId/playoffs" element={<PlayoffsPage />} />
-          <Route path="/league/:leagueId/commissioner" element={<CommissionerToolsPage />} />
-        </Route>
-        <Route path="/fighters" element={<RequireAuth><FighterBrowserPage /></RequireAuth>} />
-      </Routes>
-      <UserBadge />
-      <Footer />
-    </BrowserRouter>
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/"
+            element={
+              <RequireAuth>
+                <DashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/league/create"
+            element={
+              <RequireAuth>
+                <CreateLeaguePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/league/:leagueId"
+            element={
+              <RequireAuth>
+                <LeagueHomePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            element={
+              <RequireAuth>
+                <LeagueSubLayout />
+              </RequireAuth>
+            }
+          >
+            <Route path="/league/:leagueId/matchup" element={<MatchupPage />} />
+            <Route path="/league/:leagueId/standings" element={<StandingsPage />} />
+            <Route path="/league/:leagueId/schedule" element={<SchedulePage />} />
+            <Route path="/league/:leagueId/picks" element={<PicksPage />} />
+            <Route path="/league/:leagueId/picks/comparison" element={<PicksComparisonPage />} />
+            <Route path="/league/:leagueId/staking" element={<StakingPicksPage />} />
+            <Route path="/league/:leagueId/team/:memberId" element={<TeamPage />} />
+            <Route path="/league/:leagueId/rules" element={<LeagueRulesPage />} />
+            <Route path="/league/:leagueId/playoffs" element={<PlayoffsPage />} />
+            <Route path="/league/:leagueId/commissioner" element={<CommissionerToolsPage />} />
+          </Route>
+          <Route
+            path="/fighters"
+            element={
+              <RequireAuth>
+                <FighterBrowserPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RequireAuth>
+                <AdminPage />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+        <UserBadge />
+        <Footer />
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

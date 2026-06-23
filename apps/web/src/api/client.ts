@@ -7,7 +7,9 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
 export const apiClient = axios.create({ baseURL: API_BASE });
 
 apiClient.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
   }

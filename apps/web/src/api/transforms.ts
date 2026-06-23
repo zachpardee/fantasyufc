@@ -7,18 +7,44 @@ function toCamel(s: string): string {
 
 // Postgres NUMERIC columns arrive as strings — coerce known score/stat fields to numbers.
 const NUMERIC_FIELDS = new Set([
-  'homeScore', 'awayScore', 'totalPoints', 'homePoints', 'awayPoints',
-  'averageFantasyPoints', 'memberCount',
-  'wins', 'losses', 'ties', 'streak',
-  'ranking', 'recordWins', 'recordLosses', 'recordDraws', 'recordNc',
-  'fightCount', 'matchupCount',
+  'homeScore',
+  'awayScore',
+  'totalPoints',
+  'homePoints',
+  'awayPoints',
+  'averageFantasyPoints',
+  'memberCount',
+  'wins',
+  'losses',
+  'ties',
+  'streak',
+  'ranking',
+  'recordWins',
+  'recordLosses',
+  'recordDraws',
+  'recordNc',
+  'fightCount',
+  'matchupCount',
   // staking fields
-  'stake', 'potentialPayout', 'actualPayout', 'profitLoss',
-  'stakingBalance', 'balance', 'pendingStake', 'decimalOdds',
-  'redFighterOdds', 'blueFighterOdds',
-  'redRecordWins', 'redRecordLosses', 'redRecordDraws',
-  'blueRecordWins', 'blueRecordLosses', 'blueRecordDraws',
-  'koTkoWins', 'submissionWins', 'resultEndingRound',
+  'stake',
+  'potentialPayout',
+  'actualPayout',
+  'profitLoss',
+  'stakingBalance',
+  'balance',
+  'pendingStake',
+  'decimalOdds',
+  'redFighterOdds',
+  'blueFighterOdds',
+  'redRecordWins',
+  'redRecordLosses',
+  'redRecordDraws',
+  'blueRecordWins',
+  'blueRecordLosses',
+  'blueRecordDraws',
+  'koTkoWins',
+  'submissionWins',
+  'resultEndingRound',
 ]);
 
 function transformKeys(obj: unknown): unknown {
@@ -29,9 +55,10 @@ function transformKeys(obj: unknown): unknown {
   for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
     const camel = toCamel(key);
     const transformed = transformKeys(val);
-    out[camel] = NUMERIC_FIELDS.has(camel) && typeof transformed === 'string'
-      ? parseFloat(transformed)
-      : transformed;
+    out[camel] =
+      NUMERIC_FIELDS.has(camel) && typeof transformed === 'string'
+        ? parseFloat(transformed)
+        : transformed;
   }
   return out;
 }
@@ -43,15 +70,23 @@ function nestFighterRecord(obj: Record<string, unknown>): Record<string, unknown
   const { recordWins, recordLosses, recordDraws, recordNc, ...rest } = obj;
   return {
     ...rest,
-    record: { wins: recordWins ?? 0, losses: recordLosses ?? 0, draws: recordDraws ?? 0, nc: recordNc ?? 0 },
+    record: {
+      wins: recordWins ?? 0,
+      losses: recordLosses ?? 0,
+      draws: recordDraws ?? 0,
+      nc: recordNc ?? 0,
+    },
   };
 }
 
 export function transformResponse(data: unknown): unknown {
   const camelCased = transformKeys(data);
-  if (Array.isArray(camelCased)) return camelCased.map((item) =>
-    typeof item === 'object' && item !== null ? nestFighterRecord(item as Record<string, unknown>) : item,
-  );
+  if (Array.isArray(camelCased))
+    return camelCased.map((item) =>
+      typeof item === 'object' && item !== null
+        ? nestFighterRecord(item as Record<string, unknown>)
+        : item,
+    );
   if (typeof camelCased === 'object' && camelCased !== null) {
     return nestFighterRecord(camelCased as Record<string, unknown>);
   }

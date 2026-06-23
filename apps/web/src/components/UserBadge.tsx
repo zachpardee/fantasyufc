@@ -7,7 +7,12 @@ export function UserBadge() {
   const { session } = useAuthStore();
   const location = useLocation();
 
-  const { data: profile } = useQuery<{ username: string; displayName?: string; avatarUrl?: string; avatarColor?: string }>({
+  const { data: profile } = useQuery<{
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+    avatarColor?: string;
+  }>({
     queryKey: ['my-profile'],
     queryFn: () => apiClient.get('/auth/me'),
     enabled: !!session,
@@ -16,7 +21,7 @@ export function UserBadge() {
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isLeaguePage = /^\/league\//.test(location.pathname); // all league pages have their own nav
-  const isDashboard = location.pathname === '/';                     // dashboard has its own email+logout
+  const isDashboard = location.pathname === '/'; // dashboard has its own email+logout
   if (!session || isAuthPage || isLeaguePage || isDashboard || !profile) return null;
 
   const email = session.user.email ?? '';
