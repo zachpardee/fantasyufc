@@ -24,11 +24,17 @@ export default function TeamScreen() {
   });
 
   const member = standings?.find((m) => m.teamId === memberId || m.id === memberId);
-  const standingRank = standings ? standings.findIndex((m) => m.teamId === memberId || m.id === memberId) + 1 : 0;
+  const standingRank = standings
+    ? standings.findIndex((m) => m.teamId === memberId || m.id === memberId) + 1
+    : 0;
   const isStaking = league?.leagueFormat === 'staking';
 
   if (isLoading) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   if (!member) {
@@ -52,21 +58,23 @@ export default function TeamScreen() {
             <Text style={s.champBadge}>Season Champion</Text>
           </View>
         )}
-        <MemberAvatar name={member.teamName} color={member.avatarColor} avatarUrl={member.avatarUrl} size={80} />
+        <MemberAvatar
+          name={member.teamName}
+          color={member.avatarColor}
+          avatarUrl={member.avatarUrl}
+          size={80}
+        />
         <Text style={s.teamName}>{member.teamName}</Text>
         <Text style={s.username}>@{member.username}</Text>
-        {standingRank > 0 && (
-          <Text style={s.rank}>#{standingRank} in standings</Text>
-        )}
+        {standingRank > 0 && <Text style={s.rank}>#{standingRank} in standings</Text>}
       </View>
 
       {/* Stat row */}
       <View style={s.statBar}>
         <View style={s.stat}>
-          <Text style={[
-            s.statValue,
-            isStaking && { color: bankroll >= 0 ? '#4caf50' : '#ff5252' },
-          ]}>
+          <Text
+            style={[s.statValue, isStaking && { color: bankroll >= 0 ? '#4caf50' : '#ff5252' }]}
+          >
             {isStaking ? fmtBankroll(bankroll) : (+(member.totalPoints ?? 0)).toFixed(1)}
           </Text>
           <Text style={s.statLabel}>{isStaking ? 'Bankroll' : 'Season Pts'}</Text>
@@ -74,7 +82,8 @@ export default function TeamScreen() {
         <View style={s.divider} />
         <View style={s.stat}>
           <Text style={s.statValue}>
-            {member.wins}-{member.losses}{member.ties > 0 ? `-${member.ties}` : ''}
+            {member.wins}-{member.losses}
+            {member.ties > 0 ? `-${member.ties}` : ''}
           </Text>
           <Text style={s.statLabel}>Record</Text>
         </View>
@@ -121,18 +130,27 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
   emptyText: { color: '#666', fontSize: 16 },
 
-  profileHeader: { alignItems: 'center', padding: 28, borderBottomWidth: 1, borderBottomColor: '#1a1a1a', gap: 8 },
+  profileHeader: {
+    alignItems: 'center',
+    padding: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+    gap: 8,
+  },
   champBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   champBadge: { color: '#ffd700', fontSize: 13, fontWeight: '700' },
-  avatar: { justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontWeight: '800' },
   teamName: { color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 4 },
   username: { color: '#555', fontSize: 14 },
   rank: { color: '#c8102e', fontSize: 13, fontWeight: '600' },
 
   statBar: {
-    backgroundColor: '#111', borderBottomWidth: 1, borderBottomColor: '#1e1e1e',
-    padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e1e1e',
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
   statLabel: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
@@ -141,8 +159,12 @@ const s = StyleSheet.create({
 
   infoSection: { marginTop: 16, marginHorizontal: 16 },
   infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#111',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
   },
   infoLabel: { color: '#888', fontSize: 14 },
   infoValue: { color: '#fff', fontSize: 14, fontWeight: '600' },

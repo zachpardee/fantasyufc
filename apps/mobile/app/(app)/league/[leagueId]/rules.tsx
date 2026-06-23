@@ -6,7 +6,11 @@ import type { ScoringSettings } from '@fantasy-ufc/shared';
 
 function fmtDate(iso: string | undefined) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function pts(n: number | undefined) {
@@ -63,7 +67,11 @@ export default function RulesScreen() {
   });
 
   if (isLoading) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   const isStaking = league?.leagueFormat === 'staking';
@@ -75,11 +83,29 @@ export default function RulesScreen() {
       {league && (
         <Section title="Season">
           <Row label="Format" value={isStaking ? 'Staking' : "Pick 'em"} />
-          <Row label="Season length" value={league.seasonLengthMonths ? `${league.seasonLengthMonths} months` : '—'} />
-          <Row label="Status" value={league.status ? league.status.charAt(0).toUpperCase() + league.status.slice(1) : '—'} />
+          <Row
+            label="Season length"
+            value={league.seasonLengthMonths ? `${league.seasonLengthMonths} months` : '—'}
+          />
+          <Row
+            label="Status"
+            value={
+              league.status ? league.status.charAt(0).toUpperCase() + league.status.slice(1) : '—'
+            }
+          />
           {seasonActive && <Row label="Regular season ends" value={fmtDate(league.seasonEndsAt)} />}
-          {semisEvent && <Row label="Semifinals" value={`${semisEvent.name} · ${fmtDate(semisEvent.scheduledAt)}`} />}
-          {finalsEvent && <Row label="Finals" value={`${finalsEvent.name} · ${fmtDate(finalsEvent.scheduledAt)}`} />}
+          {semisEvent && (
+            <Row
+              label="Semifinals"
+              value={`${semisEvent.name} · ${fmtDate(semisEvent.scheduledAt)}`}
+            />
+          )}
+          {finalsEvent && (
+            <Row
+              label="Finals"
+              value={`${finalsEvent.name} · ${fmtDate(finalsEvent.scheduledAt)}`}
+            />
+          )}
           <Row label="Max teams" value={String(league.maxTeams)} />
         </Section>
       )}
@@ -110,7 +136,10 @@ export default function RulesScreen() {
 
           <Section title="Event Payout (Your Score)">
             <Row label="Formula" value="Unbet budget + winnings from settled bets" />
-            <Row label="Example" value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130" />
+            <Row
+              label="Example"
+              value="$100 budget, $30 staked, $30 bet wins at 2× → $70 + $60 = $130"
+            />
           </Section>
 
           <Section title="Matchups">
@@ -133,8 +162,14 @@ export default function RulesScreen() {
             <Row label="Picks per event" value="Top 6 fights (main card + top prelims)" />
             <Row label="Pick deadline" value="10 min before prelims begin" />
             <Row label="Scoring" value="Points for correct winner + method" />
-            <Row label="Prelims scoring" value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'} />
-            <Row label="Early prelims" value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'} />
+            <Row
+              label="Prelims scoring"
+              value={ss ? (ss.scorePrelims ? 'Enabled' : 'Disabled') : '—'}
+            />
+            <Row
+              label="Early prelims"
+              value={ss ? (ss.scoreEarlyPrelims ? 'Enabled' : 'Disabled') : '—'}
+            />
           </Section>
 
           <Section title="Pick Scoring">
@@ -180,14 +215,24 @@ const s = StyleSheet.create({
 
   section: { marginHorizontal: 16, marginBottom: 8 },
   sectionTitle: {
-    color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1,
-    paddingTop: 20, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    color: '#555',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    paddingTop: 20,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
     marginBottom: 2,
   },
 
   row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#111',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
     gap: 16,
   },
   rowLabel: { color: '#888', fontSize: 14, flex: 1 },

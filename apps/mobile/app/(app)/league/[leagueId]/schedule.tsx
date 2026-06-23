@@ -17,7 +17,10 @@ type ScheduleEvent = {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
@@ -58,18 +61,21 @@ export default function ScheduleScreen() {
 
   const availableRows = available.filter((ev) => !scheduleIds.has(ev.id));
 
-  const all = [...scheduleRows, ...availableRows]
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const all = [...scheduleRows, ...availableRows].sort(
+    (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+  );
 
   if (isLoading) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}>
-      {all.length === 0 && (
-        <Text style={s.empty}>No upcoming events found.</Text>
-      )}
+      {all.length === 0 && <Text style={s.empty}>No upcoming events found.</Text>}
 
       {all.map((ev) => {
         const isLive = ev.status === 'live';
@@ -77,28 +83,34 @@ export default function ScheduleScreen() {
         const isOnSchedule = scheduleIds.has(ev.id);
 
         return (
-          <View
-            key={ev.id}
-            style={[s.card, isLive && s.cardLive, isDone && s.cardDone]}
-          >
-            <Text style={[s.eventName, isLive && s.eventNameLive, isDone && s.eventNameDone]} numberOfLines={1}>
+          <View key={ev.id} style={[s.card, isLive && s.cardLive, isDone && s.cardDone]}>
+            <Text
+              style={[s.eventName, isLive && s.eventNameLive, isDone && s.eventNameDone]}
+              numberOfLines={1}
+            >
               {ev.name}
             </Text>
             <Text style={s.eventMeta}>
               {[ev.venue, ev.location].filter(Boolean).join(' · ')} · {fmtDate(ev.scheduledAt)}
             </Text>
             <View style={s.badges}>
-              {isLive && <View style={s.liveBadge}><Text style={s.liveBadgeText}>LIVE</Text></View>}
-              {isDone && <View style={s.doneBadge}><Text style={s.doneBadgeText}>COMPLETED</Text></View>}
+              {isLive && (
+                <View style={s.liveBadge}>
+                  <Text style={s.liveBadgeText}>LIVE</Text>
+                </View>
+              )}
+              {isDone && (
+                <View style={s.doneBadge}>
+                  <Text style={s.doneBadgeText}>COMPLETED</Text>
+                </View>
+              )}
               {isOnSchedule && !isLive && !isDone && (
-                <View style={s.onScheduleBadge}><Text style={s.onScheduleText}>On Schedule</Text></View>
+                <View style={s.onScheduleBadge}>
+                  <Text style={s.onScheduleText}>On Schedule</Text>
+                </View>
               )}
-              {(ev.matchupCount ?? 0) > 0 && (
-                <Text style={s.stat}>{ev.matchupCount} matchups</Text>
-              )}
-              {ev.fightCount > 0 && (
-                <Text style={s.stat}>{ev.fightCount} fights</Text>
-              )}
+              {(ev.matchupCount ?? 0) > 0 && <Text style={s.stat}>{ev.matchupCount} matchups</Text>}
+              {ev.fightCount > 0 && <Text style={s.stat}>{ev.fightCount} fights</Text>}
             </View>
           </View>
         );
@@ -116,12 +128,21 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
   content: { padding: 16 },
 
-  empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', paddingVertical: 40 },
+  empty: {
+    color: '#555',
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 40,
+  },
 
   card: {
-    backgroundColor: '#141414', borderRadius: 12,
-    borderWidth: 1, borderColor: '#242424',
-    padding: 16, marginBottom: 8,
+    backgroundColor: '#141414',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#242424',
+    padding: 16,
+    marginBottom: 8,
   },
   cardLive: { borderColor: '#c8102e', backgroundColor: '#1a0808' },
   cardDone: { opacity: 0.45 },
@@ -132,11 +153,30 @@ const s = StyleSheet.create({
   eventMeta: { color: '#666', fontSize: 12, marginBottom: 8 },
 
   badges: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  liveBadge: { backgroundColor: '#c8102e', borderRadius: 4, paddingHorizontal: 7, paddingVertical: 2 },
+  liveBadge: {
+    backgroundColor: '#c8102e',
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
   liveBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  doneBadge: { backgroundColor: '#1a1a1a', borderRadius: 4, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#333' },
+  doneBadge: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
   doneBadgeText: { color: '#555', fontSize: 10, fontWeight: '700' },
-  onScheduleBadge: { backgroundColor: '#1a2a1a', borderRadius: 4, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: '#2a4a2a' },
+  onScheduleBadge: {
+    backgroundColor: '#1a2a1a',
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#2a4a2a',
+  },
   onScheduleText: { color: '#4caf50', fontSize: 10, fontWeight: '700' },
   stat: { color: '#555', fontSize: 12 },
 

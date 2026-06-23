@@ -1,5 +1,13 @@
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, FlatList,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -9,6 +17,12 @@ import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { useRealtimeScoring } from '../../../../src/hooks/useRealtimeScoring';
 import { PicksColumns, StakingColumns } from '../../../../src/components/MatchupPickColumns';
+import { LeagueNavBar } from '../../../../src/components/LeagueNavBar';
+import { useRefresh } from '../../../../src/hooks/useRefresh';
+
+// Scoreboard score size scales down on narrow phones (capped at 34 so it never grows).
+const SCREEN_W = Dimensions.get('window').width;
+const SCORE_SIZE = SCREEN_W < 350 ? 27 : SCREEN_W < 380 ? 30 : 34;
 
 function fmtScore(n: number, isStaking: boolean): string {
   if (isStaking) {
@@ -27,9 +41,11 @@ function fmtChip(n: number, isStaking: boolean): string {
   return n.toFixed(0);
 }
 
-export default function MatchupScreen() {
-  const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+export default function MatchupScreen({ leagueIdProp }: { leagueIdProp?: string }) {
+  const params = useLocalSearchParams<{ leagueId: string }>();
+  const leagueId = leagueIdProp ?? params.leagueId;
   const { session } = useAuthStore();
+  const { refreshing, onRefresh } = useRefresh();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
 
   const { data: league } = useQuery<any>({
@@ -65,19 +81,29 @@ export default function MatchupScreen() {
   // The most recent event the user has a matchup in — the default anchor when nothing is selected.
   const mostRecentMyMatchup = seasonEvents.find((ev) => myMatchupByEvent.has(ev.eventId));
   const mostRecentMyMatchupId = mostRecentMyMatchup
-    ? myMatchupByEvent.get(mostRecentMyMatchup.eventId)?.id ?? null
+    ? (myMatchupByEvent.get(mostRecentMyMatchup.eventId)?.id ?? null)
     : null;
   // The single current/next event — earliest live or scheduled event (gets the NEXT badge).
-  const currentUpcomingEventId = [...seasonEvents].reverse()
-    .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
+  const currentUpcomingEventId =
+    [...seasonEvents]
+      .reverse()
+      .find((ev) => ev.eventStatus === 'live' || ev.eventStatus === 'scheduled')?.eventId ?? null;
 
-  // Anchor the displayed matchup on the chosen chip, defaulting to the most recent one.
-  const effectiveMatchupId = selectedMatchupId ?? mostRecentMyMatchupId;
+  // Default anchor: the live/next event the user is actually picking (so their picks show),
+  // falling back to their most recent matchup when the season is over.
+  const currentMyMatchupId = currentUpcomingEventId
+    ? (myMatchupByEvent.get(currentUpcomingEventId)?.id ?? null)
+    : null;
+  const defaultMatchupId = currentMyMatchupId ?? mostRecentMyMatchupId;
+
+  // Anchor the displayed matchup on the chosen chip, defaulting to the current/next one.
+  const effectiveMatchupId = selectedMatchupId ?? defaultMatchupId;
 
   const { data: matchup, isLoading } = useQuery<any>({
     queryKey: ['matchup-detail', leagueId, effectiveMatchupId],
     queryFn: async () => {
-      if (effectiveMatchupId) return apiClient.get(`/leagues/${leagueId}/matchups/${effectiveMatchupId}`);
+      if (effectiveMatchupId)
+        return apiClient.get(`/leagues/${leagueId}/matchups/${effectiveMatchupId}`);
       const m = await apiClient.get<any, any>(`/leagues/${leagueId}/matchups/current`);
       if (!m) return null;
       return apiClient.get(`/leagues/${leagueId}/matchups/${m.id}`);
@@ -108,14 +134,16 @@ export default function MatchupScreen() {
 
   const { data: homeChampion } = useQuery<any>({
     queryKey: ['matchup-champion-home', leagueId, eventId, homeTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${homeTeamId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${homeTeamId}`),
     enabled: !isStaking && !!eventId && !!homeTeamId,
     refetchInterval: liveInterval,
   });
 
   const { data: awayChampion } = useQuery<any>({
     queryKey: ['matchup-champion-away', leagueId, eventId, awayTeamId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${awayTeamId}`),
+    queryFn: () =>
+      apiClient.get(`/leagues/${leagueId}/picks/${eventId}/champion?memberId=${awayTeamId}`),
     enabled: !isStaking && !!eventId && !!awayTeamId,
     refetchInterval: liveInterval,
   });
@@ -149,8 +177,12 @@ export default function MatchupScreen() {
   const rightTeamName: string = flip ? matchup?.homeTeamName : matchup?.awayTeamName;
   const leftScore: number = +((flip ? matchup?.awayScore : matchup?.homeScore) ?? 0);
   const rightScore: number = +((flip ? matchup?.homeScore : matchup?.awayScore) ?? 0);
-  const leftSeasonPoints: number = +((flip ? matchup?.awaySeasonPoints : matchup?.homeSeasonPoints) ?? 0);
-  const rightSeasonPoints: number = +((flip ? matchup?.homeSeasonPoints : matchup?.awaySeasonPoints) ?? 0);
+  const leftSeasonPoints: number = +(
+    (flip ? matchup?.awaySeasonPoints : matchup?.homeSeasonPoints) ?? 0
+  );
+  const rightSeasonPoints: number = +(
+    (flip ? matchup?.homeSeasonPoints : matchup?.awaySeasonPoints) ?? 0
+  );
   const leftRecord = flip ? matchup?.awayRecord : matchup?.homeRecord;
   const rightRecord = flip ? matchup?.homeRecord : matchup?.awayRecord;
   const leftPicks = flip ? awayPicks : homePicks;
@@ -160,8 +192,6 @@ export default function MatchupScreen() {
   const leftStaking = flip ? awayStaking : homeStaking;
   const rightStaking = flip ? homeStaking : awayStaking;
 
-  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== mostRecentMyMatchupId;
-
   // Oldest-first for left→right display (API gives newest-first).
   const stripData = [...seasonEvents].reverse();
   const currentChipIndex = stripData.findIndex((ev) => ev.eventId === currentUpcomingEventId);
@@ -170,21 +200,28 @@ export default function MatchupScreen() {
   useEffect(() => {
     if (currentChipIndex < 0 || !stripRef.current) return;
     const t = setTimeout(() => {
-      stripRef.current?.scrollToIndex({ index: currentChipIndex, viewPosition: 0.5, animated: false });
+      stripRef.current?.scrollToIndex({
+        index: currentChipIndex,
+        viewPosition: 0.5,
+        animated: false,
+      });
     }, 100);
     return () => clearTimeout(t);
   }, [currentChipIndex, seasonEvents.length]);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c8102e" />
+      }
+    >
+      {/* Shown in the Matchup tab (no Stack header); the pushed route uses the Stack header instead. */}
+      {leagueIdProp && <LeagueNavBar leagueId={leagueId} />}
+
       {/* Season event strip */}
       {seasonEvents.length > 0 && (
         <View>
-          {isViewingHistory && (
-            <TouchableOpacity style={styles.currentBtn} onPress={() => setSelectedMatchupId(null)}>
-              <Text style={styles.currentBtnText}>← Current Matchup</Text>
-            </TouchableOpacity>
-          )}
           <FlatList
             ref={stripRef}
             horizontal
@@ -194,7 +231,10 @@ export default function MatchupScreen() {
             contentContainerStyle={styles.stripContent}
             style={styles.strip}
             onScrollToIndexFailed={({ averageItemLength, index }) => {
-              stripRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+              stripRef.current?.scrollToOffset({
+                offset: averageItemLength * index,
+                animated: false,
+              });
             }}
             renderItem={({ item: ev }) => {
               const myM = myMatchupByEvent.get(ev.eventId);
@@ -209,16 +249,20 @@ export default function MatchupScreen() {
               // Highlight the selected chip, or the default anchor when nothing is selected.
               const isActive = selectedMatchupId
                 ? myM?.id === selectedMatchupId
-                : myM?.id === mostRecentMyMatchupId;
+                : myM?.id === defaultMatchupId;
               // Only the single current/next event gets the NEXT badge + outline.
               const isCurrentEvent = ev.eventId === currentUpcomingEventId;
               const isSemis = ev.eventId === league?.playoffSemisEventId;
               const isFinals = ev.eventId === league?.playoffFinalsEventId;
-              const shortName = ev.eventName
-                ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
-                .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
+              const shortName =
+                ev.eventName
+                  ?.replace(/^UFC\s+Fight\s+Night:\s*/i, 'FN: ')
+                  .replace(/^UFC\s+/i, 'UFC ') ?? ev.eventName;
               const dateStr = ev.scheduledAt
-                ? new Date(ev.scheduledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                ? new Date(ev.scheduledAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })
                 : null;
 
               return (
@@ -231,31 +275,39 @@ export default function MatchupScreen() {
                   ]}
                   onPress={() => {
                     if (!myM) return;
-                    setSelectedMatchupId(myM.id === mostRecentMyMatchupId ? null : myM.id);
+                    setSelectedMatchupId(myM.id === defaultMatchupId ? null : myM.id);
                   }}
                 >
                   {isLiveEv && <Text style={styles.chipLive}>LIVE</Text>}
                   {isCurrentEvent && !isLiveEv && <Text style={styles.chipNext}>NEXT</Text>}
                   {isFinals && <Text style={styles.chipFinals}>FINALS</Text>}
                   {isSemis && <Text style={styles.chipSemis}>SEMIS</Text>}
-                  <Text style={styles.chipEvent} numberOfLines={1}>{shortName}</Text>
+                  <Text style={styles.chipEvent} numberOfLines={1}>
+                    {shortName}
+                  </Text>
                   {dateStr && <Text style={styles.chipDate}>{dateStr}</Text>}
                   {myM ? (
                     isCompleted && myScore !== null ? (
                       <>
-                        <Text style={styles.chipOpp} numberOfLines={1}>vs {oppName}</Text>
+                        <Text style={styles.chipOpp} numberOfLines={1}>
+                          vs {oppName}
+                        </Text>
                         <Text style={styles.chipScore}>
                           {fmtChip(myScore, isStaking)}–{fmtChip(oppScore!, isStaking)}
                         </Text>
                         {(isWin || isLoss) && (
-                          <Text style={[styles.chipResult, { color: isWin ? '#4caf50' : '#ff5252' }]}>
+                          <Text
+                            style={[styles.chipResult, { color: isWin ? '#4caf50' : '#ff5252' }]}
+                          >
                             {isWin ? 'W' : 'L'}
                           </Text>
                         )}
                       </>
                     ) : (
                       <>
-                        <Text style={styles.chipOpp} numberOfLines={1}>vs {oppName}</Text>
+                        <Text style={styles.chipOpp} numberOfLines={1}>
+                          vs {oppName}
+                        </Text>
                         <Text style={styles.chipPending}>Upcoming</Text>
                       </>
                     )
@@ -270,22 +322,29 @@ export default function MatchupScreen() {
       )}
 
       {isLoading ? (
-        <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>
+        <View style={styles.center}>
+          <ActivityIndicator color="#c8102e" />
+        </View>
       ) : !matchup ? (
         <View style={styles.center}>
           <Swords size={32} color="#555" style={styles.emptyIcon} />
           <Text style={styles.emptyTitle}>No matchup yet</Text>
-          <Text style={styles.emptyText}>Matchups are generated when the commissioner starts the season.</Text>
+          <Text style={styles.emptyText}>
+            Matchups are generated when the commissioner starts the season.
+          </Text>
         </View>
       ) : (
         <>
           {/* Scoreboard */}
           <View style={styles.scoreboard}>
             <View style={styles.team}>
-              <Text style={styles.teamName} numberOfLines={1}>{leftTeamName}</Text>
+              <Text style={styles.teamName} numberOfLines={1}>
+                {leftTeamName}
+              </Text>
               <Text style={[styles.totalScore, leftScore > rightScore && styles.winScore]}>
                 {fmtScore(leftScore, isStaking)}
               </Text>
+              {isStaking && <Text style={styles.scoreUnit}>bankroll</Text>}
               <Text style={styles.seasonPts}>Season: {fmtScore(leftSeasonPoints, isStaking)}</Text>
             </View>
             <View style={styles.vsBlock}>
@@ -293,11 +352,24 @@ export default function MatchupScreen() {
               {isLive && <View style={styles.liveDot} />}
             </View>
             <View style={[styles.team, styles.awayTeam]}>
-              <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>{rightTeamName}</Text>
-              <Text style={[styles.totalScore, { textAlign: 'right' }, rightScore > leftScore && styles.winScore]}>
+              <Text style={[styles.teamName, { textAlign: 'right' }]} numberOfLines={1}>
+                {rightTeamName}
+              </Text>
+              <Text
+                style={[
+                  styles.totalScore,
+                  { textAlign: 'right' },
+                  rightScore > leftScore && styles.winScore,
+                ]}
+              >
                 {fmtScore(rightScore, isStaking)}
               </Text>
-              <Text style={[styles.seasonPts, { textAlign: 'right' }]}>Season: {fmtScore(rightSeasonPoints, isStaking)}</Text>
+              {isStaking && (
+                <Text style={[styles.scoreUnit, { textAlign: 'right' }]}>bankroll</Text>
+              )}
+              <Text style={[styles.seasonPts, { textAlign: 'right' }]}>
+                Season: {fmtScore(rightSeasonPoints, isStaking)}
+              </Text>
             </View>
           </View>
 
@@ -325,8 +397,14 @@ export default function MatchupScreen() {
                 homeChampion={null}
                 awayChampion={null}
                 locked={false}
-                showPicks={false}
+                staking
+                highlightMine
+                homeSingles={leftStaking?.singles ?? []}
+                awaySingles={rightStaking?.singles ?? []}
               />
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionLabel}>PARLAYS</Text>
+              </View>
               <StakingColumns homeStaking={leftStaking} awayStaking={rightStaking} />
             </>
           ) : (
@@ -352,23 +430,50 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#ccc', fontWeight: '700', fontSize: 16, marginBottom: 6 },
   emptyText: { color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 18 },
 
-  currentBtn: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
-  currentBtnText: { color: '#c8102e', fontSize: 13, fontWeight: '600' },
-
   strip: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   stripContent: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   chip: {
-    minWidth: 90, maxWidth: 130, paddingHorizontal: 10, paddingVertical: 8,
-    borderRadius: 8, backgroundColor: '#111', borderWidth: 1, borderColor: '#222',
+    minWidth: 90,
+    maxWidth: 130,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#222',
     alignItems: 'center',
   },
   chipActive: { borderColor: '#c8102e', backgroundColor: '#1a0808' },
   chipCurrent: { borderColor: '#444' },
   chipNoMatchup: { opacity: 0.5 },
-  chipLive: { color: '#c8102e', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
-  chipNext: { color: '#ffd700', fontSize: 8, fontWeight: '700', letterSpacing: 0.5, marginBottom: 2 },
-  chipFinals: { color: '#ffd700', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
-  chipSemis: { color: '#ff8c42', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
+  chipLive: {
+    color: '#c8102e',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  chipNext: {
+    color: '#ffd700',
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  chipFinals: {
+    color: '#ffd700',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  chipSemis: {
+    color: '#ff8c42',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
   chipEvent: { color: '#ddd', fontSize: 10, fontWeight: '700', textAlign: 'center' },
   chipDate: { color: '#444', fontSize: 9, marginTop: 2 },
   chipOpp: { color: '#666', fontSize: 9, marginTop: 3, textAlign: 'center' },
@@ -377,82 +482,77 @@ const styles = StyleSheet.create({
   chipPending: { color: '#444', fontSize: 9, marginTop: 3 },
 
   scoreboard: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 20, backgroundColor: '#111', borderBottomWidth: 1, borderBottomColor: '#222',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
   },
   team: { flex: 1 },
   awayTeam: { alignItems: 'flex-end' },
   teamName: { color: '#888', fontSize: 12, marginBottom: 4 },
-  totalScore: { fontSize: 34, fontWeight: '800', color: '#555' },
+  totalScore: { fontSize: SCORE_SIZE, fontWeight: '800', color: '#555' },
   winScore: { color: '#fff' },
+  scoreUnit: {
+    color: '#555',
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
   seasonPts: { color: '#333', fontSize: 11, marginTop: 4 },
   vsBlock: { alignItems: 'center', paddingHorizontal: 12, gap: 6 },
   vs: { color: '#333', fontWeight: '700', fontSize: 12 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#c8102e' },
 
   eventBadge: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 14, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   eventName: { color: '#555', fontSize: 12, flex: 1 },
   liveBadge: {
-    color: '#c8102e', fontSize: 10, fontWeight: '800', letterSpacing: 0.8,
-    borderWidth: 1, borderColor: '#c8102e44', borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2,
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    borderWidth: 1,
+    borderColor: '#c8102e44',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
 
   recordStrip: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
     backgroundColor: '#0d0d0d',
   },
   recordText: { color: '#aaa', fontSize: 13, fontWeight: '700' },
   recordLabel: { color: '#333', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 
-  emptyPicks: { padding: 32, alignItems: 'center' },
-  emptyPicksText: { color: '#444', fontSize: 13, textAlign: 'center' },
-
-  fightRow: {
-    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#111',
+  sectionHeader: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
   },
-  fightCenter: { width: 60, alignItems: 'center', justifyContent: 'center' },
-  fightCenterWeight: { color: '#333', fontSize: 9, fontWeight: '700', textAlign: 'center' },
-  fightCenterVs: { color: '#222', fontSize: 9, fontWeight: '700' },
-
-  pickCell: { flex: 1, paddingHorizontal: 4 },
-  pickCellRight: { alignItems: 'flex-end' },
-  noPick: { color: '#2a2a2a', fontSize: 12 },
-  pickName: { color: '#bbb', fontSize: 12, fontWeight: '600', lineHeight: 16 },
-  pickNameWrong: { color: '#333' },
-  pickPts: { color: '#4caf50', fontSize: 11, fontWeight: '700', marginTop: 2 },
-  pickWrong: { color: '#ff5252', fontSize: 11, fontWeight: '700', marginTop: 2 },
-  pickPending: { color: '#444', fontSize: 11, marginTop: 2 },
-
-  champCard: {
-    margin: 12, backgroundColor: '#0d0d00', borderRadius: 10,
-    padding: 14, borderWidth: 1, borderColor: '#2a2200',
+  sectionLabel: {
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  champCardLabel: { color: '#ffd700', fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 },
-  champCardRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  champSide: { flex: 1 },
-  champSideRight: { alignItems: 'flex-end' },
-  champVs: { color: '#333', fontSize: 11, fontWeight: '700', paddingHorizontal: 10, marginTop: 2 },
-  champName: { color: '#ddd', fontSize: 13, fontWeight: '700' },
-  champWon: { color: '#4caf50', fontSize: 12, fontWeight: '700', marginTop: 2 },
-  champLost: { color: '#ff5252', fontSize: 12, fontWeight: '700', marginTop: 2 },
-  champPending: { color: '#888', fontSize: 11, marginTop: 2 },
-  champNoPick: { color: '#333', fontSize: 13 },
-
-  stakingContainer: { flexDirection: 'row', padding: 12, gap: 0 },
-  stakingDivider: { width: 1, backgroundColor: '#1a1a1a', marginHorizontal: 8 },
-  stakingSide: { flex: 1 },
-  noBets: { color: '#333', fontSize: 12, padding: 8 },
-  betRow: { marginBottom: 10 },
-  betRowRight: { alignItems: 'flex-end' },
-  betFighter: { color: '#bbb', fontSize: 12, fontWeight: '600' },
-  betStake: { color: '#555', fontSize: 11, marginTop: 1 },
-  betPending: { color: '#444', fontSize: 11, marginTop: 1 },
-  betPnl: { fontSize: 12, fontWeight: '700', marginTop: 1 },
 });

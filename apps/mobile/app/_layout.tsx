@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
+import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from '../src/api/supabase';
@@ -7,6 +8,13 @@ import { useAuthStore } from '../src/store/auth.store';
 import { usePushNotifications } from '../src/hooks/usePushNotifications';
 
 const queryClient = new QueryClient();
+
+// Dark navigation theme so every navigator's scene/card background is #0a0a0a instead of the
+// default white — that white container is what flashed during screen/tab transitions.
+const navTheme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: '#0a0a0a', card: '#0a0a0a' },
+};
 
 function AuthGate() {
   const { session, setSession } = useAuthStore();
@@ -19,7 +27,9 @@ function AuthGate() {
       setSession(session);
       setReady(true);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
     return () => subscription.unsubscribe();
@@ -30,7 +40,7 @@ function AuthGate() {
 
   // Protected routes redirect automatically when their guard flips
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0a0a0a' } }}>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
@@ -45,7 +55,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <AuthGate />
+        <ThemeProvider value={navTheme}>
+          <AuthGate />
+        </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

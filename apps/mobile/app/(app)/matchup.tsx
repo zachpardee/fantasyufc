@@ -4,12 +4,11 @@ import { useRouter } from 'expo-router';
 import { apiClient } from '../../src/api/client';
 import { useLeagueStore } from '../../src/store/league.store';
 import type { League } from '@fantasy-ufc/shared';
-import LeagueEventScreen from './league/[leagueId]/event';
+import MatchupScreen from './league/[leagueId]/matchup';
 
-// "Current Event" tab — renders the league's event home (old scoreboard +
-// fight-card design) for your active league, in-place so this tab stays
-// highlighted.
-export default function CurrentEventScreen() {
+// "Matchup" tab — renders the head-to-head matchup screen for your active league,
+// in-place so this tab stays highlighted.
+export default function MatchupTab() {
   const router = useRouter();
   const currentLeagueId = useLeagueStore((s) => s.currentLeagueId);
 
@@ -26,16 +25,14 @@ export default function CurrentEventScreen() {
     );
   }
 
-  // Only show the current event for an explicitly selected league — no fallback.
+  // Only show a matchup for an explicitly selected league — no fallback.
   const target = currentLeagueId ? leagues.find((l) => l.id === currentLeagueId) : null;
 
   if (!target) {
     return (
       <View style={s.center}>
         <Text style={s.title}>No league selected</Text>
-        <Text style={s.text}>
-          Pick a league from the League Home tab to view its current event.
-        </Text>
+        <Text style={s.text}>Pick a league from the League Home tab to view its matchup.</Text>
         <TouchableOpacity style={s.btn} onPress={() => router.replace('/(app)/league')}>
           <Text style={s.btnText}>Go to League Home</Text>
         </TouchableOpacity>
@@ -43,7 +40,7 @@ export default function CurrentEventScreen() {
     );
   }
 
-  return <LeagueEventScreen leagueIdProp={target.id} />;
+  return <MatchupScreen leagueIdProp={target.id} />;
 }
 
 const s = StyleSheet.create({

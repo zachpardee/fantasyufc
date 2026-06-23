@@ -1,12 +1,21 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Medal } from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
+import { useRefresh } from '../../../../src/hooks/useRefresh';
 
 interface StandingsEntry {
-  teamId: string;
+  id: string;
   teamName: string;
   userId: string;
   username: string;
@@ -23,6 +32,7 @@ export default function StandingsScreen() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { session } = useAuthStore();
   const router = useRouter();
+  const { refreshing, onRefresh } = useRefresh();
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],
@@ -31,7 +41,7 @@ export default function StandingsScreen() {
 
   const { data: rawStandings = [], isLoading } = useQuery<StandingsEntry[]>({
     queryKey: ['standings', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/standings`),
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
 
   const isStaking = league?.leagueFormat === 'staking';
@@ -44,7 +54,11 @@ export default function StandingsScreen() {
   );
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   if (!standings.length) {
@@ -57,16 +71,19 @@ export default function StandingsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c8102e" />
+      }
+    >
       <View style={styles.tableHeader}>
         <Text style={[styles.headerCell, styles.rankCell]}>#</Text>
         <Text style={[styles.headerCell, styles.teamCell]}>Team</Text>
         <Text style={styles.headerCell}>W</Text>
         <Text style={styles.headerCell}>L</Text>
         <Text style={styles.headerCell}>T</Text>
-        <Text style={[styles.headerCell, styles.ptsHeader]}>
-          {isStaking ? 'P&L' : 'PTS'}
-        </Text>
+        <Text style={[styles.headerCell, styles.ptsHeader]}>{isStaking ? 'P&L' : 'PTS'}</Text>
         <Text style={[styles.headerCell, styles.streakCell]}>STK</Text>
       </View>
 
@@ -75,16 +92,16 @@ export default function StandingsScreen() {
         const streakStr = formatStreak(entry.streak);
         const streakPositive = entry.streak > 0;
         const ptsDisplay = isStaking
-          ? (entry.stakingBalance != null
-              ? (entry.stakingBalance >= 0 ? '+$' : '-$') + Math.abs(entry.stakingBalance).toFixed(0)
-              : '—')
+          ? entry.stakingBalance != null
+            ? (entry.stakingBalance >= 0 ? '+$' : '-$') + Math.abs(entry.stakingBalance).toFixed(0)
+            : '—'
           : (entry.totalPoints ?? 0).toFixed(1);
 
         return (
           <TouchableOpacity
-            key={entry.teamId}
+            key={entry.id}
             style={[styles.row, isMe && styles.myRow, index % 2 === 0 && styles.evenRow]}
-            onPress={() => router.push(`/(app)/league/${leagueId}/team/${entry.teamId}` as never)}
+            onPress={() => router.push(`/(app)/league/${leagueId}/team/${entry.id}` as never)}
           >
             <View style={[styles.cell, styles.rankCell, { alignItems: 'center' }]}>
               {index < 3 ? (
@@ -104,13 +121,23 @@ export default function StandingsScreen() {
             <Text style={[styles.cell, styles.statCell]}>{entry.wins}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.losses}</Text>
             <Text style={[styles.cell, styles.statCell]}>{entry.ties}</Text>
-            <Text style={[styles.cell, styles.ptsCell,
-              isStaking && (entry.stakingBalance ?? 0) > 0 && styles.ptsPos,
-              isStaking && (entry.stakingBalance ?? 0) < 0 && styles.ptsNeg,
-            ]}>
+            <Text
+              style={[
+                styles.cell,
+                styles.ptsCell,
+                isStaking && (entry.stakingBalance ?? 0) > 0 && styles.ptsPos,
+                isStaking && (entry.stakingBalance ?? 0) < 0 && styles.ptsNeg,
+              ]}
+            >
               {ptsDisplay}
             </Text>
-            <Text style={[styles.cell, styles.streakCell, streakPositive ? styles.winStreak : styles.lossStreak]}>
+            <Text
+              style={[
+                styles.cell,
+                styles.streakCell,
+                streakPositive ? styles.winStreak : styles.lossStreak,
+              ]}
+            >
               {streakStr}
             </Text>
           </TouchableOpacity>
@@ -131,16 +158,33 @@ function formatStreak(streak: number): string {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a', padding: 32 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0a0a0a',
+    padding: 32,
+  },
   empty: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
   emptySubtext: { color: '#666', fontSize: 14, textAlign: 'center' },
 
   tableHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#333', backgroundColor: '#111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    backgroundColor: '#111',
   },
-  headerCell: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, minWidth: 32, textAlign: 'center' },
+  headerCell: {
+    color: '#555',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    minWidth: 32,
+    textAlign: 'center',
+  },
   ptsHeader: { minWidth: 48 },
 
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 14 },
@@ -165,6 +209,12 @@ const styles = StyleSheet.create({
   winStreak: { color: '#4caf50', fontSize: 13, fontWeight: '700' },
   lossStreak: { color: '#f44336', fontSize: 13, fontWeight: '700' },
 
-  footer: { padding: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#1a1a1a', marginTop: 8 },
+  footer: {
+    padding: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
+    marginTop: 8,
+  },
   footerText: { color: '#444', fontSize: 11, textAlign: 'center' },
 });

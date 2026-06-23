@@ -5,8 +5,12 @@ import { apiClient } from '../../../../src/api/client';
 import { useAuthStore } from '../../../../src/store/auth.store';
 
 const METHOD_SHORT: Record<string, string> = {
-  ko_tko: 'KO', submission: 'SUB',
-  decision: 'DEC', decision_unanimous: 'DEC', decision_split: 'DEC', decision_majority: 'DEC',
+  ko_tko: 'KO',
+  submission: 'SUB',
+  decision: 'DEC',
+  decision_unanimous: 'DEC',
+  decision_split: 'DEC',
+  decision_majority: 'DEC',
   disqualification: 'DQ',
 };
 
@@ -28,7 +32,7 @@ export default function PicksComparisonScreen() {
     queryKey: ['picks-all', leagueId, currentEvent?.id],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}/all`),
     enabled: !!currentEvent?.id,
-    refetchInterval: (query: any) => query.state.data?.event?.status === 'live' ? 30_000 : false,
+    refetchInterval: (query: any) => (query.state.data?.event?.status === 'live' ? 30_000 : false),
   });
 
   if (!currentEvent) {
@@ -40,7 +44,11 @@ export default function PicksComparisonScreen() {
   }
 
   if (isLoading || !data) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   const { event, members, fights, championPicks } = data;
@@ -64,12 +72,20 @@ export default function PicksComparisonScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerRow}>
-          <Text style={s.eventName} numberOfLines={1}>{event.name}</Text>
-          {isLive && <View style={s.livePip}><Text style={s.livePipText}>LIVE</Text></View>}
+          <Text style={s.eventName} numberOfLines={1}>
+            {event.name}
+          </Text>
+          {isLive && (
+            <View style={s.livePip}>
+              <Text style={s.livePipText}>LIVE</Text>
+            </View>
+          )}
         </View>
         <Text style={s.eventDate}>
           {new Date(event.scheduledAt).toLocaleDateString('en-US', {
-            weekday: 'long', month: 'long', day: 'numeric',
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
           })}
         </Text>
       </View>
@@ -100,7 +116,9 @@ export default function PicksComparisonScreen() {
               if (!pick) {
                 return (
                   <View key={m.id} style={s.pickRow}>
-                    <Text style={s.memberName} numberOfLines={1}>{m.teamName}</Text>
+                    <Text style={s.memberName} numberOfLines={1}>
+                      {m.teamName}
+                    </Text>
                     <Text style={s.noPick}>No pick</Text>
                   </View>
                 );
@@ -122,7 +140,9 @@ export default function PicksComparisonScreen() {
                     !isResolved && !pickedRed && s.pickBlue,
                   ]}
                 >
-                  <Text style={s.memberName} numberOfLines={1}>{m.teamName}</Text>
+                  <Text style={s.memberName} numberOfLines={1}>
+                    {m.teamName}
+                  </Text>
                   <View style={s.pickRight}>
                     <Text style={[s.pickedName, pickedRed ? s.redColor : s.blueColor]}>
                       {pickedRed ? fight.redLastName : fight.blueLastName}
@@ -149,24 +169,42 @@ export default function PicksComparisonScreen() {
           </View>
           {members.map((m: any) => {
             const cp = championPicks[m.id];
-            if (!cp) return (
-              <View key={m.id} style={s.pickRow}>
-                <Text style={s.memberName} numberOfLines={1}>{m.teamName}</Text>
-                <Text style={s.noPick}>No pick</Text>
-              </View>
-            );
+            if (!cp)
+              return (
+                <View key={m.id} style={s.pickRow}>
+                  <Text style={s.memberName} numberOfLines={1}>
+                    {m.teamName}
+                  </Text>
+                  <Text style={s.noPick}>No pick</Text>
+                </View>
+              );
             const won = (cp.pointsEarned ?? 0) > 0;
             const resolved = isCompleted || (isLive && cp.resultWinnerId !== null);
             return (
-              <View key={m.id} style={[s.pickRow, resolved && won && s.pickCorrect, resolved && !won && s.pickWrong]}>
-                <Text style={s.memberName} numberOfLines={1}>{m.teamName}</Text>
+              <View
+                key={m.id}
+                style={[
+                  s.pickRow,
+                  resolved && won && s.pickCorrect,
+                  resolved && !won && s.pickWrong,
+                ]}
+              >
+                <Text style={s.memberName} numberOfLines={1}>
+                  {m.teamName}
+                </Text>
                 <View style={s.pickRight}>
-                  <Text style={s.pickedName}>{cp.firstName} {cp.lastName}</Text>
-                  {resolved
-                    ? won
-                      ? <Text style={s.pts}>+30</Text>
-                      : <Text style={s.miss}>✗</Text>
-                    : <Text style={s.pending}>—</Text>}
+                  <Text style={s.pickedName}>
+                    {cp.firstName} {cp.lastName}
+                  </Text>
+                  {resolved ? (
+                    won ? (
+                      <Text style={s.pts}>+30</Text>
+                    ) : (
+                      <Text style={s.miss}>✗</Text>
+                    )
+                  ) : (
+                    <Text style={s.pending}>—</Text>
+                  )}
                 </View>
               </View>
             );
@@ -183,13 +221,19 @@ export default function PicksComparisonScreen() {
               const p = f.picks?.[m.id];
               return sum + (p?.pointsEarned ? +p.pointsEarned : 0);
             }, 0);
-            const champPts = championPicks?.[m.id]?.pointsEarned ? +championPicks[m.id].pointsEarned : 0;
+            const champPts = championPicks?.[m.id]?.pointsEarned
+              ? +championPicks[m.id].pointsEarned
+              : 0;
             const total = pickPts + champPts;
             const correct = fights.filter((f: any) => f.picks?.[m.id]?.isCorrect === true).length;
             return (
               <View key={m.id} style={s.totalsRow}>
-                <Text style={s.totalsTeam} numberOfLines={1}>{m.teamName}</Text>
-                <Text style={s.totalsCorrect}>{correct}/{fights.length} correct</Text>
+                <Text style={s.totalsTeam} numberOfLines={1}>
+                  {m.teamName}
+                </Text>
+                <Text style={s.totalsCorrect}>
+                  {correct}/{fights.length} correct
+                </Text>
                 <Text style={s.totalsPts}>{total.toFixed(0)} pts</Text>
               </View>
             );
@@ -204,13 +248,29 @@ export default function PicksComparisonScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a', padding: 32 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0a0a0a',
+    padding: 32,
+  },
   empty: { color: '#555', fontSize: 14, textAlign: 'center' },
 
-  header: { backgroundColor: '#111', borderBottomWidth: 1, borderBottomColor: '#1a1a1a', padding: 20 },
+  header: {
+    backgroundColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+    padding: 20,
+  },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
   eventName: { color: '#fff', fontSize: 18, fontWeight: '700', flex: 1 },
-  livePip: { backgroundColor: '#c8102e', borderRadius: 4, paddingHorizontal: 7, paddingVertical: 3 },
+  livePip: {
+    backgroundColor: '#c8102e',
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
   livePipText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   eventDate: { color: '#666', fontSize: 13 },
 
@@ -219,7 +279,13 @@ const s = StyleSheet.create({
   champCard: { backgroundColor: '#0d0d00', borderTopWidth: 2, borderTopColor: '#222' },
 
   fightHeader: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
-  beltTag: { color: '#ffd700', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, marginBottom: 4 },
+  beltTag: {
+    color: '#ffd700',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
   fightNames: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
   redName: { color: '#c8102e', fontSize: 15, fontWeight: '700' },
   blueName: { color: '#4488cc', fontSize: 15, fontWeight: '700' },
@@ -228,9 +294,13 @@ const s = StyleSheet.create({
   weightClass: { color: '#444', fontSize: 11, marginTop: 2 },
 
   pickRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#111',
   },
   pickCorrect: { backgroundColor: '#0a1a0a' },
   pickWrong: { backgroundColor: '#1a0808', opacity: 0.7 },
@@ -252,12 +322,27 @@ const s = StyleSheet.create({
   champSub: { color: '#555', fontSize: 11 },
 
   totalsCard: { backgroundColor: '#111', borderTopWidth: 2, borderTopColor: '#222', padding: 16 },
-  totalsTitle: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 12 },
+  totalsTitle: {
+    color: '#555',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
   totalsRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   totalsTeam: { flex: 1, color: '#aaa', fontSize: 14, fontWeight: '600' },
   totalsCorrect: { color: '#555', fontSize: 12, marginRight: 16 },
-  totalsPts: { color: '#c8102e', fontSize: 20, fontWeight: '700', minWidth: 64, textAlign: 'right' },
+  totalsPts: {
+    color: '#c8102e',
+    fontSize: 20,
+    fontWeight: '700',
+    minWidth: 64,
+    textAlign: 'right',
+  },
 });

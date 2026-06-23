@@ -3,42 +3,116 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const COUNTRY_TO_CODE: Record<string, string> = {
-  'Afghanistan': 'AF', 'Albania': 'AL', 'Algeria': 'DZ', 'Argentina': 'AR',
-  'Armenia': 'AM', 'Australia': 'AU', 'Austria': 'AT', 'Azerbaijan': 'AZ',
-  'Bahrain': 'BH', 'Belarus': 'BY', 'Belgium': 'BE', 'Bolivia': 'BO',
-  'Bosnia and Herzegovina': 'BA', 'Brazil': 'BR', 'Bulgaria': 'BG',
-  'Cameroon': 'CM', 'Canada': 'CA', 'Chile': 'CL', 'China': 'CN',
-  'Colombia': 'CO', 'Costa Rica': 'CR', 'Croatia': 'HR', 'Cuba': 'CU',
-  'Czech Republic': 'CZ', 'Czechia': 'CZ', 'Denmark': 'DK',
-  'Dominican Republic': 'DO', 'Ecuador': 'EC', 'Egypt': 'EG',
-  'England': 'GB', 'Estonia': 'EE', 'Ethiopia': 'ET', 'Finland': 'FI',
-  'France': 'FR', 'Georgia': 'GE', 'Germany': 'DE', 'Ghana': 'GH',
-  'Great Britain': 'GB', 'Greece': 'GR', 'Hungary': 'HU', 'Iceland': 'IS',
-  'India': 'IN', 'Indonesia': 'ID', 'Iran': 'IR', 'Iraq': 'IQ',
-  'Ireland': 'IE', 'Israel': 'IL', 'Italy': 'IT', 'Jamaica': 'JM',
-  'Japan': 'JP', 'Jordan': 'JO', 'Kazakhstan': 'KZ', 'Kenya': 'KE',
-  'Kyrgyzstan': 'KG', 'Latvia': 'LV', 'Lithuania': 'LT', 'Malaysia': 'MY',
-  'Mexico': 'MX', 'Moldova': 'MD', 'Mongolia': 'MN', 'Montenegro': 'ME',
-  'Morocco': 'MA', 'Netherlands': 'NL', 'New Zealand': 'NZ',
-  'Nigeria': 'NG', 'North Macedonia': 'MK', 'Northern Ireland': 'GB',
-  'Norway': 'NO', 'Pakistan': 'PK', 'Panama': 'PA', 'Paraguay': 'PY',
-  'Peru': 'PE', 'Philippines': 'PH', 'Poland': 'PL', 'Portugal': 'PT',
-  'Puerto Rico': 'PR', 'Romania': 'RO', 'Russia': 'RU',
-  'Saudi Arabia': 'SA', 'Scotland': 'GB', 'Senegal': 'SN', 'Serbia': 'RS',
-  'Slovakia': 'SK', 'Slovenia': 'SI', 'South Africa': 'ZA',
-  'South Korea': 'KR', 'Korea': 'KR', 'Spain': 'ES', 'Sweden': 'SE',
-  'Switzerland': 'CH', 'Tajikistan': 'TJ', 'Thailand': 'TH',
-  'Turkey': 'TR', 'Turkmenistan': 'TM', 'Ukraine': 'UA',
-  'United Kingdom': 'GB', 'United States': 'US', 'USA': 'US',
-  'Uruguay': 'UY', 'Uzbekistan': 'UZ', 'Venezuela': 'VE', 'Vietnam': 'VN',
-  'Wales': 'GB',
+  Afghanistan: 'AF',
+  Albania: 'AL',
+  Algeria: 'DZ',
+  Argentina: 'AR',
+  Armenia: 'AM',
+  Australia: 'AU',
+  Austria: 'AT',
+  Azerbaijan: 'AZ',
+  Bahrain: 'BH',
+  Belarus: 'BY',
+  Belgium: 'BE',
+  Bolivia: 'BO',
+  'Bosnia and Herzegovina': 'BA',
+  Brazil: 'BR',
+  Bulgaria: 'BG',
+  Cameroon: 'CM',
+  Canada: 'CA',
+  Chile: 'CL',
+  China: 'CN',
+  Colombia: 'CO',
+  'Costa Rica': 'CR',
+  Croatia: 'HR',
+  Cuba: 'CU',
+  'Czech Republic': 'CZ',
+  Czechia: 'CZ',
+  Denmark: 'DK',
+  'Dominican Republic': 'DO',
+  Ecuador: 'EC',
+  Egypt: 'EG',
+  England: 'GB',
+  Estonia: 'EE',
+  Ethiopia: 'ET',
+  Finland: 'FI',
+  France: 'FR',
+  Georgia: 'GE',
+  Germany: 'DE',
+  Ghana: 'GH',
+  'Great Britain': 'GB',
+  Greece: 'GR',
+  Hungary: 'HU',
+  Iceland: 'IS',
+  India: 'IN',
+  Indonesia: 'ID',
+  Iran: 'IR',
+  Iraq: 'IQ',
+  Ireland: 'IE',
+  Israel: 'IL',
+  Italy: 'IT',
+  Jamaica: 'JM',
+  Japan: 'JP',
+  Jordan: 'JO',
+  Kazakhstan: 'KZ',
+  Kenya: 'KE',
+  Kyrgyzstan: 'KG',
+  Latvia: 'LV',
+  Lithuania: 'LT',
+  Malaysia: 'MY',
+  Mexico: 'MX',
+  Moldova: 'MD',
+  Mongolia: 'MN',
+  Montenegro: 'ME',
+  Morocco: 'MA',
+  Netherlands: 'NL',
+  'New Zealand': 'NZ',
+  Nigeria: 'NG',
+  'North Macedonia': 'MK',
+  'Northern Ireland': 'GB',
+  Norway: 'NO',
+  Pakistan: 'PK',
+  Panama: 'PA',
+  Paraguay: 'PY',
+  Peru: 'PE',
+  Philippines: 'PH',
+  Poland: 'PL',
+  Portugal: 'PT',
+  'Puerto Rico': 'PR',
+  Romania: 'RO',
+  Russia: 'RU',
+  'Saudi Arabia': 'SA',
+  Scotland: 'GB',
+  Senegal: 'SN',
+  Serbia: 'RS',
+  Slovakia: 'SK',
+  Slovenia: 'SI',
+  'South Africa': 'ZA',
+  'South Korea': 'KR',
+  Korea: 'KR',
+  Spain: 'ES',
+  Sweden: 'SE',
+  Switzerland: 'CH',
+  Tajikistan: 'TJ',
+  Thailand: 'TH',
+  Turkey: 'TR',
+  Turkmenistan: 'TM',
+  Ukraine: 'UA',
+  'United Kingdom': 'GB',
+  'United States': 'US',
+  USA: 'US',
+  Uruguay: 'UY',
+  Uzbekistan: 'UZ',
+  Venezuela: 'VE',
+  Vietnam: 'VN',
+  Wales: 'GB',
 };
 
 function countryFlag(nationality: string | null | undefined): string {
   if (!nationality) return '';
   const code = COUNTRY_TO_CODE[nationality];
   if (!code) return '';
-  return [...code].map((c) => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join('');
+  return [...code].map((c) => String.fromCodePoint(0x1f1e6 - 65 + c.charCodeAt(0))).join('');
 }
 
 function fmtOdds(n: number | null | undefined): string {
@@ -47,9 +121,14 @@ function fmtOdds(n: number | null | undefined): string {
 }
 
 const METHOD_LABELS: Record<string, string> = {
-  ko_tko: 'KO/TKO', submission: 'SUB', decision_unanimous: 'DEC',
-  decision_split: 'SDEC', decision_majority: 'MDEC',
-  disqualification: 'DQ', no_contest: 'NC', draw: 'DRAW',
+  ko_tko: 'KO/TKO',
+  submission: 'SUB',
+  decision_unanimous: 'DEC',
+  decision_split: 'SDEC',
+  decision_majority: 'MDEC',
+  disqualification: 'DQ',
+  no_contest: 'NC',
+  draw: 'DRAW',
 };
 
 // ── Fighter photo (with silhouette fallback) ──────────────────────────────────
@@ -69,17 +148,43 @@ function FighterPhoto({ imageUrl, flipped }: { imageUrl?: string | null; flipped
 
 // ── Main fight card ───────────────────────────────────────────────────────────
 
-function FightCard({ fight, homePick, awayPick, locked, showPicks = true, highlightMine = false }: {
-  fight: any; homePick: any; awayPick: any; locked: boolean; showPicks?: boolean; highlightMine?: boolean;
+function FightCard({
+  fight,
+  homePick,
+  awayPick,
+  locked,
+  showPicks = true,
+  highlightMine = false,
+  picksOnly = false,
+  staking = false,
+  homeSingle = null,
+  awaySingle = null,
+}: {
+  fight: any;
+  homePick: any;
+  awayPick: any;
+  locked: boolean;
+  showPicks?: boolean;
+  highlightMine?: boolean;
+  picksOnly?: boolean;
+  staking?: boolean;
+  homeSingle?: any;
+  awaySingle?: any;
 }) {
-  const hasResult = !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
+  const hasResult =
+    !!fight.resultWinnerId || ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
   const redWon = fight.resultWinnerId === fight.redFighterId;
   const blueWon = fight.resultWinnerId === fight.blueFighterId;
   const isVoid = ['draw', 'no_contest', 'cancelled'].includes(fight.resultOutcome);
   const resultLabel = isVoid
     ? (METHOD_LABELS[fight.resultOutcome] ?? fight.resultOutcome?.toUpperCase())
     : hasResult
-      ? [METHOD_LABELS[fight.resultOutcome], fight.resultEndingRound != null ? `R${fight.resultEndingRound}` : null].filter(Boolean).join(' · ')
+      ? [
+          METHOD_LABELS[fight.resultOutcome],
+          fight.resultEndingRound != null ? `R${fight.resultEndingRound}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
       : null;
 
   const homePickedId = homePick?.pickedFighterId ?? null;
@@ -101,47 +206,75 @@ function FightCard({ fight, homePick, awayPick, locked, showPicks = true, highli
       </View>
 
       {/* Fighter row: photo + name + odds + flag */}
-      <View style={s.fightersRow}>
-        {/* Red corner */}
-        <View style={[s.fighterSide, hasResult && !redWon && !isVoid && s.fighterDimmed]}>
-          <FighterPhoto imageUrl={fight.redImageUrl} />
-          <View style={s.fighterInfo}>
-            <Text style={[s.fighterFirst, redWon && s.fighterWon]} numberOfLines={1}>{fight.redFirstName ?? ''}</Text>
-            <Text style={[s.fighterLast, redWon && s.fighterWon]} numberOfLines={1}>{fight.redLastName ?? ''}</Text>
-            <View style={s.fighterOddsRow}>
-              {fight.redFighterOdds != null && (
-                <Text style={[s.odds, fight.redFighterOdds >= 0 && s.oddsUnderdog]}>{fmtOdds(fight.redFighterOdds)}</Text>
-              )}
-              {redFlag ? <Text style={s.flag}>{redFlag}</Text> : null}
+      {!picksOnly && (
+        <View style={s.fightersRow}>
+          {/* Red corner */}
+          <View style={[s.fighterSide, hasResult && !redWon && !isVoid && s.fighterDimmed]}>
+            <FighterPhoto imageUrl={fight.redImageUrl} />
+            <View style={s.fighterInfo}>
+              <Text style={[s.fighterFirst, redWon && s.fighterWon]} numberOfLines={1}>
+                {fight.redFirstName ?? ''}
+              </Text>
+              <Text style={[s.fighterLast, redWon && s.fighterWon]} numberOfLines={1}>
+                {fight.redLastName ?? ''}
+              </Text>
+              <View style={s.fighterOddsRow}>
+                {fight.redFighterOdds != null && (
+                  <Text style={[s.odds, fight.redFighterOdds >= 0 && s.oddsUnderdog]}>
+                    {fmtOdds(fight.redFighterOdds)}
+                  </Text>
+                )}
+                {redFlag ? <Text style={s.flag}>{redFlag}</Text> : null}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* VS / result center */}
-        <View style={s.vsBlock}>
-          {hasResult && !isVoid
-            ? <Text style={s.vsText}>–</Text>
-            : <Text style={s.vsText}>VS</Text>}
-        </View>
-
-        {/* Blue corner */}
-        <View style={[s.fighterSide, s.fighterSideBlue, hasResult && !blueWon && !isVoid && s.fighterDimmed]}>
-          <View style={[s.fighterInfo, s.fighterInfoRight]}>
-            <Text style={[s.fighterFirst, blueWon && s.fighterWon, { textAlign: 'right' }]} numberOfLines={1}>{fight.blueFirstName ?? ''}</Text>
-            <Text style={[s.fighterLast, blueWon && s.fighterWon, { textAlign: 'right' }]} numberOfLines={1}>{fight.blueLastName ?? ''}</Text>
-            <View style={[s.fighterOddsRow, s.fighterOddsRowRight]}>
-              {blueFlag ? <Text style={s.flag}>{blueFlag}</Text> : null}
-              {fight.blueFighterOdds != null && (
-                <Text style={[s.odds, fight.blueFighterOdds >= 0 && s.oddsUnderdog]}>{fmtOdds(fight.blueFighterOdds)}</Text>
-              )}
-            </View>
+          {/* VS / result center */}
+          <View style={s.vsBlock}>
+            {hasResult && !isVoid ? (
+              <Text style={s.vsText}>–</Text>
+            ) : (
+              <Text style={s.vsText}>VS</Text>
+            )}
           </View>
-          <FighterPhoto imageUrl={fight.blueImageUrl} flipped />
+
+          {/* Blue corner */}
+          <View
+            style={[
+              s.fighterSide,
+              s.fighterSideBlue,
+              hasResult && !blueWon && !isVoid && s.fighterDimmed,
+            ]}
+          >
+            <View style={[s.fighterInfo, s.fighterInfoRight]}>
+              <Text
+                style={[s.fighterFirst, blueWon && s.fighterWon, { textAlign: 'right' }]}
+                numberOfLines={1}
+              >
+                {fight.blueFirstName ?? ''}
+              </Text>
+              <Text
+                style={[s.fighterLast, blueWon && s.fighterWon, { textAlign: 'right' }]}
+                numberOfLines={1}
+              >
+                {fight.blueLastName ?? ''}
+              </Text>
+              <View style={[s.fighterOddsRow, s.fighterOddsRowRight]}>
+                {blueFlag ? <Text style={s.flag}>{blueFlag}</Text> : null}
+                {fight.blueFighterOdds != null && (
+                  <Text style={[s.odds, fight.blueFighterOdds >= 0 && s.oddsUnderdog]}>
+                    {fmtOdds(fight.blueFighterOdds)}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <FighterPhoto imageUrl={fight.blueImageUrl} flipped />
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Pick row */}
-      {showPicks && (
+      {showPicks && !staking && (
         <View style={s.pickRow}>
           <PickBadge
             pick={homePick}
@@ -157,20 +290,85 @@ function FightCard({ fight, homePick, awayPick, locked, showPicks = true, highli
             fight={fight}
             locked={locked}
             align="right"
+            opponent={highlightMine}
           />
+        </View>
+      )}
+
+      {/* Stake row (staking leagues) */}
+      {staking && (
+        <View style={s.pickRow}>
+          <StakeBadge single={homeSingle} align="left" mine={highlightMine} />
+          <StakeBadge single={awaySingle} align="right" opponent={highlightMine} />
         </View>
       )}
     </View>
   );
 }
 
-function PickBadge({ pick, pickedRed, fight, locked, align, mine = false }: {
-  pick: any; pickedRed: boolean; fight: any; locked: boolean; align: 'left' | 'right'; mine?: boolean;
+function StakeBadge({
+  single,
+  align,
+  mine = false,
+  opponent = false,
+}: {
+  single: any;
+  align: 'left' | 'right';
+  mine?: boolean;
+  opponent?: boolean;
+}) {
+  if (!single) {
+    return (
+      <View style={[s.pickBadge, mine && s.pickBadgeMine]}>
+        {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR BET</Text>}
+        {opponent && <Text style={[s.pickOppLabel, { textAlign: align }]}>OPPONENT BET</Text>}
+        <Text style={s.pickNone}>—</Text>
+      </View>
+    );
+  }
+  const pl = +(single.profitLoss ?? 0);
+  const isPending = single.status === 'pending';
+  return (
+    <View style={[s.pickBadge, mine && s.pickBadgeMine]}>
+      {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR BET</Text>}
+      {opponent && <Text style={[s.pickOppLabel, { textAlign: align }]}>OPPONENT BET</Text>}
+      <View style={[s.stakeNameRow, align === 'right' && s.stakeNameRowRight]}>
+        <Text style={[s.pickName, mine && s.pickNameMine]} numberOfLines={1}>
+          {single.fighterFirstName} {single.fighterLastName}
+        </Text>
+        <Text style={s.stakeInline}>${(+(single.stake ?? 0)).toFixed(0)}</Text>
+      </View>
+      {!isPending && (
+        <Text style={[s.pickResult, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}>
+          {pl >= 0 ? '+' : '-'}${Math.abs(pl).toFixed(0)}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function PickBadge({
+  pick,
+  pickedRed,
+  fight,
+  locked,
+  align,
+  mine = false,
+  opponent = false,
+}: {
+  pick: any;
+  pickedRed: boolean;
+  fight: any;
+  locked: boolean;
+  align: 'left' | 'right';
+  mine?: boolean;
+  opponent?: boolean;
 }) {
   if (!pick?.pickedFighterId) {
     return (
       <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight, mine && s.pickBadgeMine]}>
         {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR PICK</Text>}
+        {opponent && <Text style={[s.pickOppLabel, { textAlign: align }]}>OPPONENT PICK</Text>}
         <Text style={s.pickNone}>—</Text>
       </View>
     );
@@ -182,42 +380,94 @@ function PickBadge({ pick, pickedRed, fight, locked, align, mine = false }: {
   const pts = +(pick.pointsEarned ?? 0);
 
   const badgeColor = locked
-    ? isCorrect === true ? '#4caf5022' : isCorrect === false ? '#ff525222' : '#ffffff0a'
+    ? isCorrect === true
+      ? '#4caf5022'
+      : isCorrect === false
+        ? '#ff525222'
+        : '#ffffff0a'
     : '#ffffff0a';
   const borderColor = mine
-    ? '#c8102e'
+    ? '#4caf50'
     : locked
-      ? isCorrect === true ? '#4caf5066' : isCorrect === false ? '#ff525244' : '#2a2a2a'
+      ? isCorrect === true
+        ? '#4caf5066'
+        : isCorrect === false
+          ? '#ff525244'
+          : '#2a2a2a'
       : '#2a2a2a';
 
   return (
-    <View style={[s.pickBadge, align === 'right' && s.pickBadgeRight, mine && s.pickBadgeMine, { backgroundColor: badgeColor, borderColor }]}>
+    <View
+      style={[
+        s.pickBadge,
+        align === 'right' && s.pickBadgeRight,
+        mine && s.pickBadgeMine,
+        { backgroundColor: badgeColor, borderColor },
+      ]}
+    >
       {mine && <Text style={[s.pickMineLabel, { textAlign: align }]}>YOUR PICK</Text>}
-      <Text style={[s.pickName, { textAlign: align }, mine && s.pickNameMine, locked && isCorrect === false && s.pickWrong]} numberOfLines={1}>
+      {opponent && <Text style={[s.pickOppLabel, { textAlign: align }]}>OPPONENT PICK</Text>}
+      <Text
+        style={[
+          s.pickName,
+          { textAlign: align },
+          mine && s.pickNameMine,
+          locked && isCorrect === false && s.pickWrong,
+        ]}
+        numberOfLines={1}
+      >
         {firstName} {lastName}
       </Text>
-      {locked && isCorrect === true && <Text style={[s.pickResult, s.pickCorrect, { textAlign: align }]}>+{pts.toFixed(0)}</Text>}
-      {locked && isCorrect === false && <Text style={[s.pickResult, s.pickWrong, { textAlign: align }]}>✗</Text>}
-      {locked && isCorrect === null && <Text style={[s.pickResult, { color: '#555', textAlign: align }]}>–</Text>}
+      {locked && isCorrect === true && (
+        <Text style={[s.pickResult, s.pickCorrect, { textAlign: align }]}>+{pts.toFixed(0)}</Text>
+      )}
+      {locked && isCorrect === false && (
+        <Text style={[s.pickResult, s.pickWrong, { textAlign: align }]}>✗</Text>
+      )}
+      {locked && isCorrect === null && (
+        <Text style={[s.pickResult, { color: '#555', textAlign: align }]}>–</Text>
+      )}
     </View>
   );
 }
 
 // ── Pickem columns ────────────────────────────────────────────────────────────
 
-export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion, locked, showPicks = true, highlightMine = false }: {
-  homePicks: any[]; awayPicks: any[];
-  homeChampion: any; awayChampion: any;
+export function PicksColumns({
+  homePicks,
+  awayPicks,
+  homeChampion,
+  awayChampion,
+  locked,
+  showPicks = true,
+  highlightMine = false,
+  picksOnly = false,
+  staking = false,
+  homeSingles = [],
+  awaySingles = [],
+}: {
+  homePicks: any[];
+  awayPicks: any[];
+  homeChampion: any;
+  awayChampion: any;
   locked: boolean;
   showPicks?: boolean;
   highlightMine?: boolean;
+  picksOnly?: boolean;
+  staking?: boolean;
+  homeSingles?: any[];
+  awaySingles?: any[];
 }) {
   const fights = homePicks.length > 0 ? homePicks : awayPicks;
   if (fights.length === 0) {
     return (
       <View style={s.emptyPicks}>
         <Text style={s.emptyPicksText}>
-          {showPicks ? (locked ? 'No picks for this event' : 'Picks hidden until event starts') : 'No fights posted yet'}
+          {showPicks || staking
+            ? locked
+              ? 'No picks for this event'
+              : 'Picks hidden until event starts'
+            : 'No fights posted yet'}
         </Text>
       </View>
     );
@@ -226,7 +476,19 @@ export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion,
   return (
     <>
       {fights.map((fight: any, i: number) => (
-        <FightCard key={fight.id ?? i} fight={fight} homePick={homePicks[i]} awayPick={awayPicks[i]} locked={locked} showPicks={showPicks} highlightMine={highlightMine} />
+        <FightCard
+          key={fight.id ?? i}
+          fight={fight}
+          homePick={homePicks[i]}
+          awayPick={awayPicks[i]}
+          locked={locked}
+          showPicks={showPicks}
+          highlightMine={highlightMine}
+          picksOnly={picksOnly}
+          staking={staking}
+          homeSingle={staking ? (homeSingles.find((b) => b.fightId === fight.id) ?? null) : null}
+          awaySingle={staking ? (awaySingles.find((b) => b.fightId === fight.id) ?? null) : null}
+        />
       ))}
 
       {showPicks && (homeChampion || awayChampion) && (
@@ -247,27 +509,46 @@ export function PicksColumns({ homePicks, awayPicks, homeChampion, awayChampion,
   );
 }
 
-function ChampionDisplay({ champion, align = 'left' }: { champion: any; align?: 'left' | 'right' }) {
+function ChampionDisplay({
+  champion,
+  align = 'left',
+}: {
+  champion: any;
+  align?: 'left' | 'right';
+}) {
   if (!champion) return <Text style={s.champNoPick}>—</Text>;
   return (
     <>
-      <Text style={[s.champName, { textAlign: align }]}>{champion.firstName} {champion.lastName}</Text>
-      {champion.pointsEarned > 0
-        ? <Text style={[s.champWon, { textAlign: align }]}>+30 pts</Text>
-        : champion.resultWinnerId === null
-          ? <Text style={[s.champPending, { textAlign: align }]}>Pending</Text>
-          : <Text style={[s.champLost, { textAlign: align }]}>✗</Text>}
+      <Text style={[s.champName, { textAlign: align }]}>
+        {champion.firstName} {champion.lastName}
+      </Text>
+      {champion.pointsEarned > 0 ? (
+        <Text style={[s.champWon, { textAlign: align }]}>+30 pts</Text>
+      ) : champion.resultWinnerId === null ? (
+        <Text style={[s.champPending, { textAlign: align }]}>Pending</Text>
+      ) : (
+        <Text style={[s.champLost, { textAlign: align }]}>✗</Text>
+      )}
     </>
   );
 }
 
 // ── Staking columns ───────────────────────────────────────────────────────────
 
-export function StakingColumns({ homeStaking, awayStaking }: { homeStaking: any; awayStaking: any }) {
-  if (!homeStaking && !awayStaking) {
+export function StakingColumns({
+  homeStaking,
+  awayStaking,
+}: {
+  homeStaking: any;
+  awayStaking: any;
+}) {
+  const homeParlays: any[] = homeStaking?.parlays ?? [];
+  const awayParlays: any[] = awayStaking?.parlays ?? [];
+
+  if (homeParlays.length === 0 && awayParlays.length === 0) {
     return (
       <View style={s.emptyPicks}>
-        <Text style={s.emptyPicksText}>No bet data available</Text>
+        <Text style={s.emptyPicksText}>No parlays for this event</Text>
       </View>
     );
   }
@@ -282,37 +563,18 @@ export function StakingColumns({ homeStaking, awayStaking }: { homeStaking: any;
 }
 
 function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right' }) {
-  const singles: any[] = staking?.singles ?? [];
   const parlays: any[] = staking?.parlays ?? [];
 
-  if (singles.length === 0 && parlays.length === 0) {
+  if (parlays.length === 0) {
     return (
       <View style={s.stakingSide}>
-        <Text style={[s.noBets, { textAlign: align }]}>No bets</Text>
+        <Text style={[s.noBets, { textAlign: align }]}>No parlays</Text>
       </View>
     );
   }
 
   return (
     <View style={s.stakingSide}>
-      {singles.map((bet: any) => {
-        const pl = +(bet.profitLoss ?? 0);
-        const isPending = bet.status === 'pending';
-        return (
-          <View key={bet.id} style={[s.betRow, align === 'right' && s.betRowRight]}>
-            <Text style={[s.betFighter, { textAlign: align }]} numberOfLines={1}>
-              {bet.fighterFirstName} {bet.fighterLastName}
-            </Text>
-            <Text style={[s.betStake, { textAlign: align }]}>${(+(bet.stake ?? 0)).toFixed(0)}</Text>
-            {isPending
-              ? <Text style={[s.betPending, { textAlign: align }]}>Pending</Text>
-              : <Text style={[s.betPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}>
-                  {pl >= 0 ? '+' : ''}{pl >= 0 ? '$' : '-$'}{Math.abs(pl).toFixed(0)}
-                </Text>
-            }
-          </View>
-        );
-      })}
       {parlays.map((parlay: any) => {
         const legs: any[] = parlay.legs ?? [];
         const pl = +(parlay.profitLoss ?? 0);
@@ -320,13 +582,20 @@ function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right'
         return (
           <View key={parlay.id} style={[s.betRow, align === 'right' && s.betRowRight]}>
             <Text style={[s.betFighter, { textAlign: align }]}>{legs.length}-leg parlay</Text>
-            <Text style={[s.betStake, { textAlign: align }]}>${(+(parlay.stake ?? 0)).toFixed(0)}</Text>
-            {isPending
-              ? <Text style={[s.betPending, { textAlign: align }]}>Pending</Text>
-              : <Text style={[s.betPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}>
-                  {pl >= 0 ? '+' : ''}{pl >= 0 ? '$' : '-$'}{Math.abs(pl).toFixed(0)}
-                </Text>
-            }
+            <Text style={[s.betStake, { textAlign: align }]}>
+              ${(+(parlay.stake ?? 0)).toFixed(0)}
+            </Text>
+            {isPending ? (
+              <Text style={[s.betPending, { textAlign: align }]}>Pending</Text>
+            ) : (
+              <Text
+                style={[s.betPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252', textAlign: align }]}
+              >
+                {pl >= 0 ? '+' : ''}
+                {pl >= 0 ? '$' : '-$'}
+                {Math.abs(pl).toFixed(0)}
+              </Text>
+            )}
           </View>
         );
       })}
@@ -339,14 +608,24 @@ function StakingSide({ staking, align }: { staking: any; align: 'left' | 'right'
 const s = StyleSheet.create({
   // Fight card
   fightCard: {
-    borderBottomWidth: 1, borderBottomColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
     paddingVertical: 6,
   },
   fightMeta: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 12, marginBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginBottom: 4,
   },
-  weightClass: { color: '#444', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  weightClass: {
+    color: '#444',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   resultLabel: { color: '#888', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
 
   fightersRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
@@ -376,19 +655,39 @@ const s = StyleSheet.create({
   // Pick badges
   pickRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 12, marginTop: 5 },
   pickBadge: {
-    flex: 1, paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 6, borderWidth: 1, borderColor: '#2a2a2a',
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
     backgroundColor: '#ffffff0a',
   },
   pickBadgeRight: {},
-  pickBadgeMine: { backgroundColor: '#c8102e14', borderColor: '#c8102e' },
-  pickMineLabel: { color: '#c8102e', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginBottom: 1 },
+  pickBadgeMine: { backgroundColor: '#4caf5014', borderColor: '#4caf50' },
+  pickMineLabel: {
+    color: '#4caf50',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  pickOppLabel: {
+    color: '#777',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
   pickNone: { color: '#2a2a2a', fontSize: 12, textAlign: 'center' },
-  pickName: { color: '#bbb', fontSize: 12, fontWeight: '600' },
+  pickName: { color: '#bbb', fontSize: 12, fontWeight: '600', flexShrink: 1 },
   pickNameMine: { color: '#fff' },
   pickWrong: { color: '#ff5252' },
   pickResult: { fontSize: 11, fontWeight: '700', marginTop: 2 },
   pickCorrect: { color: '#4caf50' },
+  stakeNameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  stakeNameRowRight: { flexDirection: 'row-reverse' },
+  stakeInline: { color: '#888', fontSize: 11, fontWeight: '600' },
 
   // Empty state
   emptyPicks: { padding: 24, alignItems: 'center' },
@@ -396,10 +695,20 @@ const s = StyleSheet.create({
 
   // Champion
   champCard: {
-    margin: 12, backgroundColor: '#0d0d00', borderRadius: 10,
-    padding: 14, borderWidth: 1, borderColor: '#2a2200',
+    margin: 12,
+    backgroundColor: '#0d0d00',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2a2200',
   },
-  champCardLabel: { color: '#ffd700', fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 10 },
+  champCardLabel: {
+    color: '#ffd700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
   champCardRow: { flexDirection: 'row', alignItems: 'flex-start' },
   champSide: { flex: 1 },
   champSideRight: { alignItems: 'flex-end' },

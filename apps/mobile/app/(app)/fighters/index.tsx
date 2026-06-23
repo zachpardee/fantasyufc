@@ -42,24 +42,39 @@ export default function FighterBrowserScreen() {
           >
             <View style={styles.rowLeft}>
               {(item as any).imageUrl ? (
-                <Image source={{ uri: (item as any).imageUrl }} style={styles.photo} resizeMode="cover" />
+                <Image
+                  source={{ uri: (item as any).imageUrl }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Text style={styles.photoInitial}>{item.firstName?.[0]}{item.lastName?.[0]}</Text>
+                  <Text style={styles.photoInitial}>
+                    {item.firstName?.[0]}
+                    {item.lastName?.[0]}
+                  </Text>
                 </View>
               )}
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   {item.isChampion && <Text style={styles.champ}>C</Text>}
-                  <Text style={styles.name} numberOfLines={1}>{item.firstName} {item.lastName}</Text>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.firstName} {item.lastName}
+                  </Text>
                 </View>
-                {item.nickname && <Text style={styles.nickname} numberOfLines={1}>"{item.nickname}"</Text>}
+                {item.nickname && (
+                  <Text style={styles.nickname} numberOfLines={1}>
+                    "{item.nickname}"
+                  </Text>
+                )}
                 <Text style={styles.meta}>{(item as any).weightClassName}</Text>
               </View>
             </View>
             <View style={styles.rowRight}>
               <Text style={styles.ranking}>{item.ranking ? `#${item.ranking}` : 'NR'}</Text>
-              <Text style={styles.record}>{item.record.wins}-{item.record.losses}-{item.record.draws}</Text>
+              <Text style={styles.record}>
+                {item.record.wins}-{item.record.losses}-{item.record.draws}
+              </Text>
               <Text style={styles.avgPts}>{item.averageFantasyPoints?.toFixed(1) ?? '--'}</Text>
             </View>
           </TouchableOpacity>
@@ -73,25 +88,46 @@ export default function FighterBrowserScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
   search: {
-    margin: 12, backgroundColor: '#1a1a1a', borderRadius: 8, padding: 14,
-    color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#333',
+    margin: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 14,
+    color: '#fff',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   list: { paddingHorizontal: 12 },
   row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#1a1a1a', borderRadius: 8, padding: 14, marginBottom: 6,
-    borderWidth: 1, borderColor: '#252525',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#252525',
   },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
   photo: { width: 40, height: 50, borderRadius: 6, backgroundColor: '#1a1a1a', flexShrink: 0 },
   photoPlaceholder: {
-    width: 40, height: 50, borderRadius: 6, backgroundColor: '#1a1a1a',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    width: 40,
+    height: 50,
+    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   photoInitial: { color: '#555', fontSize: 11, fontWeight: '700' },
   champ: {
-    color: '#ffd700', fontWeight: '800', fontSize: 10,
-    backgroundColor: '#2a2400', paddingHorizontal: 5, paddingVertical: 2,
+    color: '#ffd700',
+    fontWeight: '800',
+    fontSize: 10,
+    backgroundColor: '#2a2400',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
     borderRadius: 3,
   },
   name: { color: '#fff', fontSize: 15, fontWeight: '600' },

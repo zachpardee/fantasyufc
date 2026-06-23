@@ -1,6 +1,12 @@
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +32,11 @@ export default function CommissionerScreen() {
   });
 
   if (isLoading) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   const isCommissioner =
@@ -109,7 +119,11 @@ function SettingsSection({ league, leagueId, qc }: { league: any; leagueId: stri
 // ─── Odds ────────────────────────────────────────────────────────────────────
 
 function OddsSection({ eventId, eventName, qc }: { eventId: string; eventName: string; qc: any }) {
-  const { data: fights, isLoading, refetch } = useQuery<any[]>({
+  const {
+    data: fights,
+    isLoading,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ['admin-event-fights', eventId],
     queryFn: () => apiClient.get(`/admin/events/${eventId}/fights`),
     retry: false,
@@ -173,7 +187,9 @@ function OddsSection({ eventId, eventName, qc }: { eventId: string; eventName: s
         const entry = oddsMap[fight.id] ?? { red: '', blue: '' };
         return (
           <View key={fight.id} style={s.oddsRow}>
-            <Text style={s.oddsName} numberOfLines={1}>{fight.redLastName ?? fight.redFirst}</Text>
+            <Text style={s.oddsName} numberOfLines={1}>
+              {fight.redLastName ?? fight.redFirst}
+            </Text>
             <TextInput
               style={s.oddsInput}
               placeholder="-250"
@@ -191,7 +207,9 @@ function OddsSection({ eventId, eventName, qc }: { eventId: string; eventName: s
               onChangeText={(v) => setOddsMap((m) => ({ ...m, [fight.id]: { ...entry, blue: v } }))}
               keyboardType="numbers-and-punctuation"
             />
-            <Text style={s.oddsName} numberOfLines={1}>{fight.blueLastName ?? fight.blueFirst}</Text>
+            <Text style={s.oddsName} numberOfLines={1}>
+              {fight.blueLastName ?? fight.blueFirst}
+            </Text>
           </View>
         );
       })}
@@ -202,14 +220,22 @@ function OddsSection({ eventId, eventName, qc }: { eventId: string; eventName: s
         {saved && <Text style={s.savedText}>Saved!</Text>}
         <TouchableOpacity
           style={[s.syncBtn, syncMutation.isPending && s.btnDisabled]}
-          onPress={() => { setError(''); syncMutation.mutate(); }}
+          onPress={() => {
+            setError('');
+            syncMutation.mutate();
+          }}
           disabled={syncMutation.isPending}
         >
-          <Text style={s.syncBtnText}>{syncMutation.isPending ? 'Syncing...' : 'Auto-Sync Odds'}</Text>
+          <Text style={s.syncBtnText}>
+            {syncMutation.isPending ? 'Syncing...' : 'Auto-Sync Odds'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[s.saveBtn, (saveMutation.isPending || !fights?.length) && s.btnDisabled]}
-          onPress={() => { setError(''); saveMutation.mutate(); }}
+          onPress={() => {
+            setError('');
+            saveMutation.mutate();
+          }}
           disabled={saveMutation.isPending || !fights?.length}
         >
           <Text style={s.saveBtnText}>{saveMutation.isPending ? 'Saving...' : 'Save Odds'}</Text>
@@ -247,9 +273,10 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
   });
 
   const startPlayoffsMutation = useMutation({
-    mutationFn: () => apiClient.post(`/leagues/${leagueId}/playoffs/start`, {
-      semisEventId: league.playoffSemisEventId,
-    }),
+    mutationFn: () =>
+      apiClient.post(`/leagues/${leagueId}/playoffs/start`, {
+        semisEventId: league.playoffSemisEventId,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['league', leagueId] });
       qc.invalidateQueries({ queryKey: ['playoffs-bracket', leagueId] });
@@ -267,7 +294,8 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
     )
     .slice(0, 4);
 
-  const canStartPlayoffs = league.status === 'active' && !!league.playoffSemisEventId && seeded.length >= 2;
+  const canStartPlayoffs =
+    league.status === 'active' && !!league.playoffSemisEventId && seeded.length >= 2;
 
   return (
     <View style={s.section}>
@@ -276,10 +304,15 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
       <View style={s.actionRow}>
         <View style={{ flex: 1 }}>
           <Text style={s.actionLabel}>Regenerate Schedule</Text>
-          <Text style={s.hint}>Rebuilds future matchups using balanced round-robin. Completed matchups are preserved.</Text>
+          <Text style={s.hint}>
+            Rebuilds future matchups using balanced round-robin. Completed matchups are preserved.
+          </Text>
         </View>
         <TouchableOpacity
-          style={[s.saveBtn, (regenMutation.isPending || league.status === 'completed') && s.btnDisabled]}
+          style={[
+            s.saveBtn,
+            (regenMutation.isPending || league.status === 'completed') && s.btnDisabled,
+          ]}
           onPress={() => regenMutation.mutate()}
           disabled={regenMutation.isPending || league.status === 'completed'}
         >
@@ -288,7 +321,9 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
           </Text>
         </TouchableOpacity>
       </View>
-      {regenMutation.isError && <Text style={s.errText}>{(regenMutation.error as any)?.error ?? 'Failed'}</Text>}
+      {regenMutation.isError && (
+        <Text style={s.errText}>{(regenMutation.error as any)?.error ?? 'Failed'}</Text>
+      )}
 
       {canStartPlayoffs && (
         <View style={{ marginTop: 20 }}>
@@ -298,23 +333,31 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
           {seeded.map((m, i) => (
             <View key={m.id} style={s.seedRow}>
               <Text style={s.seedNum}>#{i + 1}</Text>
-              <Text style={s.seedName} numberOfLines={1}>{m.teamName}</Text>
+              <Text style={s.seedName} numberOfLines={1}>
+                {m.teamName}
+              </Text>
               <Text style={s.seedStat}>
                 {isStaking
-                  ? ((m.stakingBalance ?? 0) >= 0 ? `+$${(+m.stakingBalance).toFixed(0)}` : `-$${Math.abs(+m.stakingBalance).toFixed(0)}`)
+                  ? (m.stakingBalance ?? 0) >= 0
+                    ? `+$${(+m.stakingBalance).toFixed(0)}`
+                    : `-$${Math.abs(+m.stakingBalance).toFixed(0)}`
                   : `${(+(m.totalPoints ?? 0)).toFixed(0)} pts`}
               </Text>
             </View>
           ))}
 
           {!confirmStart ? (
-            <TouchableOpacity style={[s.saveBtn, { marginTop: 12 }]} onPress={() => setConfirmStart(true)}>
+            <TouchableOpacity
+              style={[s.saveBtn, { marginTop: 12 }]}
+              onPress={() => setConfirmStart(true)}
+            >
               <Text style={s.saveBtnText}>Start Playoffs →</Text>
             </TouchableOpacity>
           ) : (
             <View style={s.confirmBox}>
               <Text style={s.confirmText}>
-                Start playoffs with seeds 1–{seeded.length} above? This sets the league to playoff mode.
+                Start playoffs with seeds 1–{seeded.length} above? This sets the league to playoff
+                mode.
               </Text>
               <View style={s.confirmRow}>
                 <TouchableOpacity style={s.cancelBtn} onPress={() => setConfirmStart(false)}>
@@ -331,7 +374,9 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
                 </TouchableOpacity>
               </View>
               {startPlayoffsMutation.isError && (
-                <Text style={s.errText}>{(startPlayoffsMutation.error as any)?.error ?? 'Failed'}</Text>
+                <Text style={s.errText}>
+                  {(startPlayoffsMutation.error as any)?.error ?? 'Failed'}
+                </Text>
               )}
             </View>
           )}
@@ -343,7 +388,15 @@ function ScheduleSection({ league, leagueId, qc }: { league: any; leagueId: stri
 
 // ─── Danger Zone ─────────────────────────────────────────────────────────────
 
-function DangerSection({ leagueId, qc, onDeleted }: { leagueId: string; qc: any; onDeleted: () => void }) {
+function DangerSection({
+  leagueId,
+  qc,
+  onDeleted,
+}: {
+  leagueId: string;
+  qc: any;
+  onDeleted: () => void;
+}) {
   const deleteMutation = useMutation({
     mutationFn: () => apiClient.delete(`/leagues/${leagueId}`),
     onSuccess: () => {
@@ -373,8 +426,14 @@ function DangerSection({ leagueId, qc, onDeleted }: { leagueId: string; qc: any;
       {deleteMutation.isError && (
         <Text style={s.errText}>{(deleteMutation.error as any)?.error ?? 'Failed to delete'}</Text>
       )}
-      <TouchableOpacity style={s.deleteBtn} onPress={confirmDelete} disabled={deleteMutation.isPending}>
-        <Text style={s.deleteBtnText}>{deleteMutation.isPending ? 'Deleting...' : 'Delete League'}</Text>
+      <TouchableOpacity
+        style={s.deleteBtn}
+        onPress={confirmDelete}
+        disabled={deleteMutation.isPending}
+      >
+        <Text style={s.deleteBtnText}>
+          {deleteMutation.isPending ? 'Deleting...' : 'Delete League'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -386,22 +445,51 @@ const s = StyleSheet.create({
   empty: { color: '#555', fontSize: 16 },
 
   section: {
-    margin: 16, marginBottom: 0,
-    backgroundColor: '#141414', borderRadius: 12,
-    borderWidth: 1, borderColor: '#242424', padding: 20,
+    margin: 16,
+    marginBottom: 0,
+    backgroundColor: '#141414',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#242424',
+    padding: 20,
   },
   dangerSection: { borderColor: '#3a1a1a' },
   sectionTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 16 },
 
   fieldLabel: { color: '#888', fontSize: 12, fontWeight: '600', marginBottom: 6 },
   input: {
-    backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#333',
-    borderRadius: 8, color: '#fff', fontSize: 14, padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    color: '#fff',
+    fontSize: 14,
+    padding: 12,
   },
-  saveRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 16 },
-  saveBtn: { backgroundColor: '#c8102e', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center' },
+  saveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 16,
+  },
+  saveBtn: {
+    backgroundColor: '#c8102e',
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  syncBtn: { backgroundColor: '#1a3a1a', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#2a5a2a' },
+  syncBtn: {
+    backgroundColor: '#1a3a1a',
+    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2a5a2a',
+  },
   syncBtnText: { color: '#4ade80', fontWeight: '700', fontSize: 14 },
   btnDisabled: { opacity: 0.5 },
   savedText: { color: '#4caf50', fontSize: 14 },
@@ -409,32 +497,69 @@ const s = StyleSheet.create({
   hint: { color: '#666', fontSize: 13, marginBottom: 12, lineHeight: 18 },
 
   oddsRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#1a1a1a', borderRadius: 8, padding: 10, marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
   },
   oddsName: { flex: 1, color: '#ccc', fontSize: 12, fontWeight: '600' },
   oddsInput: {
-    width: 70, backgroundColor: '#111', borderWidth: 1, borderColor: '#333',
-    borderRadius: 6, color: '#fff', fontSize: 13, padding: 6, textAlign: 'center',
+    width: 70,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 13,
+    padding: 6,
+    textAlign: 'center',
   },
   vsText: { color: '#555', fontSize: 12 },
 
   actionRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   actionLabel: { color: '#ddd', fontSize: 14, fontWeight: '600', marginBottom: 4 },
   seedRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   seedNum: { color: '#c8102e', fontSize: 13, fontWeight: '700', width: 24 },
   seedName: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600' },
   seedStat: { color: '#888', fontSize: 13 },
 
-  confirmBox: { backgroundColor: '#1a1010', borderRadius: 8, borderWidth: 1, borderColor: '#3a1a1a', padding: 16, marginTop: 12, gap: 12 },
+  confirmBox: {
+    backgroundColor: '#1a1010',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3a1a1a',
+    padding: 16,
+    marginTop: 12,
+    gap: 12,
+  },
   confirmText: { color: '#ccc', fontSize: 14, lineHeight: 20 },
   confirmRow: { flexDirection: 'row', gap: 10 },
-  cancelBtn: { backgroundColor: '#2a2a2a', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
+  cancelBtn: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
   cancelBtnText: { color: '#aaa', fontSize: 14 },
 
-  deleteBtn: { backgroundColor: '#3a1a1a', borderRadius: 8, borderWidth: 1, borderColor: '#ff525444', padding: 14, alignItems: 'center' },
+  deleteBtn: {
+    backgroundColor: '#3a1a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ff525444',
+    padding: 14,
+    alignItems: 'center',
+  },
   deleteBtnText: { color: '#ff5252', fontWeight: '700', fontSize: 14 },
 });

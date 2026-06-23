@@ -6,7 +6,9 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api/v
 export const apiClient = axios.create({ baseURL: API_BASE });
 
 apiClient.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
   }
@@ -23,17 +25,43 @@ function toCamel(s: string): string {
 }
 
 const NUMERIC_FIELDS = new Set([
-  'homeScore', 'awayScore', 'totalPoints', 'homePoints', 'awayPoints',
-  'averageFantasyPoints', 'memberCount',
-  'wins', 'losses', 'ties', 'streak',
-  'ranking', 'recordWins', 'recordLosses', 'recordDraws', 'recordNc',
-  'fightCount', 'matchupCount',
-  'stake', 'potentialPayout', 'actualPayout', 'profitLoss',
-  'stakingBalance', 'balance', 'pendingStake', 'decimalOdds',
-  'redFighterOdds', 'blueFighterOdds',
-  'redRecordWins', 'redRecordLosses', 'redRecordDraws',
-  'blueRecordWins', 'blueRecordLosses', 'blueRecordDraws',
-  'koTkoWins', 'submissionWins', 'resultEndingRound',
+  'homeScore',
+  'awayScore',
+  'totalPoints',
+  'homePoints',
+  'awayPoints',
+  'averageFantasyPoints',
+  'memberCount',
+  'wins',
+  'losses',
+  'ties',
+  'streak',
+  'ranking',
+  'recordWins',
+  'recordLosses',
+  'recordDraws',
+  'recordNc',
+  'fightCount',
+  'matchupCount',
+  'stake',
+  'potentialPayout',
+  'actualPayout',
+  'profitLoss',
+  'stakingBalance',
+  'balance',
+  'pendingStake',
+  'decimalOdds',
+  'redFighterOdds',
+  'blueFighterOdds',
+  'redRecordWins',
+  'redRecordLosses',
+  'redRecordDraws',
+  'blueRecordWins',
+  'blueRecordLosses',
+  'blueRecordDraws',
+  'koTkoWins',
+  'submissionWins',
+  'resultEndingRound',
 ]);
 
 function transformKeys(obj: unknown): unknown {
@@ -43,9 +71,10 @@ function transformKeys(obj: unknown): unknown {
   for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
     const camel = toCamel(key);
     const transformed = transformKeys(val);
-    out[camel] = NUMERIC_FIELDS.has(camel) && typeof transformed === 'string'
-      ? parseFloat(transformed)
-      : transformed;
+    out[camel] =
+      NUMERIC_FIELDS.has(camel) && typeof transformed === 'string'
+        ? parseFloat(transformed)
+        : transformed;
   }
   return out;
 }
@@ -55,15 +84,23 @@ function nestFighterRecord(obj: Record<string, unknown>): Record<string, unknown
   const { recordWins, recordLosses, recordDraws, recordNc, ...rest } = obj;
   return {
     ...rest,
-    record: { wins: recordWins ?? 0, losses: recordLosses ?? 0, draws: recordDraws ?? 0, nc: recordNc ?? 0 },
+    record: {
+      wins: recordWins ?? 0,
+      losses: recordLosses ?? 0,
+      draws: recordDraws ?? 0,
+      nc: recordNc ?? 0,
+    },
   };
 }
 
 function transformResponse(data: unknown): unknown {
   const camelCased = transformKeys(data);
-  if (Array.isArray(camelCased)) return camelCased.map((item) =>
-    typeof item === 'object' && item !== null ? nestFighterRecord(item as Record<string, unknown>) : item,
-  );
+  if (Array.isArray(camelCased))
+    return camelCased.map((item) =>
+      typeof item === 'object' && item !== null
+        ? nestFighterRecord(item as Record<string, unknown>)
+        : item,
+    );
   if (typeof camelCased === 'object' && camelCased !== null) {
     return nestFighterRecord(camelCased as Record<string, unknown>);
   }

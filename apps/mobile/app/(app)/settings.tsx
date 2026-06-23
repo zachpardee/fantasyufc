@@ -1,6 +1,15 @@
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -12,8 +21,14 @@ import { MemberAvatar } from '../../src/components/MemberAvatar';
 import type { UserProfile } from '@fantasy-ufc/shared';
 
 const AVATAR_COLORS = [
-  '#c8102e', '#1565c0', '#2e7d32', '#6a1b9a',
-  '#e65100', '#00838f', '#4a148c', '#880e4f',
+  '#c8102e',
+  '#1565c0',
+  '#2e7d32',
+  '#6a1b9a',
+  '#e65100',
+  '#00838f',
+  '#4a148c',
+  '#880e4f',
 ];
 
 export default function SettingsScreen() {
@@ -36,8 +51,9 @@ export default function SettingsScreen() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (patch: Partial<{ displayName: string; notificationPrefs: any; avatarColor: string }>) =>
-      apiClient.patch('/auth/me', patch),
+    mutationFn: (
+      patch: Partial<{ displayName: string; notificationPrefs: any; avatarColor: string }>,
+    ) => apiClient.patch('/auth/me', patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
   });
 
@@ -57,19 +73,31 @@ export default function SettingsScreen() {
   const submitName = () => {
     const trimmed = displayName.trim();
     if (!trimmed) return;
-    updateProfile.mutate({ displayName: trimmed }, {
-      onSuccess: () => setEditingName(false),
-    });
+    updateProfile.mutate(
+      { displayName: trimmed },
+      {
+        onSuccess: () => setEditingName(false),
+      },
+    );
   };
 
   async function submitPassword() {
     setPasswordError('');
-    if (newPassword.length < 8) { setPasswordError('Password must be at least 8 characters'); return; }
-    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return; }
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
     setPasswordLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPasswordLoading(false);
-    if (error) { setPasswordError(error.message); return; }
+    if (error) {
+      setPasswordError(error.message);
+      return;
+    }
     setNewPassword('');
     setConfirmPassword('');
     setEditingPassword(false);
@@ -80,7 +108,8 @@ export default function SettingsScreen() {
     Alert.alert('Sign Out', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign Out', style: 'destructive',
+        text: 'Sign Out',
+        style: 'destructive',
         onPress: async () => {
           await supabase.auth.signOut();
           signOut();
@@ -91,17 +120,22 @@ export default function SettingsScreen() {
   };
 
   if (isLoading) {
-    return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
   const email = session?.user?.email ?? '';
-  const initials = (profile?.displayName ?? profile?.username ?? email ?? '?')[0].toUpperCase();
   const avatarColor = (profile as any)?.avatarColor ?? '#c8102e';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView style={s.container} keyboardShouldPersistTaps="handled">
-
         {/* Profile header */}
         <View style={s.profileSection}>
           <MemberAvatar
@@ -138,7 +172,9 @@ export default function SettingsScreen() {
               </>
             ) : (
               <TouchableOpacity onPress={startEditName}>
-                <Text style={s.displayName}>{profile?.displayName ?? profile?.username ?? 'Set display name'}</Text>
+                <Text style={s.displayName}>
+                  {profile?.displayName ?? profile?.username ?? 'Set display name'}
+                </Text>
                 <Text style={s.tapToEdit}>Tap to edit name</Text>
               </TouchableOpacity>
             )}
@@ -149,10 +185,14 @@ export default function SettingsScreen() {
         {/* Avatar color */}
         <SectionHeader title="AVATAR COLOR" />
         <View style={s.colorPicker}>
-          {AVATAR_COLORS.map(color => (
+          {AVATAR_COLORS.map((color) => (
             <TouchableOpacity
               key={color}
-              style={[s.colorSwatch, { backgroundColor: color }, avatarColor === color && s.colorSwatchSelected]}
+              style={[
+                s.colorSwatch,
+                { backgroundColor: color },
+                avatarColor === color && s.colorSwatchSelected,
+              ]}
               onPress={() => updateProfile.mutate({ avatarColor: color } as any)}
             />
           ))}
@@ -181,7 +221,14 @@ export default function SettingsScreen() {
             />
             {!!passwordError && <Text style={s.errorText}>{passwordError}</Text>}
             <View style={s.nameActions}>
-              <TouchableOpacity onPress={() => { setEditingPassword(false); setPasswordError(''); setNewPassword(''); setConfirmPassword(''); }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingPassword(false);
+                  setPasswordError('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+              >
                 <Text style={s.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -189,7 +236,9 @@ export default function SettingsScreen() {
                 onPress={submitPassword}
                 disabled={passwordLoading}
               >
-                <Text style={s.saveText}>{passwordLoading ? 'Updating...' : 'Update Password'}</Text>
+                <Text style={s.saveText}>
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -223,7 +272,9 @@ export default function SettingsScreen() {
         </View>
         <View style={s.infoRow}>
           <Text style={s.infoLabel}>User ID</Text>
-          <Text style={s.infoValue} numberOfLines={1}>{session?.user.id?.slice(0, 8)}…</Text>
+          <Text style={s.infoValue} numberOfLines={1}>
+            {session?.user.id?.slice(0, 8)}…
+          </Text>
         </View>
 
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
@@ -244,7 +295,15 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function SettingsRow({ label, value, onPress }: { label: string; value?: string; onPress?: () => void }) {
+function SettingsRow({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value?: string;
+  onPress?: () => void;
+}) {
   const inner = (
     <View style={s.settingsRow}>
       <Text style={s.settingsLabel}>{label}</Text>
@@ -257,7 +316,15 @@ function SettingsRow({ label, value, onPress }: { label: string; value?: string;
   return onPress ? <TouchableOpacity onPress={onPress}>{inner}</TouchableOpacity> : inner;
 }
 
-function NotifRow({ label, value, onToggle }: { label: string; value: boolean; onToggle: (v: boolean) => void }) {
+function NotifRow({
+  label,
+  value,
+  onToggle,
+}: {
+  label: string;
+  value: boolean;
+  onToggle: (v: boolean) => void;
+}) {
   return (
     <View style={s.settingsRow}>
       <Text style={s.settingsLabel}>{label}</Text>
@@ -276,27 +343,35 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
 
   profileSection: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
-  avatar: {
-    width: 64, height: 64, borderRadius: 32,
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-  },
-  avatarText: { color: '#fff', fontSize: 26, fontWeight: '700' },
   profileInfo: { flex: 1 },
   displayName: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 2 },
   tapToEdit: { color: '#555', fontSize: 12, marginBottom: 4 },
   email: { color: '#444', fontSize: 13, marginTop: 4 },
 
   nameInput: {
-    color: '#fff', fontSize: 18, fontWeight: '700',
-    borderBottomWidth: 1, borderBottomColor: '#c8102e',
-    paddingVertical: 4, marginBottom: 8,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    borderBottomWidth: 1,
+    borderBottomColor: '#c8102e',
+    paddingVertical: 4,
+    marginBottom: 8,
   },
   nameActions: { flexDirection: 'row', gap: 12, alignItems: 'center', marginTop: 4 },
   cancelText: { color: '#666', fontSize: 13 },
-  saveBtn: { backgroundColor: '#c8102e', borderRadius: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  saveBtn: {
+    backgroundColor: '#c8102e',
+    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   disabledBtn: { opacity: 0.5 },
   saveText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
@@ -306,21 +381,32 @@ const s = StyleSheet.create({
 
   passwordForm: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#111' },
   input: {
-    backgroundColor: '#111', borderWidth: 1, borderColor: '#333',
-    borderRadius: 8, color: '#fff', fontSize: 15, padding: 13,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    color: '#fff',
+    fontSize: 15,
+    padding: 13,
   },
   errorText: { color: '#ff5252', fontSize: 13, marginTop: 8 },
 
   sectionHeader: {
-    paddingHorizontal: 16, paddingVertical: 10, marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 8,
     backgroundColor: '#050505',
   },
   sectionTitle: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
   settingsRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#111',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
   },
   settingsLabel: { color: '#ddd', fontSize: 15 },
   settingsRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -328,16 +414,25 @@ const s = StyleSheet.create({
   chevron: { color: '#444', fontSize: 20, lineHeight: 22 },
 
   infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#111',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111',
   },
   infoLabel: { color: '#666', fontSize: 14 },
   infoValue: { color: '#444', fontSize: 13, maxWidth: 160 },
 
   signOutBtn: {
-    margin: 24, marginTop: 32, padding: 16, borderRadius: 10,
-    backgroundColor: '#1a0000', borderWidth: 1, borderColor: '#c8102e44',
+    margin: 24,
+    marginTop: 32,
+    padding: 16,
+    borderRadius: 10,
+    backgroundColor: '#1a0000',
+    borderWidth: 1,
+    borderColor: '#c8102e44',
     alignItems: 'center',
   },
   signOutText: { color: '#c8102e', fontSize: 16, fontWeight: '700' },

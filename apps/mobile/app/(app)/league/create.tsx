@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../src/api/client';
@@ -25,7 +31,10 @@ export default function CreateLeagueScreen() {
   const [joinTeamName, setJoinTeamName] = useState('');
 
   async function handleCreate() {
-    if (!name.trim()) { setErr('League name is required'); return; }
+    if (!name.trim()) {
+      setErr('League name is required');
+      return;
+    }
     setLoading(true);
     setErr('');
     try {
@@ -44,8 +53,14 @@ export default function CreateLeagueScreen() {
   }
 
   async function handleJoin() {
-    if (!inviteCode.trim()) { setErr('Invite code is required'); return; }
-    if (!joinTeamName.trim()) { setErr('Team name is required'); return; }
+    if (!inviteCode.trim()) {
+      setErr('Invite code is required');
+      return;
+    }
+    if (!joinTeamName.trim()) {
+      setErr('Team name is required');
+      return;
+    }
     setLoading(true);
     setErr('');
     try {
@@ -61,18 +76,27 @@ export default function CreateLeagueScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tab, tab === 'create' && styles.tabActive]}
-            onPress={() => { setTab('create'); setErr(''); }}
+            onPress={() => {
+              setTab('create');
+              setErr('');
+            }}
           >
             <Text style={[styles.tabText, tab === 'create' && styles.tabTextActive]}>Create</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'join' && styles.tabActive]}
-            onPress={() => { setTab('join'); setErr(''); }}
+            onPress={() => {
+              setTab('join');
+              setErr('');
+            }}
           >
             <Text style={[styles.tabText, tab === 'join' && styles.tabTextActive]}>Join</Text>
           </TouchableOpacity>
@@ -110,7 +134,9 @@ export default function CreateLeagueScreen() {
                     style={[styles.optBtn, maxTeams === n && styles.optBtnActive]}
                     onPress={() => setMaxTeams(n)}
                   >
-                    <Text style={[styles.optText, maxTeams === n && styles.optTextActive]}>{n}</Text>
+                    <Text style={[styles.optText, maxTeams === n && styles.optTextActive]}>
+                      {n}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -124,7 +150,9 @@ export default function CreateLeagueScreen() {
                     style={[styles.formatBtn, leagueFormat === fmt && styles.formatBtnActive]}
                     onPress={() => setLeagueFormat(fmt)}
                   >
-                    <Text style={[styles.formatTitle, leagueFormat === fmt && styles.formatTitleActive]}>
+                    <Text
+                      style={[styles.formatTitle, leagueFormat === fmt && styles.formatTitleActive]}
+                    >
                       {fmt === 'pickem' ? "Pick'em" : 'Staking'}
                     </Text>
                     <Text style={styles.formatDesc}>
@@ -146,7 +174,9 @@ export default function CreateLeagueScreen() {
                       style={[styles.optBtn, weeklyBudget === n && styles.optBtnActive]}
                       onPress={() => setWeeklyBudget(n)}
                     >
-                      <Text style={[styles.optText, weeklyBudget === n && styles.optTextActive]}>${n}</Text>
+                      <Text style={[styles.optText, weeklyBudget === n && styles.optTextActive]}>
+                        ${n}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -222,11 +252,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
 
   tabs: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#222',
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
   },
   tab: {
-    flex: 1, paddingVertical: 14, alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   tabActive: { borderBottomColor: '#c8102e' },
   tabText: { color: '#666', fontSize: 15, fontWeight: '600' },
@@ -235,14 +270,23 @@ const styles = StyleSheet.create({
   form: { padding: 20 },
 
   input: {
-    backgroundColor: '#111', borderWidth: 1, borderColor: '#333', borderRadius: 8,
-    color: '#fff', fontSize: 15, padding: 13,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    color: '#fff',
+    fontSize: 15,
+    padding: 13,
   },
 
   formatRow: { flexDirection: 'row', gap: 10 },
   formatBtn: {
-    flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#333',
-    backgroundColor: '#111', padding: 14,
+    flex: 1,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    backgroundColor: '#111',
+    padding: 14,
   },
   formatBtnActive: { borderColor: '#c8102e', backgroundColor: '#1a0808' },
   formatTitle: { color: '#888', fontSize: 14, fontWeight: '700', marginBottom: 4 },
@@ -251,8 +295,13 @@ const styles = StyleSheet.create({
 
   optionRow: { flexDirection: 'row', gap: 8 },
   optBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 7, borderWidth: 1,
-    borderColor: '#333', backgroundColor: '#111', alignItems: 'center',
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#333',
+    backgroundColor: '#111',
+    alignItems: 'center',
   },
   optBtnActive: { borderColor: '#c8102e', backgroundColor: '#1a0a0a' },
   optText: { color: '#888', fontWeight: '600', fontSize: 14 },
@@ -261,8 +310,11 @@ const styles = StyleSheet.create({
   errMsg: { color: '#ff5252', fontSize: 13, marginBottom: 12 },
 
   submitBtn: {
-    backgroundColor: '#c8102e', borderRadius: 8,
-    paddingVertical: 14, alignItems: 'center', marginTop: 8,
+    backgroundColor: '#c8102e',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
   },
   submitBtnDisabled: { opacity: 0.5 },
   submitText: { color: '#fff', fontWeight: '700', fontSize: 16 },

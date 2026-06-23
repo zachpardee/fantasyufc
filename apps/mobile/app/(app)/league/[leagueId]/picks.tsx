@@ -1,6 +1,15 @@
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, useWindowDimensions, TextInput, KeyboardAvoidingView, Platform, Image,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  useWindowDimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -15,7 +24,9 @@ function toDecimalOdds(american: number): number {
 function calcPayout(stake: number, dec: number): number {
   return Math.round(stake * dec * 100) / 100;
 }
-function fmtOdds(n: number): string { return n >= 0 ? `+${n}` : `${n}`; }
+function fmtOdds(n: number): string {
+  return n >= 0 ? `+${n}` : `${n}`;
+}
 function fmtMoney(n: number): string {
   const abs = Math.abs(n);
   return (n < 0 ? '-$' : '$') + (abs % 1 === 0 ? abs.toFixed(0) : abs.toFixed(2));
@@ -31,7 +42,10 @@ const METHODS = [
 ] as const;
 
 const METHOD_LABEL: Record<string, string> = {
-  ko_tko: 'KO/TKO', submission: 'SUB', decision: 'DEC', disqualification: 'DQ',
+  ko_tko: 'KO/TKO',
+  submission: 'SUB',
+  decision: 'DEC',
+  disqualification: 'DQ',
 };
 
 type SingleBet = { clientId: string; fightId: string; fighterId: string; stake: string };
@@ -52,7 +66,12 @@ export default function PicksScreen() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
   });
 
-  if (eventLoading) return <View style={s.center}><ActivityIndicator color="#c8102e" /></View>;
+  if (eventLoading)
+    return (
+      <View style={s.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
 
   if (!currentEvent) {
     return (
@@ -108,59 +127,75 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
   const liveAvailable = weeklyBudget - liveUsed;
 
   const eventStart = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
-  const locked = currentEvent?.status === 'live' || currentEvent?.status === 'completed' ||
+  const locked =
+    currentEvent?.status === 'live' ||
+    currentEvent?.status === 'completed' ||
     (!!eventStart && Date.now() >= new Date(eventStart).getTime() - 10 * 60 * 1000);
 
   // Parlay odds
   const parlayLegEntries = Object.entries(parlayLegs).filter(([, fid]) => !!fid);
   const parlayDecOdds = parlayLegEntries.reduce((prod, [fightId, fighterId]) => {
-    const fight = fights.find(f => f.id === fightId);
+    const fight = fights.find((f) => f.id === fightId);
     if (!fight) return prod;
     const odds = fight.redFighterId === fighterId ? fight.redFighterOdds : fight.blueFighterOdds;
     return odds != null ? prod * toDecimalOdds(odds) : prod;
   }, 1);
   const parlayLegCount = parlayLegEntries.length;
-  const parlayAmericanOdds = parlayDecOdds <= 1 ? null
-    : parlayDecOdds >= 2 ? Math.round((parlayDecOdds - 1) * 100)
-    : Math.round(-100 / (parlayDecOdds - 1));
-  const parlayPotential = localParlayTotal > 0 && parlayLegCount >= 2
-    ? calcPayout(localParlayTotal, parlayDecOdds) : 0;
+  const parlayAmericanOdds =
+    parlayDecOdds <= 1
+      ? null
+      : parlayDecOdds >= 2
+        ? Math.round((parlayDecOdds - 1) * 100)
+        : Math.round(-100 / (parlayDecOdds - 1));
+  const parlayPotential =
+    localParlayTotal > 0 && parlayLegCount >= 2 ? calcPayout(localParlayTotal, parlayDecOdds) : 0;
 
-  const activeSingles = singles.filter(b => b.fighterId);
-  const uniqueFightIds = [...new Set(activeSingles.map(b => b.fightId))];
+  const activeSingles = singles.filter((b) => b.fighterId);
+  const uniqueFightIds = [...new Set(activeSingles.map((b) => b.fightId))];
 
   function addSingle(fightId: string, fighterId: string) {
-    setSingles(prev => [...prev, { clientId: `${fightId}-${Date.now()}`, fightId, fighterId, stake: '' }]);
+    setSingles((prev) => [
+      ...prev,
+      { clientId: `${fightId}-${Date.now()}`, fightId, fighterId, stake: '' },
+    ]);
     setSinglesTouched(true);
     // Auto-populate parlay with this fighter
-    setParlayLegs(prev => ({ ...prev, [fightId]: fighterId }));
+    setParlayLegs((prev) => ({ ...prev, [fightId]: fighterId }));
   }
   function updateSingleStake(clientId: string, stake: string) {
-    setSingles(prev => prev.map(b => b.clientId === clientId ? { ...b, stake } : b));
+    setSingles((prev) => prev.map((b) => (b.clientId === clientId ? { ...b, stake } : b)));
     setSinglesTouched(true);
   }
   function removeSingle(clientId: string) {
-    setSingles(prev => {
-      const next = prev.filter(b => b.clientId !== clientId);
+    setSingles((prev) => {
+      const next = prev.filter((b) => b.clientId !== clientId);
       // If no more bets for that fight, remove from parlay
-      const removedFightId = prev.find(b => b.clientId === clientId)?.fightId;
-      if (removedFightId && !next.some(b => b.fightId === removedFightId)) {
-        setParlayLegs(pl => { const p = { ...pl }; delete p[removedFightId]; return p; });
+      const removedFightId = prev.find((b) => b.clientId === clientId)?.fightId;
+      if (removedFightId && !next.some((b) => b.fightId === removedFightId)) {
+        setParlayLegs((pl) => {
+          const p = { ...pl };
+          delete p[removedFightId];
+          return p;
+        });
       }
       return next;
     });
     setSinglesTouched(true);
   }
   function removeParlayLeg(fightId: string) {
-    setParlayLegs(prev => { const p = { ...prev }; delete p[fightId]; return p; });
+    setParlayLegs((prev) => {
+      const p = { ...prev };
+      delete p[fightId];
+      return p;
+    });
     setParlayTouched(true);
   }
 
   const saveSinglesMutation = useMutation({
     mutationFn: () => {
       const bets = singles
-        .map(b => ({ fightId: b.fightId, fighterId: b.fighterId, stake: parseFloat(b.stake) }))
-        .filter(b => b.fighterId && !isNaN(b.stake) && b.stake > 0);
+        .map((b) => ({ fightId: b.fightId, fighterId: b.fighterId, stake: parseFloat(b.stake) }))
+        .filter((b) => b.fighterId && !isNaN(b.stake) && b.stake > 0);
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent.id}/singles`, { bets });
     },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save bets'),
@@ -172,19 +207,22 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
         .filter(([, fid]) => !!fid)
         .map(([fightId, fighterId]) => ({ fightId, fighterId }));
       return apiClient.put(`/leagues/${leagueId}/staking/${currentEvent.id}/parlay`, {
-        stake: parseFloat(parlayStake), legs,
+        stake: parseFloat(parlayStake),
+        legs,
       });
     },
     onError: (err: any) => setSaveError(err?.message ?? 'Failed to save parlay'),
   });
 
   const deleteSingleMutation = useMutation({
-    mutationFn: (betId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent.id}/singles/${betId}`),
+    mutationFn: (betId: string) =>
+      apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent.id}/singles/${betId}`),
     onSuccess: () => refetchBets(),
   });
 
   const deleteParlayMutation = useMutation({
-    mutationFn: (parlayId: string) => apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent.id}/parlays/${parlayId}`),
+    mutationFn: (parlayId: string) =>
+      apiClient.delete(`/leagues/${leagueId}/staking/${currentEvent.id}/parlays/${parlayId}`),
     onSuccess: () => refetchBets(),
   });
 
@@ -202,7 +240,9 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
       setParlayTouched(false);
       refetchBets();
       qc.invalidateQueries({ queryKey: ['staking-bets', leagueId, currentEvent?.id] });
-    } catch { /* errors handled in onError */ }
+    } catch {
+      /* errors handled in onError */
+    }
   }
 
   const isSaving = saveSinglesMutation.isPending || saveParlayMutation.isPending;
@@ -210,38 +250,63 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
 
   const savedSingles: any[] = betsData?.singles ?? [];
   const savedParlays: any[] = betsData?.parlays ?? [];
-  const pendingSingles = savedSingles.filter(s => s.status === 'pending');
-  const settledSingles = savedSingles.filter(s => s.status !== 'pending');
-  const pendingParlays = savedParlays.filter(p => p.status === 'pending');
-  const settledParlays = savedParlays.filter(p => p.status !== 'pending');
+  const pendingSingles = savedSingles.filter((s) => s.status === 'pending');
+  const settledSingles = savedSingles.filter((s) => s.status !== 'pending');
+  const pendingParlays = savedParlays.filter((p) => p.status === 'pending');
+  const settledParlays = savedParlays.filter((p) => p.status !== 'pending');
 
   const eventName = currentEvent.name;
-  const eventDateStr = eventStart ? (() => {
-    const d = new Date(eventStart);
-    return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  })() : null;
+  const eventDateStr = eventStart
+    ? (() => {
+        const d = new Date(eventStart);
+        return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+      })()
+    : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={s.container}
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1 }}>
             <Text style={s.eventName}>{eventName}</Text>
             {eventDateStr && <Text style={s.eventDate}>{eventDateStr}</Text>}
           </View>
-          {locked && <View style={st.lockedBadge}><Text style={st.lockedBadgeText}>LOCKED</Text></View>}
+          {locked && (
+            <View style={st.lockedBadge}>
+              <Text style={st.lockedBadgeText}>LOCKED</Text>
+            </View>
+          )}
         </View>
 
         {/* Balance bar */}
         <View style={st.balanceBar}>
           <BalanceStat label="Budget" value={fmtMoney(weeklyBudget)} />
           <View style={st.balanceDivider} />
-          <BalanceStat label="At Stake" value={fmtMoney(liveUsed)} color={liveUsed > 0 ? '#ffd700' : '#555'} />
+          <BalanceStat
+            label="At Stake"
+            value={fmtMoney(liveUsed)}
+            color={liveUsed > 0 ? '#ffd700' : '#555'}
+          />
           <View style={st.balanceDivider} />
-          <BalanceStat label="Available" value={fmtMoney(Math.max(0, liveAvailable))} color={liveAvailable < 0 ? '#ff5252' : '#4caf50'} />
+          <BalanceStat
+            label="Available"
+            value={fmtMoney(Math.max(0, liveAvailable))}
+            color={liveAvailable < 0 ? '#ff5252' : '#4caf50'}
+          />
           <View style={st.balanceDivider} />
-          <BalanceStat label="Season P&L" value={(seasonBankroll >= 0 ? '+' : '') + fmtMoney(seasonBankroll)} color={seasonBankroll >= 0 ? '#4caf50' : '#ff5252'} />
+          <BalanceStat
+            label="Season P&L"
+            value={(seasonBankroll >= 0 ? '+' : '') + fmtMoney(seasonBankroll)}
+            color={seasonBankroll >= 0 ? '#4caf50' : '#ff5252'}
+          />
         </View>
 
         {saveError ? <Text style={st.errorText}>{saveError}</Text> : null}
@@ -252,9 +317,13 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
           {!locked && <Text style={st.sectionSub}>Tap a fighter to add a bet</Text>}
         </View>
 
-        {fights.map(fight => {
-          const redBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.redFighterId).length;
-          const blueBets = singles.filter(b => b.fightId === fight.id && b.fighterId === fight.blueFighterId).length;
+        {fights.map((fight) => {
+          const redBets = singles.filter(
+            (b) => b.fightId === fight.id && b.fighterId === fight.redFighterId,
+          ).length;
+          const blueBets = singles.filter(
+            (b) => b.fightId === fight.id && b.fighterId === fight.blueFighterId,
+          ).length;
           return (
             <StakingFightCard
               key={fight.id}
@@ -285,24 +354,33 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
 
                 {/* Parlay legs */}
                 {parlayLegEntries.map(([fightId, fighterId]) => {
-                  const fight = fights.find(f => f.id === fightId);
+                  const fight = fights.find((f) => f.id === fightId);
                   if (!fight) return null;
                   const isRed = fighterId === fight.redFighterId;
-                  const name = isRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`;
+                  const name = isRed
+                    ? `${fight.redFirstName} ${fight.redLastName}`
+                    : `${fight.blueFirstName} ${fight.blueLastName}`;
                   const odds = isRed ? fight.redFighterOdds : fight.blueFighterOdds;
                   return (
                     <View key={fightId} style={st.legRow}>
                       {!locked && (
-                        <TouchableOpacity onPress={() => removeParlayLeg(fightId)} style={st.removeBtn}>
+                        <TouchableOpacity
+                          onPress={() => removeParlayLeg(fightId)}
+                          style={st.removeBtn}
+                        >
                           <Text style={st.removeBtnText}>✕</Text>
                         </TouchableOpacity>
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={st.legName}>{name}</Text>
-                        <Text style={st.legMatchup}>{fight.redLastName} vs {fight.blueLastName}</Text>
+                        <Text style={st.legMatchup}>
+                          {fight.redLastName} vs {fight.blueLastName}
+                        </Text>
                       </View>
                       {odds != null && (
-                        <Text style={[st.legOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>{fmtOdds(odds)}</Text>
+                        <Text style={[st.legOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>
+                          {fmtOdds(odds)}
+                        </Text>
                       )}
                     </View>
                   );
@@ -316,14 +394,20 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                       <TextInput
                         style={st.stakeInput}
                         value={parlayStake}
-                        onChangeText={v => { setParlayStake(v); setParlayTouched(true); }}
+                        onChangeText={(v) => {
+                          setParlayStake(v);
+                          setParlayTouched(true);
+                        }}
                         keyboardType="decimal-pad"
                         placeholder="Stake"
                         placeholderTextColor="#444"
                       />
                     </View>
                     {parlayPotential > 0 && (
-                      <Text style={st.payoutText}>Payout: <Text style={{ color: '#4caf50' }}>{fmtMoney(parlayPotential)}</Text></Text>
+                      <Text style={st.payoutText}>
+                        Payout:{' '}
+                        <Text style={{ color: '#4caf50' }}>{fmtMoney(parlayPotential)}</Text>
+                      </Text>
                     )}
                   </View>
                 ) : null}
@@ -334,24 +418,32 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
             {activeSingles.length > 0 && (
               <View style={st.slipBlock}>
                 <Text style={st.slipBlockTitle}>Straights ({activeSingles.length})</Text>
-                {activeSingles.map(bet => {
-                  const fight = fights.find(f => f.id === bet.fightId);
+                {activeSingles.map((bet) => {
+                  const fight = fights.find((f) => f.id === bet.fightId);
                   if (!fight) return null;
                   const isRed = bet.fighterId === fight.redFighterId;
-                  const name = isRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`;
+                  const name = isRed
+                    ? `${fight.redFirstName} ${fight.redLastName}`
+                    : `${fight.blueFirstName} ${fight.blueLastName}`;
                   const odds = isRed ? fight.redFighterOdds : fight.blueFighterOdds;
                   const stake = parseFloat(bet.stake) || 0;
-                  const payout = odds != null && stake > 0 ? calcPayout(stake, toDecimalOdds(odds)) : null;
+                  const payout =
+                    odds != null && stake > 0 ? calcPayout(stake, toDecimalOdds(odds)) : null;
                   return (
                     <View key={bet.clientId} style={st.legRow}>
                       {!locked && (
-                        <TouchableOpacity onPress={() => removeSingle(bet.clientId)} style={st.removeBtn}>
+                        <TouchableOpacity
+                          onPress={() => removeSingle(bet.clientId)}
+                          style={st.removeBtn}
+                        >
                           <Text style={st.removeBtnText}>✕</Text>
                         </TouchableOpacity>
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={st.legName}>{name}</Text>
-                        <Text style={st.legMatchup}>{fight.redLastName} vs {fight.blueLastName}</Text>
+                        <Text style={st.legMatchup}>
+                          {fight.redLastName} vs {fight.blueLastName}
+                        </Text>
                         <View style={st.stakeRow}>
                           {!locked ? (
                             <View style={st.stakeInputWrap}>
@@ -359,7 +451,7 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                               <TextInput
                                 style={st.stakeInput}
                                 value={bet.stake}
-                                onChangeText={v => updateSingleStake(bet.clientId, v)}
+                                onChangeText={(v) => updateSingleStake(bet.clientId, v)}
                                 keyboardType="decimal-pad"
                                 placeholder="Stake"
                                 placeholderTextColor="#444"
@@ -372,7 +464,9 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
                         </View>
                       </View>
                       {odds != null && (
-                        <Text style={[st.legOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>{fmtOdds(odds)}</Text>
+                        <Text style={[st.legOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>
+                          {fmtOdds(odds)}
+                        </Text>
                       )}
                     </View>
                   );
@@ -384,10 +478,15 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
             {!locked && (
               <>
                 {liveAvailable < 0 && (
-                  <Text style={st.overBudget}>Exceeds budget by {fmtMoney(Math.abs(liveAvailable))}</Text>
+                  <Text style={st.overBudget}>
+                    Exceeds budget by {fmtMoney(Math.abs(liveAvailable))}
+                  </Text>
                 )}
                 <TouchableOpacity
-                  style={[st.placeBetsBtn, (!anyUnsaved || isSaving || liveAvailable < 0) && st.placeBetsBtnDisabled]}
+                  style={[
+                    st.placeBetsBtn,
+                    (!anyUnsaved || isSaving || liveAvailable < 0) && st.placeBetsBtnDisabled,
+                  ]}
                   onPress={saveAll}
                   disabled={!anyUnsaved || isSaving || liveAvailable < 0}
                 >
@@ -408,11 +507,21 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
             {(pendingSingles.length > 0 || pendingParlays.length > 0) && (
               <>
                 <Text style={st.savedSectionLabel}>PENDING</Text>
-                {pendingSingles.map(bet => (
-                  <SavedSingleRow key={bet.id} bet={bet} canDelete={!locked} onDelete={() => deleteSingleMutation.mutate(bet.id)} />
+                {pendingSingles.map((bet) => (
+                  <SavedSingleRow
+                    key={bet.id}
+                    bet={bet}
+                    canDelete={!locked}
+                    onDelete={() => deleteSingleMutation.mutate(bet.id)}
+                  />
                 ))}
-                {pendingParlays.map(parlay => (
-                  <SavedParlayRow key={parlay.id} parlay={parlay} canDelete={!locked} onDelete={() => deleteParlayMutation.mutate(parlay.id)} />
+                {pendingParlays.map((parlay) => (
+                  <SavedParlayRow
+                    key={parlay.id}
+                    parlay={parlay}
+                    canDelete={!locked}
+                    onDelete={() => deleteParlayMutation.mutate(parlay.id)}
+                  />
                 ))}
               </>
             )}
@@ -420,11 +529,16 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
             {(settledSingles.length > 0 || settledParlays.length > 0) && (
               <>
                 <Text style={st.savedSectionLabel}>SETTLED</Text>
-                {settledSingles.map(bet => (
+                {settledSingles.map((bet) => (
                   <SavedSingleRow key={bet.id} bet={bet} canDelete={false} onDelete={() => {}} />
                 ))}
-                {settledParlays.map(parlay => (
-                  <SavedParlayRow key={parlay.id} parlay={parlay} canDelete={false} onDelete={() => {}} />
+                {settledParlays.map((parlay) => (
+                  <SavedParlayRow
+                    key={parlay.id}
+                    parlay={parlay}
+                    canDelete={false}
+                    onDelete={() => {}}
+                  />
                 ))}
               </>
             )}
@@ -444,9 +558,20 @@ function BalanceStat({ label, value, color }: { label: string; value: string; co
   );
 }
 
-function StakingFightCard({ fight, redBetCount, blueBetCount, locked, onPickRed, onPickBlue }: {
-  fight: any; redBetCount: number; blueBetCount: number;
-  locked: boolean; onPickRed: () => void; onPickBlue: () => void;
+function StakingFightCard({
+  fight,
+  redBetCount,
+  blueBetCount,
+  locked,
+  onPickRed,
+  onPickBlue,
+}: {
+  fight: any;
+  redBetCount: number;
+  blueBetCount: number;
+  locked: boolean;
+  onPickRed: () => void;
+  onPickBlue: () => void;
 }) {
   return (
     <View style={st.fightCard}>
@@ -458,37 +583,61 @@ function StakingFightCard({ fight, redBetCount, blueBetCount, locked, onPickRed,
           ) : (
             <View style={st.fighterImgPlaceholder} />
           )}
-          <Text style={st.stakeFighterName} numberOfLines={2}>{fight.redFirstName} {fight.redLastName}</Text>
+          <Text style={st.stakeFighterName} numberOfLines={2}>
+            {fight.redFirstName} {fight.redLastName}
+          </Text>
           {fight.redFighterOdds != null && (
             <Text style={[st.oddsText, { color: fight.redFighterOdds < 0 ? '#999' : '#4caf50' }]}>
               {fmtOdds(fight.redFighterOdds)}
             </Text>
           )}
-          {redBetCount > 0 && <Text style={st.betPill}>{redBetCount} bet{redBetCount !== 1 ? 's' : ''}</Text>}
+          {redBetCount > 0 && (
+            <Text style={st.betPill}>
+              {redBetCount} bet{redBetCount !== 1 ? 's' : ''}
+            </Text>
+          )}
         </TouchableOpacity>
 
         <Text style={st.vsText}>VS</Text>
 
-        <TouchableOpacity style={[st.stakeFighterBtn, { alignItems: 'flex-end' }]} onPress={onPickBlue} disabled={locked}>
+        <TouchableOpacity
+          style={[st.stakeFighterBtn, { alignItems: 'flex-end' }]}
+          onPress={onPickBlue}
+          disabled={locked}
+        >
           {fight.blueImageUrl ? (
             <Image source={{ uri: fight.blueImageUrl }} style={st.fighterImg} resizeMode="cover" />
           ) : (
             <View style={st.fighterImgPlaceholder} />
           )}
-          <Text style={[st.stakeFighterName, { textAlign: 'right' }]} numberOfLines={2}>{fight.blueFirstName} {fight.blueLastName}</Text>
+          <Text style={[st.stakeFighterName, { textAlign: 'right' }]} numberOfLines={2}>
+            {fight.blueFirstName} {fight.blueLastName}
+          </Text>
           {fight.blueFighterOdds != null && (
             <Text style={[st.oddsText, { color: fight.blueFighterOdds < 0 ? '#999' : '#4caf50' }]}>
               {fmtOdds(fight.blueFighterOdds)}
             </Text>
           )}
-          {blueBetCount > 0 && <Text style={st.betPill}>{blueBetCount} bet{blueBetCount !== 1 ? 's' : ''}</Text>}
+          {blueBetCount > 0 && (
+            <Text style={st.betPill}>
+              {blueBetCount} bet{blueBetCount !== 1 ? 's' : ''}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boolean; onDelete: () => void }) {
+function SavedSingleRow({
+  bet,
+  canDelete,
+  onDelete,
+}: {
+  bet: any;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
   const stake = parseFloat(bet.stake) || 0;
   const odds: number | null = bet.odds ?? null;
   const pl = parseFloat(bet.profitLoss ?? '0');
@@ -502,30 +651,58 @@ function SavedSingleRow({ bet, canDelete, onDelete }: { bet: any; canDelete: boo
         </TouchableOpacity>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={st.savedName}>{bet.fighterFirstName} {bet.fighterLastName}</Text>
-        {odds != null && <Text style={[st.savedOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>{fmtOdds(odds)}</Text>}
+        <Text style={st.savedName}>
+          {bet.fighterFirstName} {bet.fighterLastName}
+        </Text>
+        {odds != null && (
+          <Text style={[st.savedOdds, { color: odds < 0 ? '#888' : '#4caf50' }]}>
+            {fmtOdds(odds)}
+          </Text>
+        )}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={st.savedStake}>{fmtMoney(stake)}</Text>
-        {isPending
-          ? payout != null && <Text style={st.savedPotential}>Win {fmtMoney(payout)}</Text>
-          : <Text style={[st.savedPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252' }]}>
-              {bet.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-            </Text>
-        }
+        {isPending ? (
+          payout != null && <Text style={st.savedPotential}>Win {fmtMoney(payout)}</Text>
+        ) : (
+          <Text style={[st.savedPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252' }]}>
+            {bet.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}
+            {fmtMoney(pl)}
+          </Text>
+        )}
       </View>
     </View>
   );
 }
 
-function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelete: boolean; onDelete: () => void }) {
+function SavedParlayRow({
+  parlay,
+  canDelete,
+  onDelete,
+}: {
+  parlay: any;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const legs: any[] = parlay.legs ?? [];
   const stake = parseFloat(parlay.stake) || 0;
-  const decOdds = parseFloat(parlay.decimalOdds ?? '1') || 1;
+  // Combine per-leg odds (an unpriced leg contributes 1.0), falling back to the stored
+  // combined value. Keeps the payout correct for parlays that include an oddsless fight.
+  const decOdds = legs.length
+    ? legs.reduce(
+        (acc: number, l: any) => acc * (l.decimalOdds != null ? parseFloat(l.decimalOdds) || 1 : 1),
+        1,
+      )
+    : parseFloat(parlay.decimalOdds ?? '1') || 1;
   const pl = parseFloat(parlay.profitLoss ?? '0');
   const isPending = parlay.status === 'pending';
-  const americanOdds = decOdds <= 1 ? null : decOdds >= 2 ? Math.round((decOdds - 1) * 100) : Math.round(-100 / (decOdds - 1));
+  const americanOdds =
+    decOdds <= 1
+      ? null
+      : decOdds >= 2
+        ? Math.round((decOdds - 1) * 100)
+        : Math.round(-100 / (decOdds - 1));
   const payout = stake > 0 && decOdds > 1 ? calcPayout(stake, decOdds) : 0;
   return (
     <View style={st.savedRow}>
@@ -536,29 +713,39 @@ function SavedParlayRow({ parlay, canDelete, onDelete }: { parlay: any; canDelet
       )}
       <View style={{ flex: 1 }}>
         <Text style={st.savedName}>{legs.length}-leg parlay</Text>
-        {americanOdds != null && <Text style={[st.savedOdds, { color: '#ffd700' }]}>{fmtOdds(americanOdds)}</Text>}
+        {americanOdds != null && (
+          <Text style={[st.savedOdds, { color: '#ffd700' }]}>{fmtOdds(americanOdds)}</Text>
+        )}
         {legs.length > 0 && (
-          <TouchableOpacity onPress={() => setOpen(v => !v)}>
+          <TouchableOpacity onPress={() => setOpen((v) => !v)}>
             <Text style={st.toggleLegs}>{open ? 'Hide legs ∧' : 'Show legs ∨'}</Text>
           </TouchableOpacity>
         )}
-        {open && legs.map((leg, i) => (
-          <Text key={i} style={st.legItem}>
-            <Text style={{ color: leg.result === 'won' ? '#4caf50' : leg.result === 'lost' ? '#ff5252' : '#444' }}>
-              {leg.result === 'won' ? '✓ ' : leg.result === 'lost' ? '✗ ' : '· '}
+        {open &&
+          legs.map((leg, i) => (
+            <Text key={i} style={st.legItem}>
+              <Text
+                style={{
+                  color:
+                    leg.result === 'won' ? '#4caf50' : leg.result === 'lost' ? '#ff5252' : '#444',
+                }}
+              >
+                {leg.result === 'won' ? '✓ ' : leg.result === 'lost' ? '✗ ' : '· '}
+              </Text>
+              {leg.fighterFirstName} {leg.fighterLastName}
             </Text>
-            {leg.fighterFirstName} {leg.fighterLastName}
-          </Text>
-        ))}
+          ))}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={st.savedStake}>{fmtMoney(stake)}</Text>
-        {isPending
-          ? payout > 0 && <Text style={st.savedPotential}>Win {fmtMoney(payout)}</Text>
-          : <Text style={[st.savedPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252' }]}>
-              {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}{fmtMoney(pl)}
-            </Text>
-        }
+        {isPending ? (
+          payout > 0 && <Text style={st.savedPotential}>Win {fmtMoney(payout)}</Text>
+        ) : (
+          <Text style={[st.savedPnl, { color: pl >= 0 ? '#4caf50' : '#ff5252' }]}>
+            {parlay.status === 'won' ? '✓' : '✗'} {pl >= 0 ? '+' : ''}
+            {fmtMoney(pl)}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -581,7 +768,7 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
     queryKey: ['picks', leagueId, currentEvent?.id],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/${currentEvent!.id}`),
     enabled: !!currentEvent?.id,
-    refetchInterval: (q) => q.state.data?.eventStatus === 'live' ? 30_000 : false,
+    refetchInterval: (q) => (q.state.data?.eventStatus === 'live' ? 30_000 : false),
   });
 
   const { data: championData } = useQuery<any>({
@@ -622,7 +809,9 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
       const picks = Object.entries(localPicks)
         .filter(([fightId]) => localMethods[fightId])
         .map(([fightId, pickedFighterId]) => ({
-          fightId, pickedFighterId, pickedMethod: localMethods[fightId],
+          fightId,
+          pickedFighterId,
+          pickedMethod: localMethods[fightId],
         }));
       return apiClient.post(`/leagues/${leagueId}/picks/${currentEvent!.id}`, { picks });
     },
@@ -635,34 +824,60 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   const championMutation = useMutation({
     mutationFn: (fighterId: string) =>
       apiClient.put(`/leagues/${leagueId}/picks/${currentEvent!.id}/champion`, { fighterId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] }),
   });
 
   const fights: any[] = picksData?.fights ?? [];
   const locked: boolean = picksData?.locked ?? false;
   const totalFights = fights.length;
-  const totalComplete = fights.filter(f => localPicks[f.id] && localMethods[f.id]).length;
+  const totalComplete = fights.filter((f) => localPicks[f.id] && localMethods[f.id]).length;
 
   const allFighters = fights.flatMap((fight: any) => [
-    { id: fight.redFighterId, firstName: fight.redFirstName, lastName: fight.redLastName, imageUrl: fight.redImageUrl, fightId: fight.id, corner: 'red' as const },
-    { id: fight.blueFighterId, firstName: fight.blueFirstName, lastName: fight.blueLastName, imageUrl: fight.blueImageUrl, fightId: fight.id, corner: 'blue' as const },
+    {
+      id: fight.redFighterId,
+      firstName: fight.redFirstName,
+      lastName: fight.redLastName,
+      imageUrl: fight.redImageUrl,
+      fightId: fight.id,
+      corner: 'red' as const,
+    },
+    {
+      id: fight.blueFighterId,
+      firstName: fight.blueFirstName,
+      lastName: fight.blueLastName,
+      imageUrl: fight.blueImageUrl,
+      fightId: fight.id,
+      corner: 'blue' as const,
+    },
   ]);
 
   const eventDate = currentEvent.scheduledAt;
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={s.container}
+      contentContainerStyle={s.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={s.header}>
         <View style={s.headerLeft}>
           <Text style={s.eventName}>{currentEvent.name}</Text>
           <Text style={s.eventDate}>
             {new Date(eventDate).toLocaleDateString('en-US', {
-              weekday: 'short', month: 'short', day: 'numeric',
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
             })}
           </Text>
         </View>
         <View style={s.pickCount}>
-          <Text style={[s.pickNum, { color: totalComplete === totalFights && totalFights > 0 ? '#4caf50' : '#c8102e' }]}>
+          <Text
+            style={[
+              s.pickNum,
+              { color: totalComplete === totalFights && totalFights > 0 ? '#4caf50' : '#c8102e' },
+            ]}
+          >
             {totalComplete}
           </Text>
           <Text style={s.pickDen}>/{totalFights}</Text>
@@ -681,7 +896,9 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
             const pickedId = localPicks[fight.id];
             const pickedRed = pickedId === fight.redFighterId;
             const pickedName = pickedId
-              ? (pickedRed ? `${fight.redFirstName} ${fight.redLastName}` : `${fight.blueFirstName} ${fight.blueLastName}`)
+              ? pickedRed
+                ? `${fight.redFirstName} ${fight.redLastName}`
+                : `${fight.blueFirstName} ${fight.blueLastName}`
               : null;
             const method = localMethods[fight.id];
             const isCorrect = fight.isCorrect;
@@ -698,10 +915,14 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
                 <View style={s.summaryPick}>
                   {pickedName ? (
                     <>
-                      <Text style={[s.summaryPickName, { color: pickedRed ? '#e05555' : '#5599dd' }]}>
+                      <Text
+                        style={[s.summaryPickName, { color: pickedRed ? '#e05555' : '#5599dd' }]}
+                      >
                         {pickedName}
                       </Text>
-                      {method && <Text style={s.summaryMethod}>{METHOD_LABEL[method] ?? method}</Text>}
+                      {method && (
+                        <Text style={s.summaryMethod}>{METHOD_LABEL[method] ?? method}</Text>
+                      )}
                     </>
                   ) : (
                     <Text style={s.noPickText}>—</Text>
@@ -728,13 +949,14 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
                   <Text style={s.champSummaryName}>
                     {championData.firstName} {championData.lastName}
                   </Text>
-                  {locked && (
-                    championData.pointsEarned > 0
-                      ? <Text style={s.champCorrectText}>+30 pts</Text>
-                      : championData.resultWinnerId === null
-                        ? <Text style={s.champPendingText}>Pending</Text>
-                        : <Text style={s.champWrongText}>✗ 0 pts</Text>
-                  )}
+                  {locked &&
+                    (championData.pointsEarned > 0 ? (
+                      <Text style={s.champCorrectText}>+30 pts</Text>
+                    ) : championData.resultWinnerId === null ? (
+                      <Text style={s.champPendingText}>Pending</Text>
+                    ) : (
+                      <Text style={s.champWrongText}>✗ 0 pts</Text>
+                    ))}
                 </View>
               ) : (
                 <Text style={s.noPickText}>No pick yet</Text>
@@ -753,7 +975,9 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
           {(() => {
             const earlyPrelims = fights.filter((f: any) => f.cardSegment === 'early_prelims');
             const prelims = fights.filter((f: any) => f.cardSegment === 'prelims');
-            const mainCard = fights.filter((f: any) => f.cardSegment !== 'early_prelims' && f.cardSegment !== 'prelims');
+            const mainCard = fights.filter(
+              (f: any) => f.cardSegment !== 'early_prelims' && f.cardSegment !== 'prelims',
+            );
             const segments = [
               { label: 'MAIN CARD', fights: mainCard },
               { label: 'PRELIMS', fights: prelims },
@@ -801,7 +1025,11 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
                       disabled={locked}
                     >
                       {fighter.imageUrl ? (
-                        <Image source={{ uri: fighter.imageUrl }} style={s.champFighterImg} resizeMode="cover" />
+                        <Image
+                          source={{ uri: fighter.imageUrl }}
+                          style={s.champFighterImg}
+                          resizeMode="cover"
+                        />
                       ) : (
                         <View style={s.champFighterImgPlaceholder} />
                       )}
@@ -829,7 +1057,9 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
             disabled={saveMutation.isPending}
           >
             <Text style={s.saveBtnText}>
-              {saveMutation.isPending ? 'Saving...' : `Save Picks (${totalComplete}/${totalFights})`}
+              {saveMutation.isPending
+                ? 'Saving...'
+                : `Save Picks (${totalComplete}/${totalFights})`}
             </Text>
           </TouchableOpacity>
           {saveMutation.isError && (
@@ -841,9 +1071,20 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   );
 }
 
-function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
-  fight: any; picked?: string; pickedMethod?: string;
-  locked: boolean; onPick: (id: string) => void; onMethod: (m: string) => void;
+function FightCard({
+  fight,
+  picked,
+  pickedMethod,
+  locked,
+  onPick,
+  onMethod,
+}: {
+  fight: any;
+  picked?: string;
+  pickedMethod?: string;
+  locked: boolean;
+  onPick: (id: string) => void;
+  onMethod: (m: string) => void;
 }) {
   const winnerId = fight.resultWinnerId;
   const isCompleted = fight.status === 'completed' || winnerId != null;
@@ -851,7 +1092,9 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
   return (
     <View style={s.fightCard}>
       {fight.isTitleFight && <Text style={s.titleTag}>TITLE FIGHT</Text>}
-      <Text style={s.fightMeta}>{fight.weightClassName} · {fight.scheduledRounds}R</Text>
+      <Text style={s.fightMeta}>
+        {fight.weightClassName} · {fight.scheduledRounds}R
+      </Text>
       <View style={s.matchup}>
         <FighterBtn
           name={`${fight.redFirstName} ${fight.redLastName}`}
@@ -890,16 +1133,25 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
           {methodRequired && <Text style={s.methodRequired}>Choose method:</Text>}
           {METHODS.map((m) => {
             const isSelected = pickedMethod === m.value;
-            const isOutcomeMatch = fight.resultOutcome && (
-              m.value === 'ko_tko' ? fight.resultOutcome === 'ko_tko' :
-              m.value === 'submission' ? fight.resultOutcome === 'submission' :
-              m.value === 'decision' ? ['decision_unanimous','decision_split','decision_majority'].includes(fight.resultOutcome) :
-              fight.resultOutcome === 'disqualification'
-            );
+            const isOutcomeMatch =
+              fight.resultOutcome &&
+              (m.value === 'ko_tko'
+                ? fight.resultOutcome === 'ko_tko'
+                : m.value === 'submission'
+                  ? fight.resultOutcome === 'submission'
+                  : m.value === 'decision'
+                    ? ['decision_unanimous', 'decision_split', 'decision_majority'].includes(
+                        fight.resultOutcome,
+                      )
+                    : fight.resultOutcome === 'disqualification');
             return (
               <TouchableOpacity
                 key={m.value}
-                style={[s.methodBtn, isSelected && s.methodBtnSelected, !!isOutcomeMatch && !isSelected && s.methodBtnMatch]}
+                style={[
+                  s.methodBtn,
+                  isSelected && s.methodBtnSelected,
+                  !!isOutcomeMatch && !isSelected && s.methodBtnMatch,
+                ]}
                 onPress={() => !locked && onMethod(isSelected ? '' : m.value)}
                 disabled={locked}
               >
@@ -912,29 +1164,65 @@ function FightCard({ fight, picked, pickedMethod, locked, onPick, onMethod }: {
         </View>
       )}
       {fight.resultOutcome && (
-        <Text style={s.resultOutcome}>{formatOutcome(fight.resultOutcome)} · R{fight.resultEndingRound ?? '?'}</Text>
+        <Text style={s.resultOutcome}>
+          {formatOutcome(fight.resultOutcome)} · R{fight.resultEndingRound ?? '?'}
+        </Text>
       )}
     </View>
   );
 }
 
-function FighterBtn({ name, imageUrl, ranking, isChampion, odds, corner, isPicked, isWinner, isLoser, isCorrect, pointsEarned, locked, onPress }: {
-  name: string; imageUrl?: string | null; ranking?: number | null; isChampion?: boolean; odds?: number | null;
+function FighterBtn({
+  name,
+  imageUrl,
+  ranking,
+  isChampion,
+  odds,
+  corner,
+  isPicked,
+  isWinner,
+  isLoser,
+  isCorrect,
+  pointsEarned,
+  locked,
+  onPress,
+}: {
+  name: string;
+  imageUrl?: string | null;
+  ranking?: number | null;
+  isChampion?: boolean;
+  odds?: number | null;
   corner: 'red' | 'blue';
-  isPicked: boolean; isWinner: boolean; isLoser: boolean;
-  isCorrect: boolean | null; pointsEarned?: number; locked: boolean; onPress: () => void;
+  isPicked: boolean;
+  isWinner: boolean;
+  isLoser: boolean;
+  isCorrect: boolean | null;
+  pointsEarned?: number;
+  locked: boolean;
+  onPress: () => void;
 }) {
   const borderColor = isPicked
-    ? isCorrect === true ? '#4caf50' : isCorrect === false ? '#ff5252' : (corner === 'red' ? '#c8102e' : '#1565c0')
-    : isWinner ? '#4caf50'
-    : '#2a2a2a';
+    ? isCorrect === true
+      ? '#4caf50'
+      : isCorrect === false
+        ? '#ff5252'
+        : corner === 'red'
+          ? '#c8102e'
+          : '#1565c0'
+    : isWinner
+      ? '#4caf50'
+      : '#2a2a2a';
   const isFavorite = odds != null && odds < 0;
   const oddsLabel = odds != null ? (odds > 0 ? `+${odds}` : `${odds}`) : null;
   return (
     <TouchableOpacity
       style={[
         s.fighterBtn,
-        { borderColor, opacity: isLoser ? 0.35 : 1, backgroundColor: isPicked ? '#1a1a2e' : '#141414' },
+        {
+          borderColor,
+          opacity: isLoser ? 0.35 : 1,
+          backgroundColor: isPicked ? '#1a1a2e' : '#141414',
+        },
       ]}
       onPress={onPress}
       disabled={locked}
@@ -950,16 +1238,16 @@ function FighterBtn({ name, imageUrl, ranking, isChampion, odds, corner, isPicke
       >
         {name}
       </Text>
-      <Text style={s.fighterRank}>
-        {isChampion ? 'C' : ranking ? `#${ranking}` : 'NR'}
-      </Text>
+      <Text style={s.fighterRank}>{isChampion ? 'C' : ranking ? `#${ranking}` : 'NR'}</Text>
       {oddsLabel && (
         <Text style={[s.fighterOdds, { color: isFavorite ? '#888' : '#4ade80' }]}>{oddsLabel}</Text>
       )}
       {isPicked && isCorrect === true && (
         <Text style={s.pickResult}>✓ +{(+(pointsEarned ?? 0)).toFixed(0)}</Text>
       )}
-      {isPicked && isCorrect === false && <Text style={[s.pickResult, { color: '#ff5252' }]}>✗</Text>}
+      {isPicked && isCorrect === false && (
+        <Text style={[s.pickResult, { color: '#ff5252' }]}>✗</Text>
+      )}
       {isPicked && isCorrect === null && !locked && <Text style={s.pickedTag}>YOUR PICK</Text>}
     </TouchableOpacity>
   );
@@ -967,9 +1255,14 @@ function FighterBtn({ name, imageUrl, ranking, isChampion, odds, corner, isPicke
 
 function formatOutcome(outcome: string) {
   const map: Record<string, string> = {
-    ko_tko: 'KO/TKO', submission: 'SUB',
-    decision_unanimous: 'DEC (U)', decision_split: 'DEC (S)',
-    decision_majority: 'DEC (M)', draw: 'DRAW', no_contest: 'NC', disqualification: 'DQ',
+    ko_tko: 'KO/TKO',
+    submission: 'SUB',
+    decision_unanimous: 'DEC (U)',
+    decision_split: 'DEC (S)',
+    decision_majority: 'DEC (M)',
+    draw: 'DRAW',
+    no_contest: 'NC',
+    disqualification: 'DQ',
   };
   return map[outcome] ?? outcome;
 }
@@ -977,56 +1270,120 @@ function formatOutcome(outcome: string) {
 // ── Staking styles ─────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
-  lockedBadge: { backgroundColor: '#222', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  lockedBadge: {
+    backgroundColor: '#222',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   lockedBadgeText: { color: '#555', fontSize: 11, fontWeight: '700' },
   errorText: { color: '#ff6b6b', fontSize: 13, margin: 16, textAlign: 'center' },
 
   balanceBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#111', borderBottomWidth: 1, borderBottomColor: '#1e1e1e',
-    paddingVertical: 12, paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e1e1e',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   balanceStat: { flex: 1, alignItems: 'center', gap: 3 },
   balanceVal: { color: '#fff', fontSize: 14, fontWeight: '700' },
   balanceLabel: { color: '#444', fontSize: 9, fontWeight: '700', letterSpacing: 0.6 },
   balanceDivider: { width: 1, height: 32, backgroundColor: '#222' },
 
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, padding: 16, paddingBottom: 8 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    padding: 16,
+    paddingBottom: 8,
+  },
   sectionTitle: { color: '#444', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
   sectionSub: { color: '#333', fontSize: 11 },
 
   fightCard: {
-    backgroundColor: '#141414', borderWidth: 1, borderColor: '#242424',
-    borderRadius: 10, padding: 14, marginHorizontal: 12, marginBottom: 10,
+    backgroundColor: '#141414',
+    borderWidth: 1,
+    borderColor: '#242424',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 12,
+    marginBottom: 10,
   },
-  fightCardMeta: { color: '#444', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  fightCardMeta: {
+    color: '#444',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
   fightCardRow: { flexDirection: 'row', alignItems: 'center' },
   stakeFighterBtn: { flex: 1, padding: 8, borderRadius: 8, backgroundColor: '#1a1a1a' },
   fighterImg: { width: 40, height: 50, borderRadius: 4, backgroundColor: '#111', marginBottom: 6 },
-  fighterImgPlaceholder: { width: 40, height: 50, borderRadius: 4, backgroundColor: '#111', marginBottom: 6 },
+  fighterImgPlaceholder: {
+    width: 40,
+    height: 50,
+    borderRadius: 4,
+    backgroundColor: '#111',
+    marginBottom: 6,
+  },
   stakeFighterName: { color: '#ddd', fontSize: 13, fontWeight: '600', lineHeight: 18 },
   oddsText: { fontSize: 12, fontWeight: '700', marginTop: 2 },
   betPill: {
-    backgroundColor: '#c8102e33', color: '#c8102e',
-    fontSize: 10, fontWeight: '700', borderRadius: 10,
-    paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: 'flex-start',
+    backgroundColor: '#c8102e33',
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: '700',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+    alignSelf: 'flex-start',
   },
   vsText: { color: '#333', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginHorizontal: 8 },
 
   slipSection: {
-    margin: 12, marginTop: 4, backgroundColor: '#111',
-    borderRadius: 10, borderWidth: 1, borderColor: '#1e1e1e', overflow: 'hidden',
+    margin: 12,
+    marginTop: 4,
+    backgroundColor: '#111',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e1e1e',
+    overflow: 'hidden',
   },
   slipTitle: {
-    color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 1,
-    padding: 14, backgroundColor: '#141414', borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    color: '#555',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    padding: 14,
+    backgroundColor: '#141414',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   slipBlock: { borderBottomWidth: 1, borderBottomColor: '#1a1a1a', paddingBottom: 10 },
-  slipBlockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, paddingBottom: 8 },
+  slipBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    paddingBottom: 8,
+  },
   slipBlockTitle: { color: '#bbb', fontSize: 13, fontWeight: '700', padding: 12, paddingBottom: 4 },
   parlayOdds: { color: '#ffd700', fontSize: 18, fontWeight: '700', paddingRight: 12 },
 
-  legRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#161616' },
+  legRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#161616',
+  },
   removeBtn: { padding: 4, marginTop: 2 },
   removeBtnText: { color: '#444', fontSize: 12 },
   legName: { color: '#ddd', fontSize: 13, fontWeight: '600' },
@@ -1035,31 +1392,58 @@ const st = StyleSheet.create({
 
   stakeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
   stakeInputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#252525',
-    borderRadius: 6, paddingLeft: 6, height: 32, width: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#252525',
+    borderRadius: 6,
+    paddingLeft: 6,
+    height: 32,
+    width: 120,
   },
   stakeDollar: { color: '#555', fontSize: 12, fontWeight: '700' },
   stakeInput: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '700', paddingHorizontal: 6 },
   payoutText: { color: '#555', fontSize: 12 },
 
   overBudget: { color: '#ff5252', fontSize: 12, textAlign: 'center', paddingVertical: 6 },
-  placeBetsBtn: { margin: 12, backgroundColor: '#c8102e', borderRadius: 8, padding: 14, alignItems: 'center' },
+  placeBetsBtn: {
+    margin: 12,
+    backgroundColor: '#c8102e',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
   placeBetsBtnDisabled: { opacity: 0.4 },
   placeBetsBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   savedSection: {
-    margin: 12, marginTop: 4, backgroundColor: '#111',
-    borderRadius: 10, borderWidth: 1, borderColor: '#1e1e1e', overflow: 'hidden',
+    margin: 12,
+    marginTop: 4,
+    backgroundColor: '#111',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e1e1e',
+    overflow: 'hidden',
   },
   savedSectionLabel: {
-    paddingHorizontal: 16, paddingVertical: 6,
-    color: '#333', fontSize: 10, fontWeight: '700', letterSpacing: 1.2,
-    backgroundColor: '#0d0d0d', borderBottomWidth: 1, borderBottomColor: '#161616',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    color: '#333',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    backgroundColor: '#0d0d0d',
+    borderBottomWidth: 1,
+    borderBottomColor: '#161616',
   },
   savedRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    padding: 12, borderBottomWidth: 1, borderBottomColor: '#161616',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#161616',
   },
   savedName: { color: '#ddd', fontSize: 13, fontWeight: '600' },
   savedOdds: { fontSize: 11, fontWeight: '700', marginTop: 2 },
@@ -1075,12 +1459,23 @@ const st = StyleSheet.create({
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
   content: { paddingBottom: 40 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a', padding: 32 },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0a0a0a',
+    padding: 32,
+  },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
   emptySub: { color: '#666', fontSize: 14, textAlign: 'center' },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16, backgroundColor: '#111', borderBottomWidth: 1, borderBottomColor: '#222',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#111',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
   },
   headerLeft: { flex: 1 },
   eventName: { color: '#fff', fontSize: 16, fontWeight: '700' },
@@ -1088,69 +1483,166 @@ const s = StyleSheet.create({
   pickCount: { flexDirection: 'row', alignItems: 'baseline' },
   pickNum: { fontSize: 26, fontWeight: '800' },
   pickDen: { color: '#444', fontSize: 16, fontWeight: '700' },
-  lockedBanner: { backgroundColor: '#1a1400', padding: 12, borderBottomWidth: 1, borderBottomColor: '#333' },
+  lockedBanner: {
+    backgroundColor: '#1a1400',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
   lockedText: { color: '#888', fontSize: 13, textAlign: 'center' },
   fightCard: {
-    backgroundColor: '#111', borderWidth: 1, borderColor: '#1e1e1e',
-    borderRadius: 10, padding: 14, margin: 12, marginBottom: 0,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#1e1e1e',
+    borderRadius: 10,
+    padding: 14,
+    margin: 12,
+    marginBottom: 0,
   },
   segmentHeader: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 6 },
   segmentLabel: { color: '#c8102e', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
-  titleTag: { color: '#ffd700', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  titleTag: {
+    color: '#ffd700',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
   fightMeta: { color: '#555', fontSize: 12, marginBottom: 10 },
   matchup: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   vsText: { color: '#333', fontWeight: '700', fontSize: 12, alignSelf: 'center' },
   fighterBtn: {
-    flex: 1, borderWidth: 2, borderRadius: 8, padding: 10,
-    alignItems: 'center', minHeight: 120,
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    minHeight: 120,
   },
   fighterBtnImg: { width: 56, height: 64, borderRadius: 6, marginBottom: 6 },
-  fighterBtnImgPlaceholder: { width: 56, height: 64, borderRadius: 6, backgroundColor: '#2a2a2a', marginBottom: 6 },
+  fighterBtnImgPlaceholder: {
+    width: 56,
+    height: 64,
+    borderRadius: 6,
+    backgroundColor: '#2a2a2a',
+    marginBottom: 6,
+  },
   fighterBtnName: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 16 },
   fighterRank: { color: '#555', fontSize: 11, fontWeight: '600', marginTop: 2 },
   fighterOdds: { fontSize: 12, fontWeight: '700', marginTop: 2 },
-  pickedTag: { color: '#c8102e', fontSize: 10, fontWeight: '800', marginTop: 4, letterSpacing: 0.5 },
+  pickedTag: {
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
   pickResult: { color: '#4caf50', fontSize: 11, fontWeight: '700', marginTop: 4 },
-  methodRequired: { color: '#c8102e', fontSize: 10, fontWeight: '700', width: '100%', marginBottom: 4, textAlign: 'center' },
-  methodRow: { flexDirection: 'row', gap: 6, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' },
+  methodRequired: {
+    color: '#c8102e',
+    fontSize: 10,
+    fontWeight: '700',
+    width: '100%',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  methodRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 12,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
   methodBtn: {
-    flex: 1, paddingVertical: 10,
-    borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 5,
-    backgroundColor: '#1a1a1a', alignItems: 'center', minWidth: 60,
+    flex: 1,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    borderRadius: 5,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    minWidth: 60,
   },
   methodBtnSelected: { borderColor: '#c8102e', backgroundColor: '#1a0a0a' },
   methodBtnMatch: { borderColor: '#4caf5044' },
   methodBtnText: { color: '#666', fontSize: 12, fontWeight: '700' },
   methodBtnTextSelected: { color: '#c8102e' },
   resultOutcome: { color: '#555', fontSize: 11, textAlign: 'center', marginTop: 10 },
-  champSection: { margin: 12, marginTop: 16, backgroundColor: '#111', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#2a2000' },
-  champTitle: { color: '#ffd700', fontSize: 13, fontWeight: '800', letterSpacing: 0.5, marginBottom: 4 },
+  champSection: {
+    margin: 12,
+    marginTop: 16,
+    backgroundColor: '#111',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2a2000',
+  },
+  champTitle: {
+    color: '#ffd700',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
   champSub: { color: '#555', fontSize: 11, marginBottom: 12 },
   champGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   champFighterBtn: {
-    width: '31%', padding: 8, borderRadius: 8,
-    backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#2a2a2a',
-    alignItems: 'center', justifyContent: 'center', minHeight: 80,
+    width: '31%',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
   },
   champFighterBtnSelected: { borderColor: '#ffd700', backgroundColor: '#1a1600' },
   champFighterImg: { width: 44, height: 44, borderRadius: 22, marginBottom: 6 },
-  champFighterImgPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2a2a2a', marginBottom: 6 },
-  champFighterName: { fontSize: 10, fontWeight: '700', textAlign: 'center', lineHeight: 13, color: '#bbb' },
+  champFighterImgPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2a2a2a',
+    marginBottom: 6,
+  },
+  champFighterName: {
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 13,
+    color: '#bbb',
+  },
   champFighterNameSelected: { color: '#ffd700' },
   champSelectedTag: { color: '#ffd700', fontSize: 9, fontWeight: '800', marginTop: 2 },
   champSummaryCard: {
-    margin: 12, marginTop: 8, backgroundColor: '#111',
-    borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#2a2000',
+    margin: 12,
+    marginTop: 8,
+    backgroundColor: '#111',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2a2000',
   },
-  champSummaryLabel: { color: '#ffd700', fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 8 },
+  champSummaryLabel: {
+    color: '#ffd700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
   champSummaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   champSummaryName: { color: '#ddd', fontSize: 14, fontWeight: '700' },
   champCorrectText: { color: '#4caf50', fontWeight: '700', fontSize: 13 },
   champWrongText: { color: '#ff5252', fontWeight: '700', fontSize: 13 },
   champPendingText: { color: '#888', fontSize: 12 },
   summaryRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#1a1a1a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   summaryFight: { flex: 2 },
   summaryFightText: { fontSize: 13, fontWeight: '700' },
@@ -1166,13 +1658,20 @@ const s = StyleSheet.create({
   pendingText: { color: '#555', fontSize: 13 },
   noPickText: { color: '#333', fontSize: 13 },
   editBtn: {
-    margin: 16, padding: 14, borderRadius: 8,
-    borderWidth: 1, borderColor: '#333', alignItems: 'center',
+    margin: 16,
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
   },
   editBtnText: { color: '#888', fontSize: 14, fontWeight: '600' },
   saveBtn: {
-    margin: 16, backgroundColor: '#c8102e', borderRadius: 8,
-    padding: 16, alignItems: 'center',
+    margin: 16,
+    backgroundColor: '#c8102e',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },

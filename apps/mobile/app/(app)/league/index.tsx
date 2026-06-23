@@ -1,11 +1,24 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { apiClient } from '../../../src/api/client';
+import { useLeagueStore } from '../../../src/store/league.store';
+import { useRouter } from 'expo-router';
 import type { League } from '@fantasy-ufc/shared';
+import LeagueHomeScreen from './[leagueId]/index';
 
-export default function LeaguePickerScreen() {
+// "League Home" tab. Follows the selected league: shows that league's home when one is
+// selected, otherwise a picker to choose one.
+export default function LeagueTab() {
   const router = useRouter();
+  const currentLeagueId = useLeagueStore((s) => s.currentLeagueId);
+  const setCurrentLeagueId = useLeagueStore((s) => s.setCurrentLeagueId);
 
   const { data: leagues = [], isLoading } = useQuery<League[]>({
     queryKey: ['leagues'],
@@ -13,9 +26,17 @@ export default function LeaguePickerScreen() {
   });
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator color="#c8102e" /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color="#c8102e" />
+      </View>
+    );
   }
 
+  const selected = currentLeagueId ? leagues.find((l) => l.id === currentLeagueId) : null;
+  if (selected) return <LeagueHomeScreen leagueIdProp={selected.id} />;
+
+  // No league selected → pick one.
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -39,12 +60,14 @@ export default function LeaguePickerScreen() {
         <TouchableOpacity
           key={league.id}
           style={styles.card}
-          onPress={() => router.push(`/(app)/league/${league.id}`)}
+          onPress={() => setCurrentLeagueId(league.id)}
         >
           <View style={styles.cardLeft}>
             <Text style={styles.leagueName}>{league.name}</Text>
             <View style={styles.metaRow}>
-              <Text style={styles.leagueMeta}>{league.memberCount} / {league.maxTeams} teams</Text>
+              <Text style={styles.leagueMeta}>
+                {league.memberCount} / {league.maxTeams} teams
+              </Text>
               {(league as any).leagueFormat === 'staking' && (
                 <View style={styles.formatBadge}>
                   <Text style={styles.formatText}>STAKING</Text>
@@ -72,8 +95,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0a' },
 
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 20, borderBottomWidth: 1, borderBottomColor: '#222',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
   },
   title: { color: '#fff', fontSize: 22, fontWeight: '700' },
   createLink: { color: '#c8102e', fontSize: 14, fontWeight: '600' },
@@ -85,16 +112,33 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
   card: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 18, marginHorizontal: 16, marginTop: 12,
-    backgroundColor: '#1a1a1a', borderRadius: 10, borderWidth: 1, borderColor: '#2a2a2a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   cardLeft: { flex: 1 },
   leagueName: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   leagueMeta: { color: '#666', fontSize: 13 },
-  formatBadge: { backgroundColor: '#1a1000', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  formatBadge: {
+    backgroundColor: '#1a1000',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
   formatText: { color: '#ffd700', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  statusBadge: { backgroundColor: '#333', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  statusBadge: {
+    backgroundColor: '#333',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   statusText: { color: '#aaa', fontSize: 11, fontWeight: '700' },
 });

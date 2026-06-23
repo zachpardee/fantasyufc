@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Trophy, Swords, Settings } from 'lucide-react-native';
+import { Home, Trophy, Swords, Users, Settings } from 'lucide-react-native';
 
 // Anchor the tab navigator on League Home so re-tapping a tab doesn't bounce to User Home.
 export const unstable_settings = {
@@ -9,6 +9,13 @@ export const unstable_settings = {
 export default function AppLayout() {
   return (
     <Tabs
+      screenListeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Disable the default "re-tap a focused tab resets to the initial route"
+          // behavior, which was bouncing double-taps to User Home.
+          if (navigation.isFocused()) (e as any).preventDefault();
+        },
+      })}
       screenOptions={{
         headerStyle: { backgroundColor: '#0a0a0a' },
         headerTintColor: '#fff',
@@ -19,19 +26,46 @@ export default function AppLayout() {
     >
       <Tabs.Screen
         name="league"
-        options={{ title: 'League Home', tabBarLabel: 'League Home', headerShown: false, tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} /> }}
+        options={{
+          title: 'League Home',
+          tabBarLabel: 'League Home',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Trophy color={color} size={size ?? 22} />,
+        }}
+      />
+      <Tabs.Screen
+        name="matchup"
+        options={{
+          title: 'Matchup',
+          tabBarLabel: 'Matchup',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size ?? 22} />,
+        }}
       />
       <Tabs.Screen
         name="current-event"
-        options={{ title: 'Current Event', tabBarLabel: 'Current Event', headerShown: false, tabBarIcon: ({ color, size }) => <Swords color={color} size={size ?? 22} /> }}
+        options={{
+          title: 'Current Event',
+          tabBarLabel: 'Current Event',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Swords color={color} size={size ?? 22} />,
+        }}
       />
       <Tabs.Screen
         name="index"
-        options={{ title: 'User Home', tabBarLabel: 'User Home', tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} /> }}
+        options={{
+          title: 'User Home',
+          tabBarLabel: 'User Home',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size ?? 22} />,
+        }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarLabel: 'Settings', tabBarIcon: ({ color, size }) => <Settings color={color} size={size ?? 22} /> }}
+        options={{
+          title: 'Settings',
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={size ?? 22} />,
+        }}
       />
       {/* Fighters browser still exists as a route, just not shown in the tab bar */}
       <Tabs.Screen name="fighters" options={{ href: null }} />

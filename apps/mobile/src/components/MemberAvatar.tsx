@@ -15,8 +15,12 @@ export function MemberAvatar({ name, color, size = 36, avatarUrl }: MemberAvatar
       <Image
         source={{ uri: avatarUrl }}
         style={{
-          width: size, height: size, borderRadius: size / 2,
-          borderWidth: 2, borderColor: accent, backgroundColor: '#1a1a1a',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 2,
+          borderColor: accent,
+          backgroundColor: '#1a1a1a',
         }}
         resizeMode="cover"
       />
