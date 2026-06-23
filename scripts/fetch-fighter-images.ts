@@ -1,16 +1,22 @@
 import { Client } from 'pg';
 
 const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) { console.error('DATABASE_URL required'); process.exit(1); }
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL required');
+  process.exit(1);
+}
 
 const client = new Client({ connectionString: DATABASE_URL });
 
 function slugify(firstName: string, lastName: string): string {
   const clean = (s: string) =>
-    s.toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')  // strip accents
+    s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // strip accents
       .replace(/[^a-z0-9\s-]/g, '')
-      .trim().replace(/\s+/g, '-');
+      .trim()
+      .replace(/\s+/g, '-');
 
   const first = clean(firstName);
   const last = clean(lastName);
@@ -26,7 +32,7 @@ async function fetchImageUrl(firstName: string, lastName: string): Promise<strin
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'text/html',
+        Accept: 'text/html',
       },
     });
     if (!res.ok) {
@@ -54,7 +60,9 @@ async function main() {
   await client.connect();
 
   const { rows: fighters } = await client.query<{
-    id: string; first_name: string; last_name: string;
+    id: string;
+    first_name: string;
+    last_name: string;
   }>(`SELECT id, first_name, last_name FROM fighters ORDER BY first_name`);
 
   console.log(`Fetching images for ${fighters.length} fighters...\n`);

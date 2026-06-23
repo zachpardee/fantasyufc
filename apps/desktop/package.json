@@ -21,10 +21,22 @@
   "build": {
     "appId": "com.fantasyufc.desktop",
     "productName": "Fantasy UFC",
-    "directories": { "output": "dist-electron" },
-    "files": ["dist/**", "src/**"],
-    "mac": { "category": "public.app-category.sports-games", "target": "dmg" },
-    "win": { "target": "nsis" },
-    "linux": { "target": "AppImage" }
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**",
+      "src/**"
+    ],
+    "mac": {
+      "category": "public.app-category.sports-games",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

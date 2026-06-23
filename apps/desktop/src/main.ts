@@ -63,17 +63,17 @@ function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: 'Fantasy UFC',
-      submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'quit' },
-      ],
+      submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }],
     },
     {
       label: 'Edit',
       submenu: [
-        { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
-        { role: 'cut' }, { role: 'copy' }, { role: 'paste' },
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
       ],
     },
     {

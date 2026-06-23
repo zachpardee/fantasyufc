@@ -23,7 +23,9 @@ async function main() {
     const events = await fetchUpcomingEvents();
     console.log(`   Found ${events.length} event(s) on scoreboard`);
     for (const e of events) {
-      console.log(`   • [${e.status}] ${e.name} (${e.scheduledAt.slice(0, 10)}) — ${e.fights.length} fights, espnId=${e.espnEventId}`);
+      console.log(
+        `   • [${e.status}] ${e.name} (${e.scheduledAt.slice(0, 10)}) — ${e.fights.length} fights, espnId=${e.espnEventId}`,
+      );
     }
   } catch (err) {
     console.error('   ESPN fetch FAILED:', err);
@@ -54,7 +56,9 @@ async function main() {
 
   for (const e of upcomingEvents) {
     const flag = +e.fight_count !== +e.resolved_count ? '⚠️  MISSING FIGHTER IDs' : '✅';
-    console.log(`   ${flag} ${e.name} (${e.scheduled_at?.toISOString().slice(0, 10)}) — ${e.resolved_count}/${e.fight_count} fights resolved`);
+    console.log(
+      `   ${flag} ${e.name} (${e.scheduled_at?.toISOString().slice(0, 10)}) — ${e.resolved_count}/${e.fight_count} fights resolved`,
+    );
   }
 
   // ── 4. Check fighters missing ESPN IDs (could break fighter resolution) ─
@@ -87,9 +91,11 @@ async function main() {
     const result = await searchEventResults('UFC 309');
     if (result) {
       console.log(`   ✅ Found: "${result.name}" — ${result.results.length} fight result(s)`);
-      result.results.slice(0, 3).forEach((r) =>
-        console.log(`      ${r.winnerName} def. ${r.loserName} by ${r.method} R${r.round}`),
-      );
+      result.results
+        .slice(0, 3)
+        .forEach((r) =>
+          console.log(`      ${r.winnerName} def. ${r.loserName} by ${r.method} R${r.round}`),
+        );
     } else {
       console.log('   ⚠️  No SportsDB results found — method enrichment will be skipped');
     }
@@ -99,7 +105,9 @@ async function main() {
 
   // ── 6. Validate a past fight result processes without error ───────────
   console.log('\n6. Testing processFightResult on an existing result...');
-  const { rows: [pastResult] } = await db.query(`
+  const {
+    rows: [pastResult],
+  } = await db.query(`
     SELECT fr.id, f.id AS fight_id, rf.first_name || ' ' || rf.last_name AS winner_name,
            e.name AS event_name
     FROM fight_results fr
@@ -146,4 +154,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

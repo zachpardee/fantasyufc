@@ -17,23 +17,28 @@ export interface SeasonInfo {
   slug: SeasonSlug;
   name: string;
   year: number;
-  label: string;          // "Winter 2026"
-  startsAt: Date;         // regular season opens
-  regularEndsAt: Date;    // regular season closes (= league season_ends_at)
-  finalsTarget: Date;     // ideal finals (PPV) date
+  label: string; // "Winter 2026"
+  startsAt: Date; // regular season opens
+  regularEndsAt: Date; // regular season closes (= league season_ends_at)
+  finalsTarget: Date; // ideal finals (PPV) date
 }
 
 const SEASON_DEFS: Array<{
-  slug: SeasonSlug; name: string;
-  start: [number, number]; regEnd: [number, number]; finals: [number, number];
+  slug: SeasonSlug;
+  name: string;
+  start: [number, number];
+  regEnd: [number, number];
+  finals: [number, number];
 }> = [
-  { slug: 'winter', name: 'Winter', start: [0, 2],  regEnd: [3, 19],  finals: [4, 9] },
-  { slug: 'summer', name: 'Summer', start: [4, 11], regEnd: [7, 23],  finals: [8, 12] },
-  { slug: 'fall',   name: 'Fall',   start: [8, 14], regEnd: [10, 29], finals: [11, 12] },
+  { slug: 'winter', name: 'Winter', start: [0, 2], regEnd: [3, 19], finals: [4, 9] },
+  { slug: 'summer', name: 'Summer', start: [4, 11], regEnd: [7, 23], finals: [8, 12] },
+  { slug: 'fall', name: 'Fall', start: [8, 14], regEnd: [10, 29], finals: [11, 12] },
 ];
 
 function utc(year: number, [month, day]: [number, number], endOfDay = false): Date {
-  return new Date(Date.UTC(year, month, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0));
+  return new Date(
+    Date.UTC(year, month, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0),
+  );
 }
 
 export function seasonsOfYear(year: number): SeasonInfo[] {
@@ -54,7 +59,10 @@ export function seasonsOfYear(year: number): SeasonInfo[] {
  * next season to start.
  */
 export function currentOrNextSeason(now: Date = new Date(), minRemainingDays = 21): SeasonInfo {
-  const candidates = [...seasonsOfYear(now.getUTCFullYear()), ...seasonsOfYear(now.getUTCFullYear() + 1)];
+  const candidates = [
+    ...seasonsOfYear(now.getUTCFullYear()),
+    ...seasonsOfYear(now.getUTCFullYear() + 1),
+  ];
   const msLeftNeeded = minRemainingDays * 24 * 60 * 60 * 1000;
   for (const s of candidates) {
     if (now >= s.startsAt && s.regularEndsAt.getTime() - now.getTime() >= msLeftNeeded) return s;
@@ -66,7 +74,11 @@ export function currentOrNextSeason(now: Date = new Date(), minRemainingDays = 2
 /** Match a season by its regular-season end date (a league's season_ends_at). */
 export function seasonByRegularEnd(regularEndsAt: Date, toleranceDays = 3): SeasonInfo | null {
   const tol = toleranceDays * 24 * 60 * 60 * 1000;
-  for (const year of [regularEndsAt.getUTCFullYear() - 1, regularEndsAt.getUTCFullYear(), regularEndsAt.getUTCFullYear() + 1]) {
+  for (const year of [
+    regularEndsAt.getUTCFullYear() - 1,
+    regularEndsAt.getUTCFullYear(),
+    regularEndsAt.getUTCFullYear() + 1,
+  ]) {
     for (const s of seasonsOfYear(year)) {
       if (Math.abs(s.regularEndsAt.getTime() - regularEndsAt.getTime()) <= tol) return s;
     }

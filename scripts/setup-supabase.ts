@@ -22,19 +22,16 @@ const REQUIRED_VARS = [
   'SUPABASE_SERVICE_ROLE_KEY',
 ];
 
-const OPTIONAL_VARS = [
-  'REDIS_URL',
-  'JWT_SECRET',
-  'EXPO_ACCESS_TOKEN',
-  'ADMIN_USER_IDS',
-];
+const OPTIONAL_VARS = ['REDIS_URL', 'JWT_SECRET', 'EXPO_ACCESS_TOKEN', 'ADMIN_USER_IDS'];
 
 function checkEnv() {
   const missing = REQUIRED_VARS.filter((v) => !process.env[v]);
   if (missing.length) {
     console.error('\n[setup] Missing required env vars:');
     missing.forEach((v) => console.error(`  ✗ ${v}`));
-    console.error('\nCopy .env.example → .env and fill in the values from your Supabase project dashboard.\n');
+    console.error(
+      '\nCopy .env.example → .env and fill in the values from your Supabase project dashboard.\n',
+    );
     process.exit(1);
   }
 
@@ -63,9 +60,9 @@ async function migrate(db: Pool) {
 
   let ran = 0;
   for (const file of files) {
-    const { rows: [existing] } = await db.query(
-      `SELECT id FROM _migrations WHERE filename = $1`, [file],
-    );
+    const {
+      rows: [existing],
+    } = await db.query(`SELECT id FROM _migrations WHERE filename = $1`, [file]);
     if (existing) {
       console.log(`  - ${file} (already run, skipping)`);
       continue;
@@ -158,9 +155,7 @@ async function main() {
 
   const db = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL?.includes('supabase.com')
-      ? { rejectUnauthorized: false }
-      : false,
+    ssl: process.env.DATABASE_URL?.includes('supabase.com') ? { rejectUnauthorized: false } : false,
   });
 
   console.log('[1/3] Testing database connection...');

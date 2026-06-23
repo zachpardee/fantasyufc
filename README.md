@@ -10,7 +10,7 @@ ESPN-style fantasy sports app for UFC. Build a league, predict fight outcomes, a
 
 ## Features
 
-- 🥊 **Two league formats** — *Pick'em* (predict winners & finish methods for points) and *Staking* (bet a weekly budget with odds-based payouts)
+- 🥊 **Two league formats** — _Pick'em_ (predict winners & finish methods for points) and _Staking_ (bet a weekly budget with odds-based payouts)
 - 📊 **Live scoring** — fight results pulled from ESPN in real time; scores update as the card unfolds
 - ⚔️ **Head-to-head matchups** — your score faces a different league member every event
 - 🏆 **Playoffs & a season champion** — plus a BMF belt that travels to whoever beats the current holder
@@ -41,10 +41,10 @@ ESPN-style fantasy sports app for UFC. Build a league, predict fight outcomes, a
 
 ## Live deployment
 
-| Service | URL |
-|---------|-----|
-| Web | https://fantasyfightingleague.vercel.app |
-| API | https://fantasy-fighting-league-production.up.railway.app |
+| Service | URL                                                       |
+| ------- | --------------------------------------------------------- |
+| Web     | https://fantasyfightingleague.vercel.app                  |
+| API     | https://fantasy-fighting-league-production.up.railway.app |
 
 ---
 
@@ -74,6 +74,7 @@ cp .env.example .env
 ```
 
 You'll need:
+
 - `SUPABASE_URL` — Supabase Dashboard → Project Settings → API
 - `SUPABASE_ANON_KEY` — same page
 - `SUPABASE_SERVICE_ROLE_KEY` — same page, service role key (keep secret)
@@ -106,6 +107,7 @@ npx tsx seed-full-league.ts
 ## Running locally
 
 **Terminal 1 — API server**
+
 ```bash
 npm run dev --workspace=apps/api
 ```
@@ -113,6 +115,7 @@ npm run dev --workspace=apps/api
 Env vars are loaded automatically from `apps/api/.env` via `--env-file`.
 
 **Terminal 2 — Web app**
+
 ```bash
 node_modules/.bin/vite apps/web
 ```
@@ -125,11 +128,11 @@ Then open [http://localhost:5173](http://localhost:5173).
 
 ## Apps
 
-| App | Command | URL |
-|-----|---------|-----|
-| Web | `node_modules/.bin/vite apps/web` | http://localhost:5173 |
-| API | `npm run dev --workspace=apps/api` | http://localhost:3000 |
-| Mobile | `cd apps/mobile && npx expo start` | Expo Go app |
+| App    | Command                            | URL                   |
+| ------ | ---------------------------------- | --------------------- |
+| Web    | `node_modules/.bin/vite apps/web`  | http://localhost:5173 |
+| API    | `npm run dev --workspace=apps/api` | http://localhost:3000 |
+| Mobile | `cd apps/mobile && npx expo start` | Expo Go app           |
 
 ---
 
@@ -137,12 +140,12 @@ Then open [http://localhost:5173](http://localhost:5173).
 
 ### Services needed
 
-| What | Provider | Notes |
-|------|----------|-------|
-| API hosting | [Railway](https://railway.app) | Free tier |
-| Web hosting | [Vercel](https://vercel.com) | Free tier |
-| Redis | [Upstash](https://upstash.com) | Free tier, use `rediss://` URL |
-| Database | Supabase | Already cloud-hosted |
+| What        | Provider                       | Notes                          |
+| ----------- | ------------------------------ | ------------------------------ |
+| API hosting | [Railway](https://railway.app) | Free tier                      |
+| Web hosting | [Vercel](https://vercel.com)   | Free tier                      |
+| Redis       | [Upstash](https://upstash.com) | Free tier, use `rediss://` URL |
+| Database    | Supabase                       | Already cloud-hosted           |
 
 ### Deploy API (Railway)
 

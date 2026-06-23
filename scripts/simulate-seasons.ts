@@ -21,7 +21,7 @@
 type Method = 'ko' | 'sub' | 'dec';
 
 interface Fight {
-  pFav: number;          // favorite win probability
+  pFav: number; // favorite win probability
   favWon: boolean;
   method: Method;
   underdogPlusOdds: number; // american odds of the underdog
@@ -30,18 +30,18 @@ interface Fight {
 interface PlayerSkill {
   name: string;
   favDiscipline: number; // prob of picking the favorite (sharps higher)
-  methodAcc: number;     // prob of naming the right method given right winner
+  methodAcc: number; // prob of naming the right method given right winner
 }
 
 const rand = () => Math.random();
 
 function sampleFight(): Fight {
   // Beta(2,3)-ish skewed toward moderate favorites
-  const u = (rand() + rand() + rand()) / 3;       // ~bell on [0,1]
-  const pFav = 0.51 + u * 0.37;                   // .51 - .88
+  const u = (rand() + rand() + rand()) / 3; // ~bell on [0,1]
+  const pFav = 0.51 + u * 0.37; // .51 - .88
   const favWon = rand() < pFav;
   const r = rand();
-  const method: Method = r < 0.31 ? 'ko' : r < 0.50 ? 'sub' : 'dec';
+  const method: Method = r < 0.31 ? 'ko' : r < 0.5 ? 'sub' : 'dec';
   const underdogPlusOdds = Math.round((pFav / (1 - pFav)) * 100);
   return { pFav, favWon, method, underdogPlusOdds };
 }
@@ -128,39 +128,49 @@ function pairings(n: number, round: number): Array<[number, number]> {
   const order = [fixed, ...rotated];
   const out: Array<[number, number]> = [];
   for (let i = 0; i < m / 2; i++) {
-    const a = order[i], b = order[m - 1 - i];
+    const a = order[i],
+      b = order[m - 1 - i];
     if (a !== -1 && b !== -1) out.push([a, b]);
   }
   return out;
 }
 
 interface SeasonResult {
-  pointsByWeek: number[][];   // [week][team] cumulative points (or bankroll)
+  pointsByWeek: number[][]; // [week][team] cumulative points (or bankroll)
   winsByWeek: number[][];
-  finalRank: number[];        // rank[team] after regular season (0 = first)
-  champion: number;           // team index that wins playoffs
+  finalRank: number[]; // rank[team] after regular season (0 = first)
+  champion: number; // team index that wins playoffs
   regularSeasonWinner: number;
 }
 
 function rankTeams(points: number[], wins: number[]): number[] {
   const idx = points.map((_, i) => i);
-  idx.sort((a, b) => (points[b] - points[a]) || (wins[b] - wins[a]));
+  idx.sort((a, b) => points[b] - points[a] || wins[b] - wins[a]);
   const rank = new Array(points.length);
-  idx.forEach((team, pos) => { rank[team] = pos; });
+  idx.forEach((team, pos) => {
+    rank[team] = pos;
+  });
   return rank;
 }
 
-function simulateSeason(skills: PlayerSkill[], events: number, format: 'pickem' | 'staking'): SeasonResult {
+function simulateSeason(
+  skills: PlayerSkill[],
+  events: number,
+  format: 'pickem' | 'staking',
+): SeasonResult {
   const n = skills.length;
   const points = new Array(n).fill(0);
   const wins = new Array(n).fill(0);
   const pointsByWeek: number[][] = [];
   const winsByWeek: number[][] = [];
   const styles: Array<'safe' | 'balanced' | 'degen'> = skills.map((_, i) =>
-    i % 3 === 0 ? 'safe' : i % 3 === 1 ? 'balanced' : 'degen');
+    i % 3 === 0 ? 'safe' : i % 3 === 1 ? 'balanced' : 'degen',
+  );
 
   const eventScore = (team: number, fights: Fight[]) =>
-    format === 'pickem' ? pickemEventScore(skills[team], fights) : stakingEventProfit(styles[team], fights);
+    format === 'pickem'
+      ? pickemEventScore(skills[team], fights)
+      : stakingEventProfit(styles[team], fights);
 
   for (let w = 0; w < events; w++) {
     const fights = Array.from({ length: 6 }, sampleFight);
@@ -182,7 +192,8 @@ function simulateSeason(skills: PlayerSkill[], events: number, format: 'pickem' 
   // playoffs: two more events
   const playoffWin = (a: number, b: number): number => {
     const fights = Array.from({ length: 6 }, sampleFight);
-    const sa = eventScore(a, fights), sb = eventScore(b, fights);
+    const sa = eventScore(a, fights),
+      sb = eventScore(b, fights);
     if (sa === sb) return rank[a] < rank[b] ? a : b; // tie → higher seed
     return sa > sb ? a : b;
   };
@@ -202,8 +213,8 @@ function makeSkills(n: number): PlayerSkill[] {
     const t = n === 1 ? 0 : i / (n - 1); // 0 = sharpest, 1 = most casual
     out.push({
       name: `P${i + 1}`,
-      favDiscipline: 0.92 - t * 0.22,  // .92 sharp -> .70 casual
-      methodAcc: 0.52 - t * 0.10,      // .52 -> .42
+      favDiscipline: 0.92 - t * 0.22, // .92 sharp -> .70 casual
+      methodAcc: 0.52 - t * 0.1, // .52 -> .42
     });
   }
   return out;
@@ -216,10 +227,19 @@ function quantile(xs: number[], q: number): number {
 
 function run(format: 'pickem' | 'staking', nTeams: number, events: number, sims: number) {
   const skills = makeSkills(nTeams);
-  const checkpoints = [Math.floor(events * 0.25), Math.floor(events * 0.5), Math.floor(events * 0.75), events - 1];
+  const checkpoints = [
+    Math.floor(events * 0.25),
+    Math.floor(events * 0.5),
+    Math.floor(events * 0.75),
+    events - 1,
+  ];
 
-  let leaderQ1HoldsRS = 0, leaderHalfHoldsRS = 0, leaderHalfWinsTitle = 0;
-  let sharpestWinsRS = 0, sharpestWinsTitle = 0, casualMakesPlayoffs = 0;
+  let leaderQ1HoldsRS = 0,
+    leaderHalfHoldsRS = 0,
+    leaderHalfWinsTitle = 0;
+  let sharpestWinsRS = 0,
+    sharpestWinsTitle = 0,
+    casualMakesPlayoffs = 0;
   const titleByHalfRank = new Array(nTeams).fill(0);
   const gapFirstToSecond: Record<number, number[]> = {};
   const gapFourthToFifth: Record<number, number[]> = {};
@@ -227,12 +247,15 @@ function run(format: 'pickem' | 'staking', nTeams: number, events: number, sims:
   // per-event score swing (90th pct) used to define "catchable"
   const perEventDiffs: number[] = [];
 
-  for (const c of checkpoints) { gapFirstToSecond[c] = []; gapFourthToFifth[c] = []; }
+  for (const c of checkpoints) {
+    gapFirstToSecond[c] = [];
+    gapFourthToFifth[c] = [];
+  }
 
   for (let s = 0; s < sims; s++) {
     const r = simulateSeason(skills, events, format);
-    const metric = (w: number) => format === 'pickem' ? r.pointsByWeek[w] : r.winsByWeek[w];
-    const tiebreak = (w: number) => format === 'pickem' ? r.winsByWeek[w] : r.pointsByWeek[w];
+    const metric = (w: number) => (format === 'pickem' ? r.pointsByWeek[w] : r.winsByWeek[w]);
+    const tiebreak = (w: number) => (format === 'pickem' ? r.winsByWeek[w] : r.pointsByWeek[w]);
 
     for (const c of checkpoints) {
       const pts = metric(c);
@@ -256,7 +279,7 @@ function run(format: 'pickem' | 'staking', nTeams: number, events: number, sims:
     const w = Math.floor(events / 2);
     const prev = w > 0 ? metric(w - 1) : new Array(nTeams).fill(0);
     const cur = metric(w);
-    perEventDiffs.push(Math.abs((cur[0] - prev[0]) - (cur[1] - prev[1])));
+    perEventDiffs.push(Math.abs(cur[0] - prev[0] - (cur[1] - prev[1])));
 
     // aliveness at 75%: teams within catchable distance of 4th place
     const c75 = checkpoints[2];
@@ -266,30 +289,45 @@ function run(format: 'pickem' | 'staking', nTeams: number, events: number, sims:
     const fourth = sorted75[3];
     // realistic max gain per event vs the team you're chasing
     const maxSwing = format === 'pickem' ? 45 : 1.0; // pickem pts vs staking H2H wins/event
-    const alive = pts75.filter((p) => p >= fourth || (fourth - p) <= remaining * maxSwing).length;
+    const alive = pts75.filter((p) => p >= fourth || fourth - p <= remaining * maxSwing).length;
     aliveAt75.push(alive);
   }
 
   const pct = (x: number) => ((100 * x) / sims).toFixed(1) + '%';
-  console.log(`\n=== ${format.toUpperCase()} · ${nTeams} teams · ${events}-event season · ${sims} simulated seasons ===`);
+  console.log(
+    `\n=== ${format.toUpperCase()} · ${nTeams} teams · ${events}-event season · ${sims} simulated seasons ===`,
+  );
   const unit = format === 'pickem' ? 'pts' : 'wins';
   for (const c of checkpoints) {
     const label = c === events - 1 ? 'final' : `week ${c + 1}/${events}`;
     const g12 = gapFirstToSecond[c];
     const line = `gap 1st→2nd @ ${label}: median ${quantile(g12, 0.5).toFixed(0)} ${unit}, p90 ${quantile(g12, 0.9).toFixed(0)} ${unit}`;
     const g45 = gapFourthToFifth[c];
-    const bubble = nTeams > 4 ? ` | playoff bubble (4th→5th): median ${quantile(g45, 0.5).toFixed(0)} ${unit}` : '';
+    const bubble =
+      nTeams > 4
+        ? ` | playoff bubble (4th→5th): median ${quantile(g45, 0.5).toFixed(0)} ${unit}`
+        : '';
     console.log('  ' + line + bubble);
   }
   console.log(`  P(leader at 25% mark finishes #1 in regular season): ${pct(leaderQ1HoldsRS)}`);
   console.log(`  P(leader at midseason finishes #1 in regular season): ${pct(leaderHalfHoldsRS)}`);
-  console.log(`  P(midseason leader wins the TITLE (playoffs)):        ${pct(leaderHalfWinsTitle)}`);
+  console.log(
+    `  P(midseason leader wins the TITLE (playoffs)):        ${pct(leaderHalfWinsTitle)}`,
+  );
   console.log(`  P(sharpest player finishes #1 regular season):        ${pct(sharpestWinsRS)}`);
   console.log(`  P(sharpest player wins title):                        ${pct(sharpestWinsTitle)}`);
-  console.log(`  P(most casual player makes playoffs):                 ${pct(casualMakesPlayoffs)}`);
-  console.log(`  teams still alive for a playoff spot at 75% mark:     median ${quantile(aliveAt75, 0.5)} of ${nTeams} (p10 ${quantile(aliveAt75, 0.1)})`);
-  console.log(`  title equity by midseason rank: [${titleByHalfRank.map((x) => pct(x)).join(', ')}]`);
-  console.log(`  typical one-event score swing between two teams: median ${quantile(perEventDiffs, 0.5).toFixed(0)} ${unit === 'pts' ? 'pts' : ''}`);
+  console.log(
+    `  P(most casual player makes playoffs):                 ${pct(casualMakesPlayoffs)}`,
+  );
+  console.log(
+    `  teams still alive for a playoff spot at 75% mark:     median ${quantile(aliveAt75, 0.5)} of ${nTeams} (p10 ${quantile(aliveAt75, 0.1)})`,
+  );
+  console.log(
+    `  title equity by midseason rank: [${titleByHalfRank.map((x) => pct(x)).join(', ')}]`,
+  );
+  console.log(
+    `  typical one-event score swing between two teams: median ${quantile(perEventDiffs, 0.5).toFixed(0)} ${unit === 'pts' ? 'pts' : ''}`,
+  );
 }
 
 // 4-month season: UFC runs ~3.3 events/month -> ~13 events
