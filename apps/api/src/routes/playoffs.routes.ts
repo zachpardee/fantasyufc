@@ -36,13 +36,19 @@ async function getBracket(leagueId: string) {
     [leagueId],
   );
 
-  const sortCol = isStaking ? 'lm.staking_balance' : 'lm.total_points';
+  // This "if playoffs started today" seed order MUST match the real seeding used when
+  // playoffs actually start (see startPlayoffs below): staking → wins first, then bankroll;
+  // pick'em → total points, then wins. They previously disagreed for staking (balance-first
+  // here vs wins-first there), so the preview showed a different order than the real bracket.
+  const orderBy = isStaking
+    ? 'lm.wins DESC, lm.staking_balance DESC'
+    : 'lm.total_points DESC, lm.wins DESC';
   const { rows: seeds } = await db.query(
     `
     SELECT lm.id, lm.team_name, lm.wins, lm.losses, lm.total_points, lm.staking_balance
     FROM league_members lm
     WHERE lm.league_id = $1 AND lm.is_active = true
-    ORDER BY ${sortCol} DESC, lm.wins DESC
+    ORDER BY ${orderBy}
     LIMIT 4
   `,
     [leagueId],
