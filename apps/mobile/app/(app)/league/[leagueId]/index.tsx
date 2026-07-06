@@ -26,6 +26,7 @@ import {
   Gavel,
 } from 'lucide-react-native';
 import { apiClient } from '../../../../src/api/client';
+import { hasUfcBelt, hasBmfBelt } from '../../../../src/lib/belts';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { useLeagueStore } from '../../../../src/store/league.store';
 import { MemberAvatar } from '../../../../src/components/MemberAvatar';
@@ -228,6 +229,9 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
     },
   ].filter((n) => n.show);
 
+  const ufc = (mem: any) => hasUfcBelt(mem, members, league);
+  const bmf = (mem: any) => hasBmfBelt(mem, league);
+
   return (
     <>
       <ScrollView
@@ -334,6 +338,8 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
                         color={leftColor}
                         avatarUrl={(leftMember as any)?.avatarUrl}
                         size={30}
+                        ufcBelt={ufc(leftMember)}
+                        bmfBelt={bmf(leftMember)}
                       />
                       <Text style={s.teamSideName} numberOfLines={1}>
                         {leftName}
@@ -354,6 +360,8 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
                         color={rightColor}
                         avatarUrl={(rightMember as any)?.avatarUrl}
                         size={30}
+                        ufcBelt={ufc(rightMember)}
+                        bmfBelt={bmf(rightMember)}
                       />
                       <Text style={s.teamSideName} numberOfLines={1}>
                         {rightName}
@@ -529,12 +537,9 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
                       color={(m as any).avatarColor}
                       avatarUrl={(m as any).avatarUrl}
                       size={32}
+                      ufcBelt={ufc(m)}
+                      bmfBelt={bmf(m)}
                     />
-                    {m.isChampion && (
-                      <View style={s.navBarChampBadge}>
-                        <Trophy size={10} color="#ffd700" />
-                      </View>
-                    )}
                     {isMe && (
                       <View
                         style={[
@@ -711,7 +716,7 @@ const s = StyleSheet.create({
   },
 
   // Top nav bar
-  navBarMembers: { flexDirection: 'row', gap: 10, paddingTop: 12, paddingRight: 8 },
+  navBarMembers: { flexDirection: 'row', gap: 10, paddingTop: 26, paddingRight: 8 },
   teamsSection: { paddingHorizontal: 16, marginTop: 8, marginBottom: 4 },
   teamsSectionTitle: {
     color: '#888',
@@ -721,7 +726,6 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
   },
   navBarAvatar: { position: 'relative' },
-  navBarChampBadge: { position: 'absolute', top: -3, right: -3 },
   navBarMeDot: {
     position: 'absolute',
     bottom: -3,
@@ -833,7 +837,8 @@ const s = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#26262e',
-    paddingVertical: 10,
+    paddingTop: 22,
+    paddingBottom: 10,
     paddingHorizontal: 16,
     overflow: 'hidden',
   },

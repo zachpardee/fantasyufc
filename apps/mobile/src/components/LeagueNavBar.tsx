@@ -16,6 +16,7 @@ import { apiClient } from '../api/client';
 import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/auth.store';
 import { MemberAvatar } from './MemberAvatar';
+import { hasUfcBelt, hasBmfBelt } from '../lib/belts';
 import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import type { League } from '@fantasy-ufc/shared';
 
@@ -81,7 +82,7 @@ export function LeagueNavBar({ leagueId }: { leagueId: string }) {
 
   return (
     <>
-      <View style={[s.navBar, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.navBar, { paddingTop: insets.top + 16 }]}>
         <View style={s.navBarTop}>
           <TouchableOpacity
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/(app)/league'))}
@@ -116,6 +117,8 @@ export function LeagueNavBar({ leagueId }: { leagueId: string }) {
               color={(myMember as any)?.avatarColor}
               avatarUrl={(myMember as any)?.avatarUrl}
               size={32}
+              ufcBelt={hasUfcBelt(myMember, members, league)}
+              bmfBelt={hasBmfBelt(myMember, league)}
             />
           </TouchableOpacity>
         </View>

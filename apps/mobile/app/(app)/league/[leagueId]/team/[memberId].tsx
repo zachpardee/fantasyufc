@@ -3,6 +3,7 @@ import { Trophy } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../../../src/api/client';
+import { hasUfcBelt, hasBmfBelt } from '../../../../../src/lib/belts';
 import { MemberAvatar } from '../../../../../src/components/MemberAvatar';
 
 function fmtBankroll(n: number): string {
@@ -20,7 +21,10 @@ export default function TeamScreen() {
 
   const { data: standings, isLoading } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/standings`),
+    // Must match the endpoint League Home uses. The bare `/leagues/:id/standings`
+    // mount resolves to the matchups list, not standings — and since this shares the
+    // ['standings'] query key, the wrong URL also poisons League Home's cache.
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
 
   const member = standings?.find((m) => m.teamId === memberId || m.id === memberId);
@@ -63,6 +67,8 @@ export default function TeamScreen() {
           color={member.avatarColor}
           avatarUrl={member.avatarUrl}
           size={80}
+          ufcBelt={hasUfcBelt(member, standings, league)}
+          bmfBelt={hasBmfBelt(member, league)}
         />
         <Text style={s.teamName}>{member.teamName}</Text>
         <Text style={s.username}>@{member.username}</Text>
@@ -133,6 +139,9 @@ const s = StyleSheet.create({
   profileHeader: {
     alignItems: 'center',
     padding: 28,
+    // Stacked champion belts extend ~52px above the size-80 avatar; give the header
+    // enough top room so they aren't clipped.
+    paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: '#1a1a1a',
     gap: 8,

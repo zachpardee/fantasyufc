@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../../../src/api/client';
+import { hasUfcBelt, hasBmfBelt } from '../../../../src/lib/belts';
 import { useAuthStore } from '../../../../src/store/auth.store';
 import { useLeagueStore } from '../../../../src/store/league.store';
 import { MemberAvatar } from '../../../../src/components/MemberAvatar';
@@ -257,6 +258,9 @@ export default function LeagueEventScreen({ leagueIdProp }: { leagueIdProp?: str
     },
   ].filter((n) => n.show);
 
+  const ufc = (mem: any) => hasUfcBelt(mem, members, league);
+  const bmf = (mem: any) => hasBmfBelt(mem, league);
+
   return (
     <>
       <ScrollView
@@ -358,6 +362,8 @@ export default function LeagueEventScreen({ leagueIdProp }: { leagueIdProp?: str
                         color={leftColor}
                         avatarUrl={(leftMember as any)?.avatarUrl}
                         size={38}
+                        ufcBelt={ufc(leftMember)}
+                        bmfBelt={bmf(leftMember)}
                       />
                       <Text style={s.teamSideName} numberOfLines={1}>
                         {leftName}
@@ -390,6 +396,8 @@ export default function LeagueEventScreen({ leagueIdProp }: { leagueIdProp?: str
                         color={rightColor}
                         avatarUrl={(rightMember as any)?.avatarUrl}
                         size={38}
+                        ufcBelt={ufc(rightMember)}
+                        bmfBelt={bmf(rightMember)}
                       />
                       <Text style={s.teamSideName} numberOfLines={1}>
                         {rightName}
@@ -554,12 +562,9 @@ export default function LeagueEventScreen({ leagueIdProp }: { leagueIdProp?: str
                       color={(m as any).avatarColor}
                       avatarUrl={(m as any).avatarUrl}
                       size={32}
+                      ufcBelt={ufc(m)}
+                      bmfBelt={bmf(m)}
                     />
-                    {m.isChampion && (
-                      <View style={s.navBarChampBadge}>
-                        <Trophy size={10} color="#ffd700" />
-                      </View>
-                    )}
                     {isMe && (
                       <View
                         style={[
@@ -728,7 +733,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a' },
 
   // Top nav bar
-  navBarMembers: { flexDirection: 'row', gap: 10, paddingTop: 12, paddingRight: 8 },
+  navBarMembers: { flexDirection: 'row', gap: 10, paddingTop: 26, paddingRight: 8 },
   teamsSection: { paddingHorizontal: 16, marginTop: 8, marginBottom: 4 },
   teamsSectionTitle: {
     color: '#888',
@@ -738,7 +743,6 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
   },
   navBarAvatar: { position: 'relative' },
-  navBarChampBadge: { position: 'absolute', top: -3, right: -3 },
   navBarMeDot: {
     position: 'absolute',
     bottom: -3,
@@ -929,7 +933,9 @@ const s = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginTop: 2,
-    marginBottom: 12,
+    // Extra headroom so stacked champion belts above the team avatars aren't clipped by
+    // the banner's overflow:'hidden'.
+    marginBottom: 28,
   },
   bannerRow: {
     flexDirection: 'row',
