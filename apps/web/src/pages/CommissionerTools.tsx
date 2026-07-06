@@ -465,7 +465,11 @@ function PlayoffsSection({ league, leagueId, qc }: { league: any; leagueId: stri
   });
 
   const phase = bracket?.phase ?? 'none';
-  const canAdvance = league.status === 'playoffs' && phase === 'semis';
+  // Match the API guard: manual advance only unlocks once the semis event has completed
+  const semisComplete =
+    (bracket?.semisMatchups?.length ?? 0) > 0 &&
+    bracket.semisMatchups.every((m: any) => m.eventStatus === 'completed');
+  const canAdvance = league.status === 'playoffs' && phase === 'semis' && semisComplete;
   const inPlayoffs = league.status === 'playoffs';
 
   function fmtDate(iso: string | undefined) {
@@ -530,6 +534,12 @@ function PlayoffsSection({ league, leagueId, qc }: { league: any; leagueId: stri
               </>
             )}
           </div>
+
+          {phase === 'semis' && !semisComplete && (
+            <p style={styles.hint}>
+              Finals will be set automatically after the semifinal event completes.
+            </p>
+          )}
 
           {canAdvance && (
             <div style={styles.advanceBlock}>

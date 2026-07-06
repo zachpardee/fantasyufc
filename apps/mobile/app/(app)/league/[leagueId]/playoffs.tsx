@@ -212,6 +212,9 @@ export default function PlayoffsScreen() {
 
   const { phase, seeds, semisMatchups, finalsMatchup, isStaking, weeklyBudget } = bracket;
   const isCommissioner = league?.commissionerUserId === session?.user?.id;
+  // Match the API guard: manual advance only unlocks once the semis event has completed
+  const semisComplete =
+    semisMatchups.length > 0 && semisMatchups.every((m) => m.eventStatus === 'completed');
 
   const phaseLabel =
     phase === 'complete'
@@ -253,23 +256,31 @@ export default function PlayoffsScreen() {
       )}
 
       {/* Commissioner advance button */}
-      {isCommissioner && phase === 'semis' && semisMatchups.length >= 2 && (
-        <View style={s.advanceCard}>
-          <Text style={s.advanceText}>Semis are set — advance winners to Finals.</Text>
-          {advance.isError && (
-            <Text style={s.errText}>{(advance.error as any)?.error ?? 'Failed'}</Text>
-          )}
-          <TouchableOpacity
-            style={[s.advanceBtn, advance.isPending && s.btnDisabled]}
-            onPress={() => advance.mutate()}
-            disabled={advance.isPending}
-          >
-            <Text style={s.advanceBtnText}>
-              {advance.isPending ? 'Advancing...' : 'Advance to Finals'}
+      {phase === 'semis' &&
+        semisMatchups.length >= 2 &&
+        (!semisComplete ? (
+          <View style={s.advanceCard}>
+            <Text style={s.advanceText}>
+              Finals will be set automatically after the semifinal event completes.
             </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+          </View>
+        ) : isCommissioner ? (
+          <View style={s.advanceCard}>
+            <Text style={s.advanceText}>Semis are final — advance winners to Finals.</Text>
+            {advance.isError && (
+              <Text style={s.errText}>{(advance.error as any)?.error ?? 'Failed'}</Text>
+            )}
+            <TouchableOpacity
+              style={[s.advanceBtn, advance.isPending && s.btnDisabled]}
+              onPress={() => advance.mutate()}
+              disabled={advance.isPending}
+            >
+              <Text style={s.advanceBtnText}>
+                {advance.isPending ? 'Advancing...' : 'Advance to Finals'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null)}
 
       {/* Playoff seeds */}
       {seeds.length > 0 && (

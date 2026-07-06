@@ -213,16 +213,24 @@ playoffsRouter.post('/advance', requireAuth, async (req: AuthRequest, res, next)
   try {
     const {
       rows: [league],
-    } = await db.query(`SELECT id, status FROM leagues WHERE id = $1`, [req.params.leagueId]);
-    if (!league) throw new AppError(404, 'League not found');
-    const {
-      rows: [membership],
-    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
+    } = await db.query(`SELECT id, status, commissioner_id FROM leagues WHERE id = $1`, [
       req.params.leagueId,
-      req.user!.id,
     ]);
-    if (!membership) throw new AppError(403, 'Not a member of this league');
+    if (!league) throw new AppError(404, 'League not found');
+    if (league.commissioner_id !== req.user!.id) throw new AppError(403, 'Commissioner only');
     if (league.status !== 'playoffs') throw new AppError(400, 'Playoffs must be started first');
+
+    // Manual advance is a fallback for the livePoller auto-advance and must obey the
+    // same guard: never pick winners before the semifinal event has completed —
+    // pre-event scores are 0–0, so the season-points tiebreak would decide the bracket.
+    const { rows: unfinishedSemis } = await db.query(
+      `SELECT m.id FROM matchups m
+       JOIN ufc_events e ON e.id = m.event_id
+       WHERE m.league_id = $1 AND m.playoff_round = 'semis' AND e.status != 'completed'`,
+      [req.params.leagueId],
+    );
+    if (unfinishedSemis.length > 0)
+      throw new AppError(400, 'Semifinal event has not completed yet');
 
     let { finalsEventId } = req.body;
     if (!finalsEventId) {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { useAuthStore } from '../store/auth.store';
 import { useIsMobile } from '../hooks/useIsMobile';
 import type { League } from '@fantasy-ufc/shared';
 import { Crown } from 'lucide-react';
@@ -232,6 +233,7 @@ export function PlayoffsPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const isMobile = useIsMobile();
   const qc = useQueryClient();
+  const { session } = useAuthStore();
 
   const { data: league } = useQuery<
     League & { seasonEndsAt?: string; playoffSemisEventId?: string; playoffFinalsEventId?: string }
@@ -265,6 +267,15 @@ export function PlayoffsPage() {
   if (isLoading || !bracket) return <LoadingScreen />;
 
   const { phase, seeds, semisMatchups, finalsMatchup, isStaking, weeklyBudget } = bracket;
+  const isCommissioner = session?.user.id === league?.commissionerId;
+  const semisComplete =
+    semisMatchups.length > 0 && semisMatchups.every((m) => m.eventStatus === 'completed');
+  const champion =
+    phase === 'complete' && finalsMatchup?.winnerId
+      ? finalsMatchup.winnerId === finalsMatchup.homeTeamId
+        ? { name: finalsMatchup.homeTeamName, seed: finalsMatchup.homeSeed }
+        : { name: finalsMatchup.awayTeamName, seed: finalsMatchup.awaySeed }
+      : null;
 
   function fmtDate(iso: string | undefined) {
     if (!iso) return '—';
@@ -289,6 +300,19 @@ export function PlayoffsPage() {
         )}
       </nav>
 
+      {/* Champion banner */}
+      {champion && (
+        <div style={styles.championCard}>
+          <Crown size={32} color="#ffd700" />
+          <div>
+            <p style={styles.championLabel}>League Champion</p>
+            <p style={styles.championName}>
+              <span style={styles.championSeed}>#{champion.seed}</span> {champion.name}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Schedule info */}
       {league?.seasonEndsAt && (
         <div style={styles.scheduleCard}>
@@ -311,25 +335,34 @@ export function PlayoffsPage() {
         </div>
       )}
 
-      {/* Advance to finals */}
-      {phase === 'semis' && semisMatchups.length >= 2 && (
-        <div style={styles.advanceCard}>
-          <p style={styles.advanceText}>Semis are set — advance winners to the Finals.</p>
-          {advanceMutation.isError && (
-            <p style={styles.errMsg}>{(advanceMutation.error as any)?.error ?? 'Failed'}</p>
-          )}
-          <button
-            style={{
-              ...styles.advanceBtn,
-              ...(advanceMutation.isPending ? styles.btnDisabled : {}),
-            }}
-            disabled={advanceMutation.isPending}
-            onClick={() => advanceMutation.mutate()}
-          >
-            {advanceMutation.isPending ? 'Advancing...' : 'Advance to Finals'}
-          </button>
-        </div>
-      )}
+      {/* Advance to finals — auto-advances after the semis event; manual button is a
+          commissioner fallback that only unlocks once the event has completed */}
+      {phase === 'semis' &&
+        semisMatchups.length >= 2 &&
+        (!semisComplete ? (
+          <div style={styles.advanceCard}>
+            <p style={styles.advanceText}>
+              Finals will be set automatically after the semifinal event completes.
+            </p>
+          </div>
+        ) : isCommissioner ? (
+          <div style={styles.advanceCard}>
+            <p style={styles.advanceText}>Semis are final — advance winners to the Finals.</p>
+            {advanceMutation.isError && (
+              <p style={styles.errMsg}>{(advanceMutation.error as any)?.error ?? 'Failed'}</p>
+            )}
+            <button
+              style={{
+                ...styles.advanceBtn,
+                ...(advanceMutation.isPending ? styles.btnDisabled : {}),
+              }}
+              disabled={advanceMutation.isPending}
+              onClick={() => advanceMutation.mutate()}
+            >
+              {advanceMutation.isPending ? 'Advancing...' : 'Advance to Finals'}
+            </button>
+          </div>
+        ) : null)}
 
       {/* Playoff seeds */}
       {seeds.length > 0 && (
@@ -494,6 +527,27 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     letterSpacing: 0.5,
   },
+  championCard: {
+    margin: '24px 24px 0',
+    background: 'linear-gradient(135deg, #1c1607 0%, #141414 60%)',
+    border: '1px solid #5c4a12',
+    borderRadius: 12,
+    padding: '18px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    boxShadow: '0 2px 12px rgba(255,215,0,0.08)',
+  },
+  championLabel: {
+    color: '#a8871a',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.8,
+    margin: 0,
+  },
+  championName: { color: '#fff', fontSize: 20, fontWeight: 700, margin: '2px 0 0' },
+  championSeed: { color: '#a8871a', fontSize: 14, fontWeight: 700 },
   scheduleCard: {
     margin: 24,
     background: '#141414',
