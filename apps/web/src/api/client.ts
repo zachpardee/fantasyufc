@@ -18,5 +18,13 @@ apiClient.interceptors.request.use(async (config) => {
 
 apiClient.interceptors.response.use(
   (res) => transformResponse(res.data) as typeof res,
-  (err) => Promise.reject(err.response?.data ?? err),
+  (err) => {
+    if (err.response?.status === 401) {
+      const path = window.location.pathname;
+      if (path !== '/login' && path !== '/reset-password') {
+        supabase.auth.signOut().finally(() => window.location.assign('/login'));
+      }
+    }
+    return Promise.reject(err.response?.data ?? err);
+  },
 );

@@ -79,7 +79,11 @@ export function LeagueHomePage() {
   const msgEndRef = useRef<HTMLDivElement>(null);
   const leagueMenuRef = useRef<HTMLDivElement>(null);
 
-  const { data: league } = useQuery<League>({
+  const {
+    data: league,
+    isError: leagueIsError,
+    refetch: refetchLeague,
+  } = useQuery<League>({
     queryKey: ['league', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
@@ -433,6 +437,72 @@ export function LeagueHomePage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showLeagueMenu]);
+
+  if (leagueIsError)
+    return (
+      <div style={{ background: '#0a0a0a', minHeight: '100vh' }}>
+        <nav style={styles.nav}>
+          <Link to="/" style={styles.logoLink}>
+            <img src="/logo.jpg" alt="FFL" style={styles.logo} />
+          </Link>
+          <Link to="/" style={styles.homeBtn}>
+            <Home size={15} /> User Home
+          </Link>
+        </nav>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            padding: '80px 24px',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>
+            Couldn't load this league.
+          </div>
+          <div style={{ color: '#777', fontSize: 14, maxWidth: 360 }}>
+            It may have been deleted, or you may no longer have access.
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <button
+              onClick={() => refetchLeague()}
+              style={{
+                background: '#c8102e',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '10px 20px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Retry
+            </button>
+            <Link
+              to="/"
+              style={{
+                background: '#1a1a1a',
+                color: '#ccc',
+                border: '1px solid #333',
+                borderRadius: 6,
+                padding: '10px 20px',
+                fontSize: 14,
+                fontWeight: 700,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
 
   if (!league)
     return (
@@ -925,8 +995,8 @@ export function LeagueHomePage() {
               ? 'UPCOMING MATCHUP'
               : 'VIEWING PREVIOUS MATCHUP';
 
-          const homeMember = members.find((m) => m.teamName === effectiveMatchup?.homeTeamName);
-          const awayMember = members.find((m) => m.teamName === effectiveMatchup?.awayTeamName);
+          const homeMember = members.find((m) => m.id === effectiveMatchup?.homeTeamId);
+          const awayMember = members.find((m) => m.id === effectiveMatchup?.awayTeamId);
           const homeColor = (homeMember as any)?.avatarColor ?? '#5555ff';
           const awayColor = (awayMember as any)?.avatarColor ?? '#5555ff';
 

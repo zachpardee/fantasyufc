@@ -109,17 +109,23 @@ export function PicksPage() {
     onSuccess: () => {
       setShowSummary(true);
       qc.invalidateQueries({ queryKey: ['picks', leagueId, currentEvent?.id] });
+      // League Home reads the current user's picks/scores under different query keys —
+      // refresh them too so navigating back shows the just-saved picks, not stale cache.
+      qc.invalidateQueries({ queryKey: ['home-picks', leagueId] });
+      qc.invalidateQueries({ queryKey: ['away-picks', leagueId] });
+      qc.invalidateQueries({ queryKey: ['matchup-current', leagueId] });
     },
   });
 
   const championMutation = useMutation({
     mutationFn: (fighterId: string) =>
       apiClient.put(`/leagues/${leagueId}/picks/${currentEvent!.id}/champion`, { fighterId }),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['picks-champion', leagueId, currentEvent?.id] });
+      qc.invalidateQueries({ queryKey: ['home-champion', leagueId] });
+      qc.invalidateQueries({ queryKey: ['away-champion', leagueId] });
+    },
   });
-
-  if (league?.leagueFormat === 'staking') return <StakingPicksPage />;
 
   const fights: any[] = picksData?.fights ?? [];
   // locked = can't save (10 min before prelims); isLive = event actually started (ESPN live)
@@ -142,6 +148,12 @@ export function PicksPage() {
     const t = setTimeout(() => setTimeLocked(true), remaining);
     return () => clearTimeout(t);
   }, [currentEvent?.prelimsAt, currentEvent?.scheduledAt]);
+
+  // Staking leagues use a different picks UI. This return MUST stay below every hook
+  // above it — moving it higher changes the hook count between renders and crashes
+  // ("rendered fewer hooks than expected").
+  if (league?.leagueFormat === 'staking') return <StakingPicksPage />;
+
   const locked = serverLocked || timeLocked;
 
   // Fights with no segment data default to main card

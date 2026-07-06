@@ -17,6 +17,14 @@ export function CommissionerToolsPage() {
 
   const isCommissioner = session?.user.id === league?.commissionerId;
 
+  const { data: currentEvent } = useQuery<any>({
+    queryKey: ['picks-current-event', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
+    enabled: !!league,
+  });
+
+  // Access gate must sit BELOW all hooks — an early return above them changes the hook
+  // count between renders (crashes with "rendered fewer hooks than expected").
   if (league && !isCommissioner) {
     return (
       <div style={styles.page}>
@@ -24,12 +32,6 @@ export function CommissionerToolsPage() {
       </div>
     );
   }
-
-  const { data: currentEvent } = useQuery<any>({
-    queryKey: ['picks-current-event', leagueId],
-    queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
-    enabled: !!league,
-  });
 
   return (
     <div style={styles.page}>

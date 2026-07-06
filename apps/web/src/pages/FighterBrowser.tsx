@@ -35,7 +35,10 @@ export function FighterBrowserPage() {
   return (
     <div style={styles.page}>
       <nav style={styles.nav}>
-        <button style={styles.back} onClick={() => navigate(-1)}>
+        <button
+          style={styles.back}
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+        >
           ← Back
         </button>
         <span style={styles.title}>Fighters</span>

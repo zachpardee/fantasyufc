@@ -214,8 +214,11 @@ export function PicksComparisonPage() {
             const champPts = championPicks?.[m.id]?.pointsEarned
               ? +championPicks[m.id].pointsEarned
               : 0;
-            const total = pickPts + champPts;
             const correct = fights.filter((f: any) => f.picks[m.id]?.isCorrect === true).length;
+            // Sweep bonus for going 4/5/6-for-6, matching the matchup/standings scoring
+            // (Matchup.tsx calcPicksScore). Omitting it made this page under-report totals.
+            const sweep = correct === 6 ? 20 : correct === 5 ? 10 : correct === 4 ? 5 : 0;
+            const total = pickPts + champPts + sweep;
             return (
               <div key={m.id} style={styles.totalsCell}>
                 <div style={styles.totalsPts}>{total.toFixed(0)}</div>

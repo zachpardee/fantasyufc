@@ -16,13 +16,19 @@ export function TeamPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: standings } = useQuery<any[]>({
+  const {
+    data: standings,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
 
   const member = standings?.find((m) => m.id === memberId);
   const isStaking = league?.leagueFormat === 'staking';
+  const notFound = !isLoading && !isError && !!standings && !member;
 
   return (
     <div style={styles.page}>
@@ -32,6 +38,29 @@ export function TeamPage() {
         </Link>
         <span style={styles.title}>{member?.teamName ?? 'Team'}</span>
       </nav>
+
+      {(isError || notFound) && (
+        <div style={styles.errorBox}>
+          <p style={styles.errorTitle}>
+            {isError ? "Couldn't load this team." : 'Team not found.'}
+          </p>
+          <p style={styles.errorSub}>
+            {isError
+              ? 'Something went wrong fetching this team.'
+              : 'This team may have left the league or the link is invalid.'}
+          </p>
+          <div style={styles.errorActions}>
+            {isError && (
+              <button style={styles.retryBtn} onClick={() => refetch()}>
+                Retry
+              </button>
+            )}
+            <Link to={`/league/${leagueId}/standings`} style={styles.backBtn}>
+              Back to Standings
+            </Link>
+          </div>
+        </div>
+      )}
 
       {member && (
         <div style={styles.statBar}>
@@ -108,4 +137,37 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statValue: { color: '#fff', fontSize: 20, fontWeight: 700 },
   statDivider: { width: 1, height: 36, background: '#2a2a2a', marginRight: 28 },
+  errorBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+    padding: '80px 24px',
+    textAlign: 'center',
+  },
+  errorTitle: { color: '#fff', fontSize: 18, fontWeight: 700 },
+  errorSub: { color: '#777', fontSize: 14, maxWidth: 360 },
+  errorActions: { display: 'flex', gap: 12, marginTop: 4 },
+  retryBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '10px 20px',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  backBtn: {
+    background: '#1a1a1a',
+    color: '#ccc',
+    border: '1px solid #333',
+    borderRadius: 6,
+    padding: '10px 20px',
+    fontSize: 14,
+    fontWeight: 700,
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
 };

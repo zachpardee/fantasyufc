@@ -12,6 +12,7 @@ function ScrollToTop() {
 import { supabase } from './api/supabase';
 import { useAuthStore } from './store/auth.store';
 import { LoginPage } from './pages/Login';
+import { ResetPasswordPage } from './pages/ResetPassword';
 import { RegisterPage } from './pages/Register';
 import { DashboardPage } from './pages/Dashboard';
 import { LeagueHomePage } from './pages/LeagueHome';
@@ -137,6 +138,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/"
             element={
@@ -195,6 +197,7 @@ export default function App() {
               </RequireAuth>
             }
           />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <UserBadge />
         <Footer />

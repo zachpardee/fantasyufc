@@ -21,7 +21,12 @@ export function StandingsPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: rawStandings, isLoading } = useQuery<any[]>({
+  const {
+    data: rawStandings,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<any[]>({
     queryKey: ['standings', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/matchups/standings`),
   });
@@ -31,7 +36,7 @@ export function StandingsPage() {
   const standings = rawStandings
     ? [...rawStandings].sort((a, b) =>
         isStaking
-          ? (b.stakingBalance ?? 0) - (a.stakingBalance ?? 0)
+          ? (b.wins ?? 0) - (a.wins ?? 0) || (b.stakingBalance ?? 0) - (a.stakingBalance ?? 0)
           : (b.totalPoints ?? 0) - (a.totalPoints ?? 0),
       )
     : undefined;
@@ -51,6 +56,15 @@ export function StandingsPage() {
 
       <div style={styles.content}>
         {isLoading && <LoadingInline label="Loading standings..." />}
+        {isError && !isLoading && (
+          <div style={styles.errorBox}>
+            <p style={styles.errorMsg}>Couldn't load standings.</p>
+            <button style={styles.retryBtn} onClick={() => refetch()}>
+              Retry
+            </button>
+          </div>
+        )}
+        {!isError && (
         <table style={styles.table}>
           <thead>
             {!isLoading && (
@@ -125,7 +139,8 @@ export function StandingsPage() {
             })}
           </tbody>
         </table>
-        {!isLoading && standings?.length === 0 && (
+        )}
+        {!isLoading && !isError && standings?.length === 0 && (
           <p style={styles.empty}>No standings yet — check back after the season begins.</p>
         )}
       </div>
@@ -154,6 +169,25 @@ const styles: Record<string, React.CSSProperties> = {
   title: { color: '#fff', fontWeight: 700, fontSize: 18 },
   content: { padding: 24, maxWidth: 900, margin: '0 auto' },
   empty: { color: '#555', fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: 40 },
+  errorBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 14,
+    padding: 40,
+    textAlign: 'center',
+  },
+  errorMsg: { color: '#fff', fontSize: 15, fontWeight: 600 },
+  retryBtn: {
+    background: '#c8102e',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    padding: '10px 20px',
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
     color: '#555',

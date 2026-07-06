@@ -57,6 +57,15 @@ function fmtBalance(
   return { display, pnl: (profit >= 0 ? '+' : '−') + pnlStr, pnlPositive: profit >= 0 };
 }
 
+// Season bankroll (stakingBalance) is already a P&L relative to zero — it starts at 0 and
+// accumulates profit/loss — so it must NOT have the weekly budget subtracted the way
+// per-event money-on-hand does in fmtBalance. Format it directly with its sign.
+function fmtSeasonPnl(n: number): string {
+  const abs = Math.abs(n);
+  const s = '$' + (abs % 1 < 0.005 ? abs.toFixed(0) : abs.toFixed(2));
+  return (n >= 0 ? '+' : '−') + s;
+}
+
 function MatchupCard({
   matchup,
   isStaking,
@@ -336,7 +345,7 @@ export function PlayoffsPage() {
                 </span>
                 <span style={styles.seedPts}>
                   {isStaking
-                    ? fmtBalance(+(s.stakingBalance ?? 0), weeklyBudget).pnl
+                    ? fmtSeasonPnl(+(s.stakingBalance ?? 0))
                     : `${(+s.totalPoints).toFixed(0)} pts`}
                 </span>
               </div>

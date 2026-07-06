@@ -62,7 +62,7 @@ export function MatchupPage() {
   });
   function openNotifs() {
     setShowNotifs((v) => {
-      if (!v) apiClient.post('/notifications/mark-all-read').catch(() => {});
+      if (!v) apiClient.post('/notifications/read-all').catch(() => {});
       return !v;
     });
   }
@@ -104,6 +104,10 @@ export function MatchupPage() {
 
   // The most recent event the user has a matchup in (for default selection)
   const mostRecentMyMatchup = seasonEvents.find((ev) => myMatchupByEvent.has(ev.eventId));
+  // mostRecentMyMatchup is an EVENT object (it has `eventId`, not `id`). Resolve the
+  // actual matchup id for it — reading `.id` off the event was always undefined, which
+  // broke "click your current matchup chip to return to the live-updating view".
+  const mostRecentMyMatchupId = myMatchupByEvent.get(mostRecentMyMatchup?.eventId)?.id ?? null;
 
   // The current/next event (earliest scheduled or live) — use allSeasonEvents (newest-first) so order of seasonEvents doesn't matter
   const currentUpcomingEventId =
@@ -216,9 +220,14 @@ export function MatchupPage() {
   const isLive = matchup?.eventStatus === 'live';
   const eventIsLive = matchup?.eventStatus === 'live' || matchup?.eventStatus === 'completed';
 
-  // Compute live staking P&L: settled profit/loss minus what's still at risk
+  // Compute a side's live "money on hand" for this event's matchup, matching the scale the
+  // API stores in matchup.homeScore/awayScore (budget − stakes + payouts) and that the
+  // season table and playoffs use. Returning raw P&L here (settledPnl − pendingStake) put
+  // the scoreboard on a different scale than the DB-score fallback, so the two sides could
+  // be shown on mismatched scales (e.g. "−$20 vs +$70").
   function calcStakingScore(staking: any): number {
     if (!staking) return 0;
+    const budget = parseFloat(staking.weeklyBudget ?? 100);
     const allBets = [...(staking.singles ?? []), ...(staking.parlays ?? [])];
     const pendingStake = allBets
       .filter((b: any) => b.status === 'pending')
@@ -226,7 +235,7 @@ export function MatchupPage() {
     const settledPnl = allBets
       .filter((b: any) => b.status !== 'pending')
       .reduce((s: number, b: any) => s + (parseFloat(b.profitLoss) || 0), 0);
-    return settledPnl - pendingStake;
+    return budget + settledPnl - pendingStake;
   }
 
   // Orient so the current user's side is always on the left
@@ -286,7 +295,7 @@ export function MatchupPage() {
   const awayPickMap: Record<string, any> = {};
   for (const f of awayPicks?.fights ?? []) awayPickMap[f.id] = f;
 
-  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== mostRecentMyMatchup?.id;
+  const isViewingHistory = !!selectedMatchupId && selectedMatchupId !== mostRecentMyMatchupId;
 
   return (
     <div style={styles.page}>
@@ -440,7 +449,7 @@ export function MatchupPage() {
                   if (myM) {
                     setBrowsingMatchupId(null);
                     setSelectedEventId(null);
-                    setSelectedMatchupId(myM.id === mostRecentMyMatchup?.id ? null : myM.id);
+                    setSelectedMatchupId(myM.id === mostRecentMyMatchupId ? null : myM.id);
                   } else if (hasAnyMatchups) {
                     // No personal matchup but other matchups exist — browse the first one
                     if (isBrowsingThisEvent) {

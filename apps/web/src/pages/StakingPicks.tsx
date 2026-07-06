@@ -308,8 +308,11 @@ export function StakingPicksPage() {
   const anyUnsaved = singlesTouched || parlayTouched;
   const isSaving = saveSinglesMutation.isPending || saveParlayMutation.isPending;
   const settledSingles = (betsData?.singles ?? []).filter((s: any) => s.status !== 'pending');
+  // betsData.parlay is only ever the PENDING parlay (the API defines that field that way),
+  // so it was never settled here and the slip's Results never showed a parlay. Settled
+  // parlays live in the betsData.parlays array.
   const settledParlay =
-    betsData?.parlay && betsData.parlay.status !== 'pending' ? betsData.parlay : null;
+    (betsData?.parlays ?? []).find((p: any) => p.status !== 'pending') ?? null;
   const hasResults = settledSingles.length > 0 || !!settledParlay;
 
   if (!currentEvent) {
@@ -381,8 +384,12 @@ export function StakingPicksPage() {
             const oppName = myM ? (isMeHome ? myM.awayTeamName : myM.homeTeamName) : null;
             const isWin = myM?.winnerId && myM.winnerId === myMember?.id;
             const isLoss = myM?.winnerId && myM.winnerId !== myMember?.id;
+            // Staking money-on-hand scores start at the weekly budget (> 0) as soon as
+            // anyone bets, so "(myScore ?? 0) > 0" wrongly flagged not-yet-happened events
+            // as scored (showing a bogus score + gold "T"). Gate on the event actually
+            // being live or completed instead.
             const hasScore =
-              myM && (myM.eventStatus === 'completed' || myM.winnerId || (myScore ?? 0) > 0);
+              !!myM && (myM.eventStatus === 'live' || myM.eventStatus === 'completed');
             const isCurrentEvent = ev.eventId === currentEvent?.id;
             const isLiveEvent = ev.eventStatus === 'live';
             const isSemis = ev.eventId === league?.playoffSemisEventId;
