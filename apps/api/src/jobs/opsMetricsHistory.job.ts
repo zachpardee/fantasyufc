@@ -19,6 +19,7 @@ export async function snapshotOpsMetrics(): Promise<void> {
 
     const points: Record<string, number | null> = {
       odds_remaining: m.odds?.remaining ?? null,
+      odds_used: m.odds?.used ?? null,
       db_size_mb: (m.supabase?.data as any)?.dbSizeMb ?? null,
       users: m.app?.users ?? null,
       active_members: m.app?.activeMembers ?? null,

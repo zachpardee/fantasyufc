@@ -22,7 +22,8 @@ export function UserBadge() {
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isLeaguePage = /^\/league\//.test(location.pathname); // all league pages have their own nav
   const isDashboard = location.pathname === '/'; // dashboard has its own email+logout
-  if (!session || isAuthPage || isLeaguePage || isDashboard || !profile) return null;
+  const isAdminPage = location.pathname === '/admin'; // admin header has its own top-right controls
+  if (!session || isAuthPage || isLeaguePage || isDashboard || isAdminPage || !profile) return null;
 
   const email = session.user.email ?? '';
   const label = email.charAt(0).toUpperCase();

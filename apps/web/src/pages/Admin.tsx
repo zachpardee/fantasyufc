@@ -94,32 +94,16 @@ export function AdminPage() {
             <div style={s.timestamp}>Updated {new Date(data.generatedAt).toLocaleString()}</div>
           )}
 
-          <div style={s.grid}>
-            {/* Odds API quota */}
-            <Card title="Odds API quota">
-              {data.odds?.configured === false ? (
-                <Muted>Not configured</Muted>
-              ) : data.odds?.error ? (
-                <ErrorText>{data.odds.error}</ErrorText>
-              ) : (
-                (() => {
-                  const used = data.odds?.used ?? null;
-                  const rem = data.odds?.remaining ?? null;
-                  const total = (used ?? 0) + (rem ?? 0);
-                  return (
-                    <>
-                      <Big>{rem ?? '—'}</Big>
-                      <Unit>requests remaining</Unit>
-                      {total > 0 && used != null && <Bar value={used} max={total} dangerHigh />}
-                      <Row label="Used" value={used ?? '—'} />
-                      {total > 0 && <Row label="Monthly cap" value={total} />}
-                      <Trend label={`Remaining · ${days}d`} points={series('odds_remaining')} />
-                    </>
-                  );
-                })()
-              )}
-            </Card>
+          {/* The Odds API — full-width requests & usage banner */}
+          <OddsBanner
+            odds={data.odds}
+            usedHistory={history?.['odds_used']}
+            remSeries={series('odds_remaining')}
+            usedSeries={series('odds_used')}
+            days={days}
+          />
 
+          <div style={s.grid}>
             {/* App / DB stats */}
             <Card title="App">
               <Row label="Users" value={data.app?.users ?? '—'} />
@@ -211,6 +195,85 @@ export function AdminPage() {
           </a>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Average requests burned per day across the history window. Skipped when the window
+// contains a monthly quota reset (used would decrease) or has fewer than 2 points.
+function oddsBurnRate(points: { t: string; v: number }[] | undefined): number | null {
+  if (!points || points.length < 2) return null;
+  const first = points[0];
+  const last = points[points.length - 1];
+  const spanDays = (new Date(last.t).getTime() - new Date(first.t).getTime()) / 86_400_000;
+  const delta = last.v - first.v;
+  if (spanDays <= 0 || delta < 0) return null;
+  return delta / spanDays;
+}
+
+function OddsBanner({
+  odds,
+  usedHistory,
+  remSeries,
+  usedSeries,
+  days,
+}: {
+  odds: any;
+  usedHistory: { t: string; v: number }[] | undefined;
+  remSeries: number[];
+  usedSeries: number[];
+  days: number;
+}) {
+  const used: number | null = odds?.used ?? null;
+  const rem: number | null = odds?.remaining ?? null;
+  const total = (used ?? 0) + (rem ?? 0);
+  const burnRate = oddsBurnRate(usedHistory);
+  const runwayDays = burnRate && burnRate > 0 && rem != null ? rem / burnRate : null;
+
+  return (
+    <div style={s.banner}>
+      <div style={s.cardTitle}>The Odds API — Requests &amp; Usage</div>
+      {odds?.configured === false ? (
+        <Muted>Not configured — set ODDS_API_KEY.</Muted>
+      ) : odds?.error ? (
+        <ErrorText>{odds.error}</ErrorText>
+      ) : (
+        <>
+          <div style={s.bannerStats}>
+            <div style={s.bannerStat}>
+              <div style={s.big}>{rem ?? '—'}</div>
+              <div style={s.unit}>requests remaining</div>
+            </div>
+            <div style={s.bannerStat}>
+              <div style={s.bannerStatValue}>{used ?? '—'}</div>
+              <div style={s.unit}>used this period</div>
+            </div>
+            <div style={s.bannerStat}>
+              <div style={s.bannerStatValue}>{total > 0 ? total : '—'}</div>
+              <div style={s.unit}>monthly cap</div>
+            </div>
+            <div style={s.bannerStat}>
+              <div style={s.bannerStatValue}>{burnRate != null ? burnRate.toFixed(1) : '—'}</div>
+              <div style={s.unit}>avg req/day · {days}d</div>
+            </div>
+            <div style={s.bannerStat}>
+              <div style={s.bannerStatValue}>
+                {runwayDays != null ? `~${Math.floor(runwayDays)}d` : '—'}
+              </div>
+              <div style={s.unit}>runway at this rate</div>
+            </div>
+          </div>
+          {total > 0 && used != null && <Bar value={used} max={total} dangerHigh />}
+          <div style={s.bannerTrends}>
+            <div style={{ flex: 1 }}>
+              <Trend label={`Remaining · ${days}d`} points={remSeries} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Trend label={`Used · ${days}d`} points={usedSeries} color="#e0a000" />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -379,8 +442,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
-const Big = ({ children }: { children: React.ReactNode }) => <div style={s.big}>{children}</div>;
-const Unit = ({ children }: { children: React.ReactNode }) => <div style={s.unit}>{children}</div>;
 const Muted = ({ children }: { children: React.ReactNode }) => (
   <div style={s.muted}>{children}</div>
 );
@@ -428,6 +489,23 @@ const s: Record<string, React.CSSProperties> = {
   },
   timestamp: { color: '#555', fontSize: 12, marginBottom: 16 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 },
+  banner: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  bannerStats: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '12px 28px',
+    alignItems: 'flex-end',
+    marginBottom: 4,
+  },
+  bannerStat: { minWidth: 90 },
+  bannerStatValue: { fontSize: 22, fontWeight: 800, color: '#ddd', lineHeight: 1 },
+  bannerTrends: { display: 'flex', gap: 20 },
   card: {
     background: '#141414',
     border: '1px solid #242424',
