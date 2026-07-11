@@ -37,6 +37,7 @@ import {
   ChevronUp,
   ChevronDown,
   LogOut,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -753,34 +754,47 @@ export function LeagueHomePage() {
             </div>
           )}
           <div style={styles.navRight}>
-            {isMobile && myMember && (
-              <MemberAvatar
-                teamName={myMember.teamName}
-                color={(myMember as any).avatarColor ?? '#5555ff'}
-                size={28}
-                avatarUrl={(myMember as any).avatarUrl}
-                onClick={() => setSelectedMember(myMember)}
-              />
-            )}
-            {!isMobile && session?.user.email && (
+            {session?.user.email && (
               <div style={styles.userMenuWrap}>
-                <button style={styles.userPill} onClick={() => setShowUserMenu((v) => !v)}>
+                {isMobile ? (
                   <MemberAvatar
                     teamName={myMember?.teamName ?? session.user.email}
                     color={(myMember as any)?.avatarColor ?? '#5555ff'}
-                    size={26}
+                    size={28}
                     avatarUrl={(myMember as any)?.avatarUrl}
+                    onClick={() => setShowUserMenu((v) => !v)}
                   />
-                  <span style={styles.userPillEmail}>
-                    {myProfile?.displayName ?? myProfile?.username ?? session.user.email}
-                  </span>
-                  <ChevronDown size={13} color="#666" />
-                </button>
+                ) : (
+                  <button style={styles.userPill} onClick={() => setShowUserMenu((v) => !v)}>
+                    <MemberAvatar
+                      teamName={myMember?.teamName ?? session.user.email}
+                      color={(myMember as any)?.avatarColor ?? '#5555ff'}
+                      size={26}
+                      avatarUrl={(myMember as any)?.avatarUrl}
+                    />
+                    <span style={styles.userPillEmail}>
+                      {myProfile?.displayName ?? myProfile?.username ?? session.user.email}
+                    </span>
+                    <ChevronDown size={13} color="#666" />
+                  </button>
+                )}
                 {showUserMenu && (
                   <>
                     <div style={styles.userMenuBackdrop} onClick={() => setShowUserMenu(false)} />
                     <div style={styles.userMenu}>
                       <div style={styles.userMenuEmail}>{session.user.email}</div>
+                      {myMember && (
+                        <button
+                          style={styles.userMenuItem}
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setSelectedMember(myMember);
+                          }}
+                        >
+                          <User size={14} />
+                          My team
+                        </button>
+                      )}
                       {myMember && (
                         <button
                           style={styles.userMenuItem}
