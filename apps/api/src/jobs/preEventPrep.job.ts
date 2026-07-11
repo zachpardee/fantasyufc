@@ -4,6 +4,7 @@ import { fetchEventsByDate } from '../services/espn.adapter';
 import { generateMatchupsForLeague } from '../services/matchup.service';
 import { redis } from '../config/redis';
 import { upsertEventPublic } from './eventSync.job';
+import { fighterNameContains } from '../utils/fighterNames';
 
 // Runs every 4 hours. Within 48 hours of an event: also triggered after each eventSync.
 // Handles everything so commissioners don't need to manually prepare events:
@@ -144,15 +145,18 @@ async function syncOddsForEvent(event: {
   let matched = 0;
 
   for (const fight of fights) {
-    const redLast = fight.red_last.toLowerCase();
-    const blueLast = fight.blue_last.toLowerCase();
+    const redLast = fight.red_last;
+    const blueLast = fight.blue_last;
 
     const oddsEvent = oddsEvents.find((oe) => {
-      const names = [oe.home_team?.toLowerCase() ?? '', oe.away_team?.toLowerCase() ?? ''];
+      const names = [oe.home_team ?? '', oe.away_team ?? ''];
       // Require BOTH fighters to appear, so we never pull a price from a different bout
       // that merely shares one fighter (e.g. a late replacement still listed under the
       // original opponent). No match = leave unpriced rather than wrong.
-      return names.some((n) => n.includes(redLast)) && names.some((n) => n.includes(blueLast));
+      return (
+        names.some((n) => fighterNameContains(n, redLast)) &&
+        names.some((n) => fighterNameContains(n, blueLast))
+      );
     });
     if (!oddsEvent) continue;
 
@@ -164,9 +168,9 @@ async function syncOddsForEvent(event: {
     let redOdds: number | null = null;
     let blueOdds: number | null = null;
     for (const outcome of h2h.outcomes ?? []) {
-      const name = outcome.name?.toLowerCase() ?? '';
-      if (name.includes(redLast)) redOdds = outcome.price;
-      else if (name.includes(blueLast)) blueOdds = outcome.price;
+      const name = outcome.name ?? '';
+      if (fighterNameContains(name, redLast)) redOdds = outcome.price;
+      else if (fighterNameContains(name, blueLast)) blueOdds = outcome.price;
     }
 
     if (redOdds !== null || blueOdds !== null) {
