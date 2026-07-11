@@ -12,7 +12,11 @@ function isEventLocked(event: {
   prelims_at: string | null;
   scheduled_at: string;
 }): boolean {
-  if (event.status === 'live' || event.status === 'completed') return true;
+  if (event.status === 'completed') return true;
+  // Only the top-6 fights are pickable and none of them are early prelims, so a
+  // 'live' event (early prelims underway) doesn't lock picks when a prelims start
+  // time is set — that time (minus buffer) is the lock.
+  if (event.status === 'live' && !event.prelims_at) return true;
   const startMs = new Date(event.prelims_at ?? event.scheduled_at).getTime();
   return Date.now() >= startMs - 10 * 60 * 1000;
 }
