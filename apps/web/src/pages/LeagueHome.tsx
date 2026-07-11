@@ -784,6 +784,16 @@ export function LeagueHomePage() {
                     <div style={styles.userMenuBackdrop} onClick={() => setShowUserMenu(false)} />
                     <div style={styles.userMenu}>
                       <div style={styles.userMenuEmail}>{session.user.email}</div>
+                      <button
+                        style={styles.userMenuItem}
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate('/');
+                        }}
+                      >
+                        <Home size={14} />
+                        Home
+                      </button>
                       {myMember && (
                         <button
                           style={styles.userMenuItem}
