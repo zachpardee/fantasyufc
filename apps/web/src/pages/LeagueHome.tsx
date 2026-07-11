@@ -36,6 +36,7 @@ import {
   Pencil,
   ChevronUp,
   ChevronDown,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -53,6 +54,7 @@ export function LeagueHomePage() {
   const [onlineUsers, setOnlineUsers] = useState<{ userId: string; teamName: string }[]>([]);
   const avatarRef = useRef<AvatarModalHandle>(null);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTeamName, setSettingsTeamName] = useState('');
   const [settingsColor, setSettingsColor] = useState('#5555ff');
@@ -761,14 +763,51 @@ export function LeagueHomePage() {
               />
             )}
             {!isMobile && session?.user.email && (
-              <div style={styles.userPill}>
-                <MemberAvatar
-                  teamName={myMember?.teamName ?? session.user.email}
-                  color={(myMember as any)?.avatarColor ?? '#5555ff'}
-                  size={26}
-                  avatarUrl={(myMember as any)?.avatarUrl}
-                />
-                <span style={styles.userPillEmail}>{session.user.email}</span>
+              <div style={styles.userMenuWrap}>
+                <button style={styles.userPill} onClick={() => setShowUserMenu((v) => !v)}>
+                  <MemberAvatar
+                    teamName={myMember?.teamName ?? session.user.email}
+                    color={(myMember as any)?.avatarColor ?? '#5555ff'}
+                    size={26}
+                    avatarUrl={(myMember as any)?.avatarUrl}
+                  />
+                  <span style={styles.userPillEmail}>
+                    {myProfile?.displayName ?? myProfile?.username ?? session.user.email}
+                  </span>
+                  <ChevronDown size={13} color="#666" />
+                </button>
+                {showUserMenu && (
+                  <>
+                    <div style={styles.userMenuBackdrop} onClick={() => setShowUserMenu(false)} />
+                    <div style={styles.userMenu}>
+                      <div style={styles.userMenuEmail}>{session.user.email}</div>
+                      {myMember && (
+                        <button
+                          style={styles.userMenuItem}
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setSettingsTeamName(myMember.teamName);
+                            setSettingsColor((myMember as any).avatarColor ?? '#5555ff');
+                            setShowSettings(true);
+                          }}
+                        >
+                          <Settings size={14} />
+                          Settings
+                        </button>
+                      )}
+                      <button
+                        style={styles.userMenuItem}
+                        onClick={async () => {
+                          await supabase.auth.signOut();
+                          navigate('/login');
+                        }}
+                      >
+                        <LogOut size={14} />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <div style={styles.bellWrap}>
@@ -810,9 +849,6 @@ export function LeagueHomePage() {
                 </div>
               )}
             </div>
-            {!isMobile && (
-              <span style={statusStyle(league.status)}>{league.status.toUpperCase()}</span>
-            )}
           </div>
         </div>
       </nav>
@@ -2287,24 +2323,6 @@ export function LeagueHomePage() {
   );
 }
 
-function statusStyle(status: string): React.CSSProperties {
-  const colors: Record<string, string> = {
-    setup: '#8888ff',
-    drafting: '#ffd700',
-    active: '#4caf50',
-    playoffs: '#c8102e',
-    completed: '#888',
-  };
-  return {
-    fontSize: 12,
-    fontWeight: 700,
-    padding: '3px 8px',
-    borderRadius: 4,
-    background: '#222',
-    color: colors[status] ?? '#888',
-  };
-}
-
 const styles: Record<string, React.CSSProperties> = {
   page: { minHeight: '100vh', background: '#0a0a0a' },
   loading: { color: '#888', padding: 40 },
@@ -3167,6 +3185,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     marginTop: 8,
   },
+  userMenuWrap: { position: 'relative' as const },
   userPill: {
     display: 'flex',
     alignItems: 'center',
@@ -3176,6 +3195,45 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 20,
     padding: '4px 10px 4px 4px',
     maxWidth: 200,
+    cursor: 'pointer',
+  },
+  userMenuBackdrop: { position: 'fixed' as const, inset: 0, zIndex: 900 },
+  userMenu: {
+    position: 'absolute' as const,
+    top: 'calc(100% + 6px)',
+    right: 0,
+    zIndex: 901,
+    background: '#161616',
+    border: '1px solid #2a2a2a',
+    borderRadius: 10,
+    padding: 6,
+    minWidth: 180,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+  },
+  userMenuEmail: {
+    color: '#666',
+    fontSize: 11,
+    padding: '6px 10px 8px',
+    borderBottom: '1px solid #222',
+    marginBottom: 4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+  userMenuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    color: '#ccc',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '8px 10px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    textAlign: 'left' as const,
   },
   userPillEmail: {
     color: '#888',
