@@ -162,7 +162,15 @@ export function MemberSheet({
           </button>
         </div>
         <div style={styles.body}>
-          <div style={{ position: 'relative', display: 'inline-flex' }}>
+          <div
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              // A bottom-positioned belt is absolutely positioned and hangs ~25px below
+              // the avatar — reserve that space so it doesn't overlap the team name.
+              marginBottom: belt && bmf ? 20 : 0,
+            }}
+          >
             <MemberAvatar
               teamName={member.teamName}
               color={color}
