@@ -1351,13 +1351,15 @@ export function LeagueHomePage() {
                   );
                   const homeTeamGap = leftHasBeltOrBmf ? beltGap : baseGap;
                   const awayTeamGap = rightHasBeltOrBmf ? beltGap : baseGap;
+                  // No overflow:hidden on the row/team divs — belt halos extend above the
+                  // avatars. Long names are clipped by the inner text column instead.
                   return (
-                    <div style={{ ...styles.matchupScoreRow, overflow: 'hidden' }}>
+                    <div style={styles.matchupScoreRow}>
                       <div
                         style={{
                           ...styles.matchupTeam,
                           gap: homeTeamGap,
-                          overflow: 'hidden',
+                          minWidth: 0,
                           justifyContent: 'center',
                         }}
                       >
@@ -1476,7 +1478,7 @@ export function LeagueHomePage() {
                           ...styles.matchupTeam,
                           gap: awayTeamGap,
                           justifyContent: 'center',
-                          overflow: 'hidden',
+                          minWidth: 0,
                         }}
                       >
                         {effectiveMatchup && (
