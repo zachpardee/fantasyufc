@@ -49,6 +49,31 @@ adminRouter.get('/history', requireAuth, requireAdmin, async (req, res, next) =>
   }
 });
 
+// All registered users with email (from Supabase auth), profile, and league memberships.
+adminRouter.get('/users', requireAuth, requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT u.id, u.email, u.created_at, u.last_sign_in_at,
+        p.username, p.display_name,
+        COALESCE(
+          json_agg(json_build_object('league_name', l.name, 'team_name', lm.team_name)
+                   ORDER BY l.name)
+            FILTER (WHERE lm.id IS NOT NULL),
+          '[]'
+        ) AS memberships
+      FROM auth.users u
+      LEFT JOIN user_profiles p ON p.id = u.id
+      LEFT JOIN league_members lm ON lm.user_id = u.id
+      LEFT JOIN leagues l ON l.id = lm.league_id
+      GROUP BY u.id, u.email, u.created_at, u.last_sign_in_at, p.username, p.display_name
+      ORDER BY u.created_at
+    `);
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.post('/sync/events', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     syncEvents().catch(console.error); // Fire and forget

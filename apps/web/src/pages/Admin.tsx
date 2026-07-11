@@ -44,6 +44,16 @@ export function AdminPage() {
   });
 
   const [days, setDays] = useState<number>(30);
+  const [showUsers, setShowUsers] = useState(false);
+  const {
+    data: users,
+    isLoading: usersLoading,
+    error: usersError,
+  } = useQuery<any[]>({
+    queryKey: ['admin-users'],
+    queryFn: () => apiClient.get('/admin/users'),
+    enabled: !!me?.isAdmin && showUsers,
+  });
   const { data: history } = useQuery<Record<string, { t: string; v: number }[]>>({
     queryKey: ['admin-history', days],
     queryFn: () => apiClient.get(`/admin/history?days=${days}`),
@@ -184,6 +194,22 @@ export function AdminPage() {
           </div>
         </>
       ) : null}
+
+      {/* Users */}
+      <h2 style={s.sectionTitle}>Users</h2>
+      {!showUsers ? (
+        <button style={s.refreshBtn} onClick={() => setShowUsers(true)}>
+          Show users &amp; emails
+        </button>
+      ) : usersLoading ? (
+        <LoadingInline />
+      ) : usersError ? (
+        <div style={s.errorBox}>
+          Failed to load users: {String((usersError as any)?.message ?? usersError)}
+        </div>
+      ) : (
+        <UsersTable users={users ?? []} />
+      )}
 
       {/* External dashboards */}
       <h2 style={s.sectionTitle}>Dashboards</h2>
@@ -426,6 +452,49 @@ function Trend({
   );
 }
 
+function UsersTable({ users }: { users: any[] }) {
+  if (!users.length) return <Muted>No users found.</Muted>;
+  const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString() : '—');
+  return (
+    <div style={s.tableWrap}>
+      <table style={s.table}>
+        <thead>
+          <tr>
+            {['Email', 'Username', 'Display name', 'Leagues', 'Joined', 'Last sign-in'].map(
+              (h) => (
+                <th key={h} style={s.th}>
+                  {h}
+                </th>
+              ),
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((u) => (
+            <tr key={u.id}>
+              <td style={s.td}>{u.email ?? '—'}</td>
+              <td style={s.td}>{u.username ?? '—'}</td>
+              <td style={s.td}>{u.displayName ?? '—'}</td>
+              <td style={s.td}>
+                {(u.memberships ?? []).length
+                  ? u.memberships.map((m: any) => (
+                      <div key={`${m.leagueName}-${m.teamName}`}>
+                        {m.teamName} <span style={{ color: '#666' }}>· {m.leagueName}</span>
+                      </div>
+                    ))
+                  : '—'}
+              </td>
+              <td style={s.td}>{fmtDate(u.createdAt)}</td>
+              <td style={s.td}>{fmtDate(u.lastSignInAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ ...s.muted, marginTop: 8 }}>{users.length} registered users</div>
+    </div>
+  );
+}
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={s.card}>
@@ -562,6 +631,31 @@ const s: Record<string, React.CSSProperties> = {
     margin: '8px 0 2px',
   },
   sectionTitle: { fontSize: 16, fontWeight: 700, margin: '28px 0 12px' },
+  tableWrap: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: 16,
+    overflowX: 'auto',
+  },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
+  th: {
+    textAlign: 'left',
+    color: '#888',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    padding: '6px 12px 8px 0',
+    borderBottom: '1px solid #2a2a2a',
+    whiteSpace: 'nowrap',
+  },
+  td: {
+    color: '#ddd',
+    padding: '8px 12px 8px 0',
+    borderBottom: '1px solid #1e1e1e',
+    verticalAlign: 'top',
+  },
   linksRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
