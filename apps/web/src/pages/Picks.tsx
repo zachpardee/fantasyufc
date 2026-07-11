@@ -5,6 +5,7 @@ import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
 import { StakingPicksPage } from './StakingPicks';
 import { FighterPhoto } from '../components/FighterPhoto';
+import { LockCountdown } from '../components/LockCountdown';
 
 export function PicksPage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -203,6 +204,12 @@ export function PicksPage() {
               },
             )}
           </div>
+          {!locked && (
+            <LockCountdown
+              scheduledAt={currentEvent.scheduledAt ?? currentEvent.scheduled_at}
+              prelimsAt={currentEvent.prelimsAt}
+            />
+          )}
         </div>
         <div style={styles.pickCount}>
           <span style={{ ...styles.pickCountNum, color: allComplete ? '#4caf50' : '#c8102e' }}>
@@ -216,7 +223,7 @@ export function PicksPage() {
       {locked && !isLive && (
         <div style={styles.lockedBanner}>Picks are locked — the event starts soon.</div>
       )}
-      {isLive && (
+      {locked && isLive && (
         <div style={styles.lockedBanner}>
           Picks are locked — results will update as fights finish.
         </div>

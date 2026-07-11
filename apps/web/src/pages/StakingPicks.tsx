@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/auth.store';
+import { LockCountdown } from '../components/LockCountdown';
 
 function toDecimalOdds(american: number): number {
   return american >= 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
@@ -311,8 +312,7 @@ export function StakingPicksPage() {
   // betsData.parlay is only ever the PENDING parlay (the API defines that field that way),
   // so it was never settled here and the slip's Results never showed a parlay. Settled
   // parlays live in the betsData.parlays array.
-  const settledParlay =
-    (betsData?.parlays ?? []).find((p: any) => p.status !== 'pending') ?? null;
+  const settledParlay = (betsData?.parlays ?? []).find((p: any) => p.status !== 'pending') ?? null;
   const hasResults = settledSingles.length > 0 || !!settledParlay;
 
   if (!currentEvent) {
@@ -471,6 +471,12 @@ export function StakingPicksPage() {
               return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
             })()}
           </div>
+        )}
+        {!locked && (
+          <LockCountdown
+            scheduledAt={currentEvent.scheduledAt}
+            prelimsAt={currentEvent.prelimsAt}
+          />
         )}
       </div>
 

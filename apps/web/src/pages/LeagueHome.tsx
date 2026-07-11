@@ -20,6 +20,7 @@ import {
 } from '../components/MatchupComponents';
 import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
 import { MemberAvatar } from '../components/MemberAvatar';
+import { LockCountdown } from '../components/LockCountdown';
 import {
   Home,
   Bell,
@@ -919,9 +920,18 @@ export function LeagueHomePage() {
           )}
           <div style={styles.leagueMeta}>
             <span>
-              {((league as any).seasonEndsAt &&
-                seasonByRegularEnd(new Date((league as any).seasonEndsAt))?.label) ??
-                `Season ${league.seasonYear}`}
+              {(() => {
+                const endsAt = (league as any).seasonEndsAt;
+                const label =
+                  (endsAt && seasonByRegularEnd(new Date(endsAt))?.label) ??
+                  `Season ${league.seasonYear}`;
+                if (!endsAt) return label;
+                const ends = new Date(endsAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                });
+                return `${label} · ends ${ends}`;
+              })()}
             </span>
             <span style={styles.metaDot}>·</span>
             <span>
@@ -1309,6 +1319,11 @@ export function LeagueHomePage() {
                         })()}
                       </span>
                     )}
+                    <LockCountdown
+                      scheduledAt={currentEvent.scheduledAt}
+                      prelimsAt={currentEvent.prelimsAt}
+                      style={{ fontSize: 11 }}
+                    />
                   </div>
                 )}
                 {(() => {
