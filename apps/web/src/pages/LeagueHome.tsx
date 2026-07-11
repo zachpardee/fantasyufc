@@ -1804,6 +1804,18 @@ export function LeagueHomePage() {
                       onPhotoClick={openPhoto}
                       isEventLive={effectiveMatchup?.eventStatus === 'live'}
                     />
+                    <span
+                      style={{
+                        color: '#444',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textTransform: 'uppercase' as const,
+                        letterSpacing: 1,
+                        padding: '8px 0 0',
+                      }}
+                    >
+                      PICKS
+                    </span>
                     <div style={{ display: 'flex', flexDirection: 'row', gap: 12 }}>
                       <MatchupPickPanel
                         teamName={leftTeamName}
