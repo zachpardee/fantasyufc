@@ -644,7 +644,9 @@ export function MatchupPage() {
                   ) : (
                     <div style={{ ...styles.vsText, fontSize: isMobile ? 14 : 18 }}>VS</div>
                   )}
-                  {!isMobile && <div style={styles.browseHint}>other matchups ▾</div>}
+                  <div style={{ ...styles.browseHint, ...(isMobile ? { fontSize: 9 } : {}) }}>
+                    other matchups ▾
+                  </div>
                 </div>
 
                 <div style={{ ...styles.teamBlock, alignItems: 'flex-end' }}>
@@ -1381,7 +1383,18 @@ const styles: Record<string, React.CSSProperties> = {
   },
   vsText: { color: '#333', fontWeight: 700, fontSize: 18 },
   resultBadge: { color: '#ffd700', fontSize: 12, fontWeight: 700, textAlign: 'center' },
-  browseHint: { color: '#333', fontSize: 10, letterSpacing: 0.3 },
+  browseHint: {
+    color: '#777',
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: 0.3,
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: 999,
+    padding: '3px 9px',
+    marginTop: 4,
+    whiteSpace: 'nowrap' as const,
+  },
 
   pickerOverlay: {
     position: 'fixed',
