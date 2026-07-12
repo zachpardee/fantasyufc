@@ -26,10 +26,30 @@ export function PicksPage() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}`),
   });
 
-  const { data: currentEvent } = useQuery<any>({
+  const { data: serverEvent } = useQuery<any>({
     queryKey: ['picks-current-event', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
   });
+
+  // During the post-event review window current-event returns the completed event,
+  // which used to block making next week's picks. Offer a jump to the next
+  // scheduled event; `currentEvent` below is whichever the user is viewing.
+  const [viewNext, setViewNext] = useState(false);
+  const { data: leagueSchedule = [] } = useQuery<any[]>({
+    queryKey: ['league-schedule', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule`),
+    enabled: serverEvent?.status === 'completed',
+  });
+  const nextEvent =
+    serverEvent?.status === 'completed'
+      ? (leagueSchedule
+          .filter((e: any) => e.status === 'scheduled' && e.isScoring !== false)
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+          )[0] ?? null)
+      : null;
+  const currentEvent = viewNext && nextEvent ? nextEvent : serverEvent;
 
   const isCommissioner = session?.user.id === league?.commissionerId;
 
@@ -192,6 +212,58 @@ export function PicksPage() {
         <span style={styles.title}>Event Picks</span>
         {locked && <span style={styles.lockedBadge}>LOCKED</span>}
       </nav>
+
+      {nextEvent &&
+        (viewNext ? (
+          <button
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#888',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: '10px 24px 0',
+              textAlign: 'left' as const,
+            }}
+            onClick={() => setViewNext(false)}
+          >
+            ← Back to {serverEvent.name} results
+          </button>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap' as const,
+              margin: '12px 24px 0',
+              background: '#0d1a0d',
+              border: '1px solid #2e5c2e',
+              borderRadius: 10,
+              padding: '12px 16px',
+            }}
+          >
+            <span style={{ color: '#9c9', fontSize: 13, fontWeight: 600, flex: 1 }}>
+              {serverEvent.name} is final.
+            </span>
+            <button
+              style={{
+                background: '#1a3a1a',
+                border: '1px solid #4caf50',
+                borderRadius: 8,
+                color: '#4caf50',
+                padding: '8px 14px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+              onClick={() => setViewNext(true)}
+            >
+              Make picks for {nextEvent.name} →
+            </button>
+          </div>
+        ))}
 
       <div style={styles.header}>
         <div>
