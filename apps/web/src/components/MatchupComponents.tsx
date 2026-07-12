@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FighterPhoto } from './FighterPhoto';
@@ -1157,6 +1158,7 @@ export function FighterModal({
     staleTime: 30 * 60_000,
   });
 
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const { data: career = [] } = useQuery<any[]>({
     queryKey: ['fighter-career', fighterId],
     queryFn: () => apiClient.get(`/fighters/${fighterId}/career`),
@@ -1398,7 +1400,7 @@ export function FighterModal({
               ))}
             </div>
 
-            {/* Fight history */}
+            {/* Fight history — last 4 shown, the rest behind Show more */}
             {career.length > 0 && (
               <div style={{ borderTop: '1px solid #1a1a1a' }}>
                 <div
@@ -1411,9 +1413,9 @@ export function FighterModal({
                     padding: '12px 16px 6px',
                   }}
                 >
-                  Fight History
+                  Fight History <span style={{ color: '#333' }}>({career.length})</span>
                 </div>
-                {career.map((f: any, i: number) => (
+                {(showAllHistory ? career : career.slice(0, 4)).map((f: any, i: number) => (
                   <div
                     key={`${f.fightDate}-${i}`}
                     style={{
@@ -1493,6 +1495,24 @@ export function FighterModal({
                     </div>
                   </div>
                 ))}
+                {career.length > 4 && (
+                  <button
+                    style={{
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      borderTop: '1px solid #191919',
+                      color: '#888',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: '10px 0 12px',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setShowAllHistory((v) => !v)}
+                  >
+                    {showAllHistory ? 'Show less ▴' : `Show ${career.length - 4} more ▾`}
+                  </button>
+                )}
               </div>
             )}
           </>
