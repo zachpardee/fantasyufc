@@ -101,6 +101,54 @@ fightersRouter.get('/:fighterId/history', async (req, res, next) => {
   }
 });
 
+// Career fight history from ESPN's athlete page API — one request returns every
+// UFC fight with result, method, round, and opponent. DB history only covers
+// events we track, so ESPN is the richer source here.
+fightersRouter.get('/:fighterId/career', async (req, res, next) => {
+  try {
+    const {
+      rows: [fighter],
+    } = await db.query(`SELECT ufc_fighter_id FROM fighters WHERE id = $1`, [req.params.fighterId]);
+    if (!fighter?.ufc_fighter_id) {
+      res.json([]);
+      return;
+    }
+
+    const r = await fetch(
+      `https://site.web.api.espn.com/apis/common/v3/sports/mma/ufc/athletes/${fighter.ufc_fighter_id}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!r.ok) {
+      res.json([]);
+      return;
+    }
+    const data = (await r.json()) as any;
+    const eventsMap = data.eventsMap ?? {};
+    const fights = ((data.events ?? []) as string[])
+      .map((uid) => eventsMap[uid])
+      .filter(Boolean)
+      .map((e: any) => ({
+        event_name: e.name ?? null,
+        fight_date: e.gameDate ?? null,
+        result: e.gameResult ?? null, // 'W' | 'L' | 'D' — null for unplayed bouts
+        method: e.status?.result?.displayName ?? null,
+        method_short: e.status?.result?.shortDisplayName ?? null,
+        round: e.status?.period ?? null,
+        clock: e.status?.displayClock ?? null,
+        opponent_name: e.opponent?.displayName ?? null,
+        is_title_fight: !!e.titleFight,
+      }))
+      .filter((f: any) => f.result && f.fight_date)
+      .sort(
+        (a: any, b: any) => new Date(b.fight_date).getTime() - new Date(a.fight_date).getTime(),
+      );
+
+    res.json(fights);
+  } catch (err) {
+    next(err);
+  }
+});
+
 fightersRouter.get('/:fighterId/live-stats', async (req, res, next) => {
   try {
     const {

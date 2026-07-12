@@ -1157,6 +1157,13 @@ export function FighterModal({
     staleTime: 30 * 60_000,
   });
 
+  const { data: career = [] } = useQuery<any[]>({
+    queryKey: ['fighter-career', fighterId],
+    queryFn: () => apiClient.get(`/fighters/${fighterId}/career`),
+    enabled: !!fighterId,
+    staleTime: 30 * 60_000,
+  });
+
   function fmtHeight(inches: number | null | undefined): string {
     if (!inches) return '—';
     const ft = Math.floor(inches / 12);
@@ -1164,15 +1171,20 @@ export function FighterModal({
     return `${ft}' ${i}"`;
   }
 
-  function fmtAge(dob: string | null | undefined): string {
-    if (!dob) return '';
+  function calcAge(dob: string | null | undefined): number | null {
+    if (!dob) return null;
     const birth = new Date(dob);
     const today = new Date();
-    const age =
+    return (
       today.getFullYear() -
       birth.getFullYear() -
-      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
-    return `(${age})`;
+      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+    );
+  }
+
+  function fmtAge(dob: string | null | undefined): string {
+    const age = calcAge(dob);
+    return age === null ? '' : `(${age})`;
   }
 
   function fmtDob(dob: string | null | undefined): string {
@@ -1304,6 +1316,7 @@ export function FighterModal({
                 ],
                 ['(T)KO', String(liveStats?.koTkoWins ?? fighter.koTkoWins ?? 0)],
                 ['SUB', String(liveStats?.submissionWins ?? fighter.submissionWins ?? 0)],
+                ['AGE', calcAge(fighter.dob) != null ? String(calcAge(fighter.dob)) : '—'],
               ].map(([label, value], i) => (
                 <div
                   key={label}
@@ -1384,6 +1397,104 @@ export function FighterModal({
                 </div>
               ))}
             </div>
+
+            {/* Fight history */}
+            {career.length > 0 && (
+              <div style={{ borderTop: '1px solid #1a1a1a' }}>
+                <div
+                  style={{
+                    color: '#444',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.8,
+                    padding: '12px 16px 6px',
+                  }}
+                >
+                  Fight History
+                </div>
+                {career.map((f: any, i: number) => (
+                  <div
+                    key={`${f.fightDate}-${i}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 16px',
+                      borderTop: i > 0 ? '1px solid #191919' : 'none',
+                    }}
+                  >
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        width: 22,
+                        height: 22,
+                        borderRadius: 5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        background:
+                          f.result === 'W' ? '#153c15' : f.result === 'L' ? '#3c1515' : '#222',
+                        color: f.result === 'W' ? '#4caf50' : f.result === 'L' ? '#ff5252' : '#999',
+                      }}
+                    >
+                      {f.result}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          color: '#ddd',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.opponentName ?? 'Unknown'}
+                        {f.isTitleFight && <span style={{ marginLeft: 6 }}>🏆</span>}
+                      </div>
+                      <div
+                        style={{
+                          color: '#555',
+                          fontSize: 11,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {[f.method, f.round ? `R${f.round}${f.clock ? ` ${f.clock}` : ''}` : null]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ color: '#666', fontSize: 11 }}>
+                        {f.fightDate &&
+                          new Date(f.fightDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                      </div>
+                      <div
+                        style={{
+                          color: '#444',
+                          fontSize: 10,
+                          maxWidth: 150,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.eventName}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
