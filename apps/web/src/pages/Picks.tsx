@@ -160,16 +160,38 @@ export function PicksPage() {
   });
   useEffect(() => {
     const startTime = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
-    if (!startTime) return;
+    if (!startTime) {
+      setTimeLocked(false);
+      return;
+    }
     const lockAt = new Date(startTime).getTime() - 10 * 60 * 1000;
     const remaining = lockAt - Date.now();
     if (remaining <= 0) {
       setTimeLocked(true);
       return;
     }
+    setTimeLocked(false);
     const t = setTimeout(() => setTimeLocked(true), remaining);
     return () => clearTimeout(t);
   }, [currentEvent?.prelimsAt, currentEvent?.scheduledAt]);
+
+  // Per-event local state must clear when the viewed event changes (e.g. jumping
+  // from the completed event's review to next week's picks) — otherwise the old
+  // event's picks, summary view, and lock state bleed into the new one. Guarded
+  // to actual changes so a warm-cache mount doesn't wipe freshly seeded picks.
+  const seenEventIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = currentEvent?.id ?? null;
+    if (seenEventIdRef.current === id) return;
+    const isFirst = seenEventIdRef.current === null;
+    seenEventIdRef.current = id;
+    if (isFirst) return;
+    setLocalPicks({});
+    setLocalMethods({});
+    setShowSummary(false);
+    setConfirmNoMethods(false);
+    initialViewSet.current = false;
+  }, [currentEvent?.id]);
 
   // Staking leagues use a different picks UI. This return MUST stay below every hook
   // above it — moving it higher changes the hook count between renders and crashes
