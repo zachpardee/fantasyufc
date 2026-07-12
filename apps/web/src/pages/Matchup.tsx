@@ -27,18 +27,21 @@ export function MatchupPage() {
   const location = useLocation();
   const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(null);
+  // ?m=<matchupId> deep-links straight into browsing another team's matchup
+  const [browsingMatchupId, setBrowsingMatchupId] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get('m'),
+  );
   const [showMatchupPicker, setShowMatchupPicker] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
   const currentChipRef = useRef<HTMLButtonElement>(null);
 
-  // Reset to current matchup whenever the user navigates to this page
+  // Reset to the linked (?m=) or current matchup whenever the user navigates to this page
   useEffect(() => {
     setSelectedMatchupId(null);
     setSelectedEventId(null);
-    setBrowsingMatchupId(null);
+    setBrowsingMatchupId(new URLSearchParams(location.search).get('m'));
     setShowMatchupPicker(false);
-  }, [location.key]);
+  }, [location.key, location.search]);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{
     url: string;
     name: string;

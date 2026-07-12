@@ -16,6 +16,7 @@ import {
   StakingBetsSection,
   FighterModal,
   LiveFightCard,
+  fmtStakeScore,
   type PhotoClickHandler,
 } from '../components/MatchupComponents';
 import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
@@ -1851,6 +1852,108 @@ export function LeagueHomePage() {
                   </div>
                 );
               })()}
+            </div>
+          );
+        })()}
+
+      {/* All matchups for the viewed event — tap through to browse any pair */}
+      {(league.status === 'active' || league.status === 'playoffs') &&
+        (() => {
+          const evId = effectiveMatchup?.eventId ?? currentEvent?.id;
+          const eventMatchups = (allMatchups as any[]).filter((m: any) => m.eventId === evId);
+          if (eventMatchups.length < 2) return null;
+          const fmtScore = (n: any) =>
+            isStaking ? fmtStakeScore(+(n ?? 0)) : (+(n ?? 0)).toFixed(0);
+          return (
+            <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
+              <div
+                style={{
+                  color: '#444',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textTransform: 'uppercase' as const,
+                  letterSpacing: 1,
+                  padding: '16px 0 10px',
+                }}
+              >
+                ALL MATCHUPS
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {eventMatchups.map((m: any) => {
+                  const isMine =
+                    !!myMemberId && (m.homeTeamId === myMemberId || m.awayTeamId === myMemberId);
+                  const homeWon = m.winnerId && m.winnerId === m.homeTeamId;
+                  const awayWon = m.winnerId && m.winnerId === m.awayTeamId;
+                  return (
+                    <Link
+                      key={m.id}
+                      to={`/league/${leagueId}/matchup?m=${m.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        background: '#141414',
+                        border: `1px solid ${isMine ? '#c8102e55' : '#242424'}`,
+                        borderRadius: 10,
+                        padding: '10px 14px',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: 'right',
+                          color: homeWon ? '#fff' : '#888',
+                          fontSize: 13,
+                          fontWeight: homeWon ? 700 : 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {m.homeTeamName}
+                      </span>
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          color: '#666',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {fmtScore(m.homeScore)} — {fmtScore(m.awayScore)}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          color: awayWon ? '#fff' : '#888',
+                          fontSize: 13,
+                          fontWeight: awayWon ? 700 : 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {m.awayTeamName}
+                      </span>
+                      {isMine && (
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            color: '#c8102e',
+                            fontSize: 9,
+                            fontWeight: 800,
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          MINE
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           );
         })()}
