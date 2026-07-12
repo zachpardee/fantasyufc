@@ -15,6 +15,7 @@ export function PicksPage() {
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [localChampion, setLocalChampion] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [confirmNoMethods, setConfirmNoMethods] = useState(false);
   const [picksPublic, setPicksPublic] = useState(false);
   const initialViewSet = useRef(false);
   const championInitialized = useRef(false);
@@ -509,8 +510,60 @@ export function PicksPage() {
                 </span>
               )}
             </div>
+            {confirmNoMethods && missingMethodCount > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap' as const,
+                  background: '#2a2008',
+                  border: '1px solid #e0a000',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                }}
+              >
+                <span style={{ color: '#e0a000', fontSize: 13, fontWeight: 700, flex: 1 }}>
+                  {missingMethodCount} pick{missingMethodCount > 1 ? 's have' : ' has'} no method of
+                  victory — correct methods earn bonus points.
+                </span>
+                <button
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #e0a000',
+                    borderRadius: 6,
+                    color: '#e0a000',
+                    padding: '7px 14px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setConfirmNoMethods(false)}
+                >
+                  Add methods
+                </button>
+                <button
+                  style={{
+                    background: '#e0a000',
+                    border: 'none',
+                    borderRadius: 6,
+                    color: '#1a1400',
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    setConfirmNoMethods(false);
+                    saveMutation.mutate();
+                  }}
+                >
+                  Save anyway
+                </button>
+              </div>
+            )}
             <div style={styles.footerActions}>
-              {missingMethodCount > 0 && (
+              {!confirmNoMethods && missingMethodCount > 0 && (
                 <span style={{ color: '#e0a000', fontSize: 12, fontWeight: 600 }}>
                   {missingMethodCount} pick{missingMethodCount > 1 ? 's' : ''} without a method —
                   correct methods earn bonus points
@@ -524,7 +577,14 @@ export function PicksPage() {
                   ...styles.saveBtn,
                   ...(saveMutation.isPending ? styles.saveBtnDisabled : {}),
                 }}
-                onClick={() => saveMutation.mutate()}
+                onClick={() => {
+                  if (missingMethodCount > 0 && !confirmNoMethods) {
+                    setConfirmNoMethods(true);
+                    return;
+                  }
+                  setConfirmNoMethods(false);
+                  saveMutation.mutate();
+                }}
                 disabled={saveMutation.isPending}
               >
                 {saveMutation.isPending
@@ -899,16 +959,18 @@ const styles: Record<string, React.CSSProperties> = {
   pickResult: { color: '#4caf50', fontSize: 12, fontWeight: 700 },
   methodRow: { display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' },
   methodLabel: { color: '#555', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' },
-  methodBtns: { display: 'flex', gap: 6 },
+  methodBtns: { display: 'flex', gap: 6, flex: 1, minWidth: 220 },
   methodBtn: {
+    flex: 1,
     background: '#1a1a1a',
     border: '1px solid #2a2a2a',
-    borderRadius: 5,
-    color: '#666',
-    padding: '4px 12px',
+    borderRadius: 6,
+    color: '#888',
+    padding: '9px 0',
     cursor: 'pointer',
-    fontSize: 12,
-    fontWeight: 600,
+    fontSize: 13,
+    fontWeight: 700,
+    textAlign: 'center' as const,
   },
   methodBtnSelected: { border: '1px solid #c8102e', color: '#c8102e', background: '#1a0a0a' },
   methodBtnCorrect: { border: '1px solid #4caf50', color: '#4caf50', background: '#0a1a0a' },
