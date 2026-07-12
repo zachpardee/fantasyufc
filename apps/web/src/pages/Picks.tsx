@@ -98,13 +98,13 @@ export function PicksPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const picks = Object.entries(localPicks)
-        .filter(([fightId]) => localMethods[fightId])
-        .map(([fightId, pickedFighterId]) => ({
-          fightId,
-          pickedFighterId,
-          pickedMethod: localMethods[fightId],
-        }));
+      // Every winner pick saves — method is an optional bonus, never a filter.
+      // (This used to silently drop winner-only picks; see UFC 329.)
+      const picks = Object.entries(localPicks).map(([fightId, pickedFighterId]) => ({
+        fightId,
+        pickedFighterId,
+        pickedMethod: localMethods[fightId] || undefined,
+      }));
       return apiClient.post(`/leagues/${leagueId}/picks/${currentEvent!.id}`, { picks });
     },
     onSuccess: () => {
@@ -163,9 +163,10 @@ export function PicksPage() {
   const mainCard = fights.filter((f) => !earlyPrelims.includes(f) && !prelims.includes(f));
 
   const totalFights = fights.length;
-  // A pick is complete only when both a winner and a method are selected
-  const totalComplete = fights.filter((f) => localPicks[f.id] && localMethods[f.id]).length;
+  // A pick counts once a winner is selected; method is an optional bonus
+  const totalComplete = fights.filter((f) => localPicks[f.id]).length;
   const allComplete = totalComplete === totalFights && totalFights > 0;
+  const missingMethodCount = fights.filter((f) => localPicks[f.id] && !localMethods[f.id]).length;
 
   if (!currentEvent) {
     return (
@@ -509,6 +510,12 @@ export function PicksPage() {
               )}
             </div>
             <div style={styles.footerActions}>
+              {missingMethodCount > 0 && (
+                <span style={{ color: '#e0a000', fontSize: 12, fontWeight: 600 }}>
+                  {missingMethodCount} pick{missingMethodCount > 1 ? 's' : ''} without a method —
+                  correct methods earn bonus points
+                </span>
+              )}
               {saveMutation.isError && (
                 <span style={styles.footerError}>Failed to save — please try again</span>
               )}
@@ -604,14 +611,26 @@ function FightPickRow({
 
       {/* Method selector — shown when a winner is picked and event isn't completed */}
       {picked && (
-        <div style={styles.methodRow}>
+        <div
+          style={{
+            ...styles.methodRow,
+            ...(!pickedMethod && !isCompleted && !locked
+              ? {
+                  background: '#2a2008',
+                  border: '1px solid #e0a00055',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                }
+              : {}),
+          }}
+        >
           <span
             style={{
               ...styles.methodLabel,
-              color: !pickedMethod && !isCompleted ? '#c8102e' : '#555',
+              color: !pickedMethod && !isCompleted ? '#e0a000' : '#555',
             }}
           >
-            {isCompleted ? 'Method:' : pickedMethod ? 'Method:' : 'Method (required):'}
+            {isCompleted || pickedMethod ? 'Method:' : 'Add method — bonus points:'}
           </span>
           <div style={styles.methodBtns}>
             {METHODS.map((m) => {

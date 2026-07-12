@@ -154,15 +154,18 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
           z.object({
             fightId: z.string().uuid(),
             pickedFighterId: z.string().uuid(),
-            pickedMethod: z.enum([
-              'ko_tko',
-              'submission',
-              'decision',
-              'decision_unanimous',
-              'decision_split',
-              'decision_majority',
-              'disqualification',
-            ]),
+            // Optional: winner-only picks score win points; a correct method adds bonus.
+            pickedMethod: z
+              .enum([
+                'ko_tko',
+                'submission',
+                'decision',
+                'decision_unanimous',
+                'decision_split',
+                'decision_majority',
+                'disqualification',
+              ])
+              .nullish(),
           }),
         ),
       })
