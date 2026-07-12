@@ -806,13 +806,12 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const picks = Object.entries(localPicks)
-        .filter(([fightId]) => localMethods[fightId])
-        .map(([fightId, pickedFighterId]) => ({
-          fightId,
-          pickedFighterId,
-          pickedMethod: localMethods[fightId],
-        }));
+      // Every winner pick saves — method is an optional bonus, never a filter.
+      const picks = Object.entries(localPicks).map(([fightId, pickedFighterId]) => ({
+        fightId,
+        pickedFighterId,
+        pickedMethod: localMethods[fightId] || undefined,
+      }));
       return apiClient.post(`/leagues/${leagueId}/picks/${currentEvent!.id}`, { picks });
     },
     onSuccess: () => {
@@ -831,7 +830,7 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   const fights: any[] = picksData?.fights ?? [];
   const locked: boolean = picksData?.locked ?? false;
   const totalFights = fights.length;
-  const totalComplete = fights.filter((f) => localPicks[f.id] && localMethods[f.id]).length;
+  const totalComplete = fights.filter((f) => localPicks[f.id]).length;
 
   const allFighters = fights.flatMap((fight: any) => [
     {
