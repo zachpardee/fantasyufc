@@ -1863,6 +1863,7 @@ export function LeagueHomePage() {
           const eventMatchups = (allMatchups as any[]).filter((m: any) => m.eventId === evId);
           if (eventMatchups.length < 2) return null;
           const fmtScore = (n: any) => (isStaking ? fmtMoney(+(n ?? 0)) : (+(n ?? 0)).toFixed(0));
+          const scoreMin = isStaking ? 56 : 34;
           const memberById = new Map(members.map((mem: any) => [mem.id, mem]));
           return (
             <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
@@ -1899,9 +1900,10 @@ export function LeagueHomePage() {
                       key={m.id}
                       to={`/league/${leagueId}/matchup?m=${m.id}`}
                       style={{
+                        position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
+                        gap: 8,
                         background: '#141414',
                         border: `1px solid ${isMine ? '#c8102e55' : '#242424'}`,
                         borderRadius: 10,
@@ -1927,9 +1929,13 @@ export function LeagueHomePage() {
                           avatarUrl={homeMember?.avatarUrl}
                         />
                       </div>
+                      {/* Fixed-width halves either side of the dash so it sits dead
+                          center on every row, scores aligned across the list. */}
                       <span
                         style={{
                           flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
                           color: '#bbb',
                           fontSize: 13,
                           fontWeight: 800,
@@ -1937,9 +1943,13 @@ export function LeagueHomePage() {
                           fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        {fmtScore(m.homeScore)}
-                        <span style={{ color: '#444', fontWeight: 600, padding: '0 5px' }}>–</span>
-                        {fmtScore(m.awayScore)}
+                        <span style={{ minWidth: scoreMin, textAlign: 'right' as const }}>
+                          {fmtScore(m.homeScore)}
+                        </span>
+                        <span style={{ color: '#444', fontWeight: 600, padding: '0 6px' }}>–</span>
+                        <span style={{ minWidth: scoreMin, textAlign: 'left' as const }}>
+                          {fmtScore(m.awayScore)}
+                        </span>
                       </span>
                       <div
                         style={{
@@ -1961,9 +1971,11 @@ export function LeagueHomePage() {
                       {isMine && (
                         <span
                           style={{
-                            flexShrink: 0,
+                            position: 'absolute',
+                            top: 3,
+                            right: 8,
                             color: '#c8102e',
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: 800,
                             letterSpacing: 0.5,
                           }}
