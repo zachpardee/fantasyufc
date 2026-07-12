@@ -16,7 +16,7 @@ import {
   StakingBetsSection,
   FighterModal,
   LiveFightCard,
-  fmtStakeScore,
+  fmtMoney,
   type PhotoClickHandler,
 } from '../components/MatchupComponents';
 import { AvatarModal, type AvatarModalHandle } from '../components/AvatarModal';
@@ -1862,8 +1862,8 @@ export function LeagueHomePage() {
           const evId = effectiveMatchup?.eventId ?? currentEvent?.id;
           const eventMatchups = (allMatchups as any[]).filter((m: any) => m.eventId === evId);
           if (eventMatchups.length < 2) return null;
-          const fmtScore = (n: any) =>
-            isStaking ? fmtStakeScore(+(n ?? 0)) : (+(n ?? 0)).toFixed(0);
+          const fmtScore = (n: any) => (isStaking ? fmtMoney(+(n ?? 0)) : (+(n ?? 0)).toFixed(0));
+          const memberById = new Map(members.map((mem: any) => [mem.id, mem]));
           return (
             <div style={{ padding: isMobile ? '0 12px 8px' : '0 24px 8px' }}>
               <div
@@ -1884,6 +1884,16 @@ export function LeagueHomePage() {
                     !!myMemberId && (m.homeTeamId === myMemberId || m.awayTeamId === myMemberId);
                   const homeWon = m.winnerId && m.winnerId === m.homeTeamId;
                   const awayWon = m.winnerId && m.winnerId === m.awayTeamId;
+                  const homeMember: any = memberById.get(m.homeTeamId);
+                  const awayMember: any = memberById.get(m.awayTeamId);
+                  const nameStyle = (won: boolean): React.CSSProperties => ({
+                    color: won ? '#fff' : '#888',
+                    fontSize: 13,
+                    fontWeight: won ? 700 : 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap' as const,
+                  });
                   return (
                     <Link
                       key={m.id}
@@ -1899,44 +1909,55 @@ export function LeagueHomePage() {
                         textDecoration: 'none',
                       }}
                     >
-                      <span
+                      <div
                         style={{
                           flex: 1,
-                          textAlign: 'right',
-                          color: homeWon ? '#fff' : '#888',
-                          fontSize: 13,
-                          fontWeight: homeWon ? 700 : 600,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap' as const,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          gap: 8,
+                          minWidth: 0,
                         }}
                       >
-                        {m.homeTeamName}
-                      </span>
+                        <span style={nameStyle(homeWon)}>{m.homeTeamName}</span>
+                        <MemberAvatar
+                          teamName={m.homeTeamName ?? ''}
+                          color={homeMember?.avatarColor ?? '#5555ff'}
+                          size={24}
+                          avatarUrl={homeMember?.avatarUrl}
+                        />
+                      </div>
                       <span
                         style={{
                           flexShrink: 0,
-                          color: '#666',
-                          fontSize: 12,
-                          fontWeight: 700,
+                          color: '#bbb',
+                          fontSize: 13,
+                          fontWeight: 800,
                           whiteSpace: 'nowrap' as const,
+                          fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        {fmtScore(m.homeScore)} — {fmtScore(m.awayScore)}
+                        {fmtScore(m.homeScore)}
+                        <span style={{ color: '#444', fontWeight: 600, padding: '0 5px' }}>–</span>
+                        {fmtScore(m.awayScore)}
                       </span>
-                      <span
+                      <div
                         style={{
                           flex: 1,
-                          color: awayWon ? '#fff' : '#888',
-                          fontSize: 13,
-                          fontWeight: awayWon ? 700 : 600,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap' as const,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          minWidth: 0,
                         }}
                       >
-                        {m.awayTeamName}
-                      </span>
+                        <MemberAvatar
+                          teamName={m.awayTeamName ?? ''}
+                          color={awayMember?.avatarColor ?? '#5555ff'}
+                          size={24}
+                          avatarUrl={awayMember?.avatarUrl}
+                        />
+                        <span style={nameStyle(awayWon)}>{m.awayTeamName}</span>
+                      </div>
                       {isMine && (
                         <span
                           style={{
