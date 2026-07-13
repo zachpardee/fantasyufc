@@ -78,13 +78,11 @@ matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       `
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
-        ht.team_name as home_team_name, at2.team_name as away_team_name,
+        ht.team_name as home_team_name, at2.team_name as away_team_name
       FROM matchups m
       JOIN ufc_events e ON e.id = m.event_id
       JOIN league_members ht ON ht.id = m.home_team_id
       JOIN league_members at2 ON at2.id = m.away_team_id
-      JOIN user_profiles hup ON hup.id = ht.user_id
-      JOIN user_profiles aup ON aup.id = at2.user_id
       WHERE m.league_id = $1
       ORDER BY e.scheduled_at DESC
     `,
