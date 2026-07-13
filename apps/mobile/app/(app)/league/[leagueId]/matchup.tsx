@@ -42,11 +42,15 @@ function fmtChip(n: number, isStaking: boolean): string {
 }
 
 export default function MatchupScreen({ leagueIdProp }: { leagueIdProp?: string }) {
-  const params = useLocalSearchParams<{ leagueId: string }>();
+  // ?m=<matchupId> deep-links straight into any matchup (e.g. from league home)
+  const params = useLocalSearchParams<{ leagueId: string; m?: string }>();
   const leagueId = leagueIdProp ?? params.leagueId;
   const { session } = useAuthStore();
   const { refreshing, onRefresh } = useRefresh();
-  const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(null);
+  const [selectedMatchupId, setSelectedMatchupId] = useState<string | null>(params.m ?? null);
+  useEffect(() => {
+    if (params.m) setSelectedMatchupId(params.m);
+  }, [params.m]);
 
   const { data: league } = useQuery<any>({
     queryKey: ['league', leagueId],

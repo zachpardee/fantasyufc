@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../../../src/api/client';
+import { LockCountdown } from '../../../../src/components/LockCountdown';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,24 @@ export default function PicksScreen() {
     queryFn: () => apiClient.get(`/leagues/${leagueId}/picks/current-event`),
   });
 
+  // During the post-event review window current-event returns the completed
+  // event; offer a jump to the next scheduled event so picks open early.
+  const [viewNext, setViewNext] = useState(false);
+  const { data: leagueSchedule = [] } = useQuery<any[]>({
+    queryKey: ['league-schedule', leagueId],
+    queryFn: () => apiClient.get(`/leagues/${leagueId}/schedule`),
+    enabled: currentEvent?.status === 'completed',
+  });
+  const nextEvent =
+    currentEvent?.status === 'completed'
+      ? (leagueSchedule
+          .filter((e: any) => e.status === 'scheduled' && e.isScoring !== false)
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+          )[0] ?? null)
+      : null;
+
   if (eventLoading)
     return (
       <View style={s.center}>
@@ -82,11 +101,38 @@ export default function PicksScreen() {
     );
   }
 
+  const activeEvent = viewNext && nextEvent ? nextEvent : currentEvent;
+
+  const banner =
+    nextEvent &&
+    (viewNext ? (
+      <TouchableOpacity onPress={() => setViewNext(false)}>
+        <Text style={s.nextEventBack}>← Back to {currentEvent.name} results</Text>
+      </TouchableOpacity>
+    ) : (
+      <View style={s.nextEventBanner}>
+        <Text style={s.nextEventText}>{currentEvent.name} is final.</Text>
+        <TouchableOpacity style={s.nextEventBtn} onPress={() => setViewNext(true)}>
+          <Text style={s.nextEventBtnText}>Make picks for {nextEvent.name} →</Text>
+        </TouchableOpacity>
+      </View>
+    ));
+
   if (league?.leagueFormat === 'staking') {
-    return <StakingScreen leagueId={leagueId!} currentEvent={currentEvent} />;
+    return (
+      <View style={s.container}>
+        {banner}
+        <StakingScreen leagueId={leagueId!} currentEvent={activeEvent} />
+      </View>
+    );
   }
 
-  return <PickemScreen leagueId={leagueId!} currentEvent={currentEvent} />;
+  return (
+    <View style={s.container}>
+      {banner}
+      <PickemScreen leagueId={leagueId!} currentEvent={activeEvent} />
+    </View>
+  );
 }
 
 // ── Staking Screen ────────────────────────────────────────────────────────────
@@ -127,9 +173,11 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
   const liveAvailable = weeklyBudget - liveUsed;
 
   const eventStart = currentEvent?.prelimsAt ?? currentEvent?.scheduledAt;
+  // A 'live' event (early prelims underway) doesn't lock betting when a prelims
+  // start time is set — that time (minus buffer) is the lock, same as the API.
   const locked =
-    currentEvent?.status === 'live' ||
     currentEvent?.status === 'completed' ||
+    (currentEvent?.status === 'live' && !currentEvent?.prelimsAt) ||
     (!!eventStart && Date.now() >= new Date(eventStart).getTime() - 10 * 60 * 1000);
 
   // Parlay odds
@@ -278,6 +326,13 @@ function StakingScreen({ leagueId, currentEvent }: { leagueId: string; currentEv
           <View style={{ flex: 1 }}>
             <Text style={s.eventName}>{eventName}</Text>
             {eventDateStr && <Text style={s.eventDate}>{eventDateStr}</Text>}
+            {!locked && (
+              <LockCountdown
+                scheduledAt={currentEvent?.scheduledAt}
+                prelimsAt={currentEvent?.prelimsAt}
+                style={{ marginTop: 2 }}
+              />
+            )}
           </View>
           {locked && (
             <View style={st.lockedBadge}>
@@ -761,6 +816,7 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   const [localMethods, setLocalMethods] = useState<Record<string, string>>({});
   const [localChampion, setLocalChampion] = useState<string | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [confirmNoMethods, setConfirmNoMethods] = useState(false);
   const picksInitialized = useRef(false);
   const championInitialized = useRef(false);
 
@@ -792,6 +848,23 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
       if (picksData.fights.some((f: any) => f.pickedFighterId)) setShowSummary(true);
     }
   }, [picksData]);
+
+  // Reset per-event pick state when the viewed event changes (e.g. jumping from
+  // the completed event's review to next week) — guarded so the initial mount
+  // doesn't wipe freshly seeded picks.
+  const seenEventIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = currentEvent?.id ?? null;
+    if (seenEventIdRef.current === id) return;
+    const isFirst = seenEventIdRef.current === null;
+    seenEventIdRef.current = id;
+    if (isFirst) return;
+    setLocalPicks({});
+    setLocalMethods({});
+    setShowSummary(false);
+    setConfirmNoMethods(false);
+    picksInitialized.current = false;
+  }, [currentEvent?.id]);
 
   useEffect(() => {
     setLocalChampion(null);
@@ -831,6 +904,7 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
   const locked: boolean = picksData?.locked ?? false;
   const totalFights = fights.length;
   const totalComplete = fights.filter((f) => localPicks[f.id]).length;
+  const missingMethodCount = fights.filter((f) => localPicks[f.id] && !localMethods[f.id]).length;
 
   const allFighters = fights.flatMap((fight: any) => [
     {
@@ -869,6 +943,13 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
               day: 'numeric',
             })}
           </Text>
+          {!locked && (
+            <LockCountdown
+              scheduledAt={currentEvent.scheduledAt}
+              prelimsAt={currentEvent.prelimsAt}
+              style={{ marginTop: 2 }}
+            />
+          )}
         </View>
         <View style={s.pickCount}>
           <Text
@@ -1050,9 +1131,41 @@ function PickemScreen({ leagueId, currentEvent }: { leagueId: string; currentEve
             </View>
           )}
 
+          {confirmNoMethods && missingMethodCount > 0 && (
+            <View style={s.methodWarnPanel}>
+              <Text style={s.methodWarnText}>
+                {missingMethodCount} pick{missingMethodCount > 1 ? 's have' : ' has'} no method of
+                victory — correct methods earn bonus points.
+              </Text>
+              <View style={s.methodWarnBtns}>
+                <TouchableOpacity
+                  style={s.methodWarnEdit}
+                  onPress={() => setConfirmNoMethods(false)}
+                >
+                  <Text style={s.methodWarnEditText}>Add methods</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.methodWarnSave}
+                  onPress={() => {
+                    setConfirmNoMethods(false);
+                    saveMutation.mutate();
+                  }}
+                >
+                  <Text style={s.methodWarnSaveText}>Save anyway</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           <TouchableOpacity
             style={[s.saveBtn, saveMutation.isPending && s.saveBtnDisabled]}
-            onPress={() => saveMutation.mutate()}
+            onPress={() => {
+              if (missingMethodCount > 0 && !confirmNoMethods) {
+                setConfirmNoMethods(true);
+                return;
+              }
+              setConfirmNoMethods(false);
+              saveMutation.mutate();
+            }}
             disabled={saveMutation.isPending}
           >
             <Text style={s.saveBtnText}>
@@ -1128,8 +1241,8 @@ function FightCard({
         />
       </View>
       {picked && (
-        <View style={s.methodRow}>
-          {methodRequired && <Text style={s.methodRequired}>Choose method:</Text>}
+        <View style={[s.methodRow, methodRequired && s.methodRowHighlight]}>
+          {methodRequired && <Text style={s.methodRequired}>Add method — bonus points:</Text>}
           {METHODS.map((m) => {
             const isSelected = pickedMethod === m.value;
             const isOutcomeMatch =
@@ -1538,13 +1651,69 @@ const s = StyleSheet.create({
   },
   pickResult: { color: '#4caf50', fontSize: 11, fontWeight: '700', marginTop: 4 },
   methodRequired: {
-    color: '#c8102e',
-    fontSize: 10,
+    color: '#e0a000',
+    fontSize: 11,
     fontWeight: '700',
     width: '100%',
     marginBottom: 4,
     textAlign: 'center',
   },
+  methodRowHighlight: {
+    backgroundColor: '#2a2008',
+    borderWidth: 1,
+    borderColor: '#e0a00055',
+    borderRadius: 8,
+    padding: 8,
+  },
+  methodWarnPanel: {
+    backgroundColor: '#2a2008',
+    borderWidth: 1,
+    borderColor: '#e0a000',
+    borderRadius: 8,
+    padding: 12,
+    margin: 12,
+    marginBottom: 0,
+  },
+  methodWarnText: { color: '#e0a000', fontSize: 13, fontWeight: '700' },
+  methodWarnBtns: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  methodWarnEdit: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e0a000',
+    borderRadius: 6,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  methodWarnEditText: { color: '#e0a000', fontSize: 12, fontWeight: '700' },
+  methodWarnSave: {
+    flex: 1,
+    backgroundColor: '#e0a000',
+    borderRadius: 6,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  methodWarnSaveText: { color: '#1a1400', fontSize: 12, fontWeight: '800' },
+  nextEventBack: { color: '#888', fontSize: 13, fontWeight: '600', padding: 12, paddingBottom: 0 },
+  nextEventBanner: {
+    backgroundColor: '#0d1a0d',
+    borderWidth: 1,
+    borderColor: '#2e5c2e',
+    borderRadius: 10,
+    padding: 12,
+    margin: 12,
+    marginBottom: 0,
+    gap: 8,
+  },
+  nextEventText: { color: '#99cc99', fontSize: 13, fontWeight: '600' },
+  nextEventBtn: {
+    backgroundColor: '#1a3a1a',
+    borderWidth: 1,
+    borderColor: '#4caf50',
+    borderRadius: 8,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  nextEventBtnText: { color: '#4caf50', fontSize: 13, fontWeight: '700' },
   methodRow: {
     flexDirection: 'row',
     gap: 6,

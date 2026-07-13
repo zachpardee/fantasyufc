@@ -1,7 +1,27 @@
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '../../../src/api/client';
+
+function calcAge(dob: string | null | undefined): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  const today = new Date();
+  return (
+    today.getFullYear() -
+    birth.getFullYear() -
+    (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+  );
+}
 
 function fmtOutcome(outcome: string): string {
   const map: Record<string, string> = {
@@ -25,11 +45,14 @@ export default function FighterDetailScreen() {
     queryFn: () => apiClient.get(`/fighters/${id}`),
   });
 
-  const { data: history = [] } = useQuery<any[]>({
-    queryKey: ['fighter-history', id],
-    queryFn: () => apiClient.get(`/fighters/${id}/history`),
+  // ESPN-backed full career (opponent, method, round) — richer than DB history
+  const { data: career = [] } = useQuery<any[]>({
+    queryKey: ['fighter-career', id],
+    queryFn: () => apiClient.get(`/fighters/${id}/career`),
     enabled: !!id,
+    staleTime: 30 * 60_000,
   });
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   if (isLoading) {
     return (
@@ -100,55 +123,59 @@ export default function FighterDetailScreen() {
         />
         <StatCard label="KO/TKO Wins" value={fighter.koTkoWins ?? 0} />
         <StatCard label="Sub Wins" value={fighter.submissionWins ?? 0} />
+        {calcAge(fighter.dob) != null && <StatCard label="Age" value={calcAge(fighter.dob)!} />}
         {fighter.nationality && <StatCard label="Country" value={fighter.nationality} />}
       </View>
 
-      {/* Fight history */}
-      {history.length > 0 && (
+      {/* Fight history — last 4 shown, the rest behind Show more */}
+      {career.length > 0 && (
         <View style={s.historySection}>
-          <Text style={s.sectionTitle}>FIGHT HISTORY</Text>
-          {history.map((fight: any, i: number) => {
-            const isWin = fight.isWin;
-            const isDraw = fight.outcome === 'draw' || fight.outcome === 'no_contest';
-            const isPending = !fight.outcome;
-            const resultColor = isPending
-              ? '#555'
-              : isDraw
-                ? '#ffd700'
-                : isWin
-                  ? '#4caf50'
-                  : '#ff5252';
-            const resultLabel = isPending
-              ? 'Upcoming'
-              : isDraw
-                ? fmtOutcome(fight.outcome)
-                : isWin
-                  ? `W · ${fmtOutcome(fight.outcome)}`
-                  : `L · ${fmtOutcome(fight.outcome)}`;
+          <Text style={s.sectionTitle}>
+            FIGHT HISTORY <Text style={{ color: '#444' }}>({career.length})</Text>
+          </Text>
+          {(showAllHistory ? career : career.slice(0, 4)).map((f: any, i: number) => {
+            const isWin = f.result === 'W';
+            const isDraw = f.result === 'D';
+            const resultColor = isDraw ? '#ffd700' : isWin ? '#4caf50' : '#ff5252';
             return (
-              <View key={`${fight.fightId}-${i}`} style={s.historyRow}>
+              <View key={`${f.fightDate}-${i}`} style={s.historyRow}>
                 <View style={[s.historyResult, { backgroundColor: resultColor + '22' }]}>
-                  <Text style={[s.historyResultText, { color: resultColor }]}>
-                    {isPending ? '–' : isDraw ? 'D' : isWin ? 'W' : 'L'}
-                  </Text>
+                  <Text style={[s.historyResultText, { color: resultColor }]}>{f.result}</Text>
                 </View>
                 <View style={s.historyInfo}>
                   <Text style={s.historyEvent} numberOfLines={1}>
-                    {fight.eventName}
+                    {f.opponentName ?? 'Unknown'}
+                    {f.isTitleFight ? ' 🏆' : ''}
                   </Text>
-                  <Text style={s.historyOutcome}>{resultLabel}</Text>
+                  <Text style={s.historyOutcome} numberOfLines={1}>
+                    {[f.method, f.round ? `R${f.round}${f.clock ? ` ${f.clock}` : ''}` : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
                 </View>
-                <Text style={s.historyDate}>
-                  {fight.scheduledAt
-                    ? new Date(fight.scheduledAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: 'numeric',
-                      })
-                    : ''}
-                </Text>
+                <View style={s.historyRight}>
+                  <Text style={s.historyDate}>
+                    {f.fightDate
+                      ? new Date(f.fightDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : ''}
+                  </Text>
+                  <Text style={s.historyEventName} numberOfLines={1}>
+                    {f.eventName}
+                  </Text>
+                </View>
               </View>
             );
           })}
+          {career.length > 4 && (
+            <TouchableOpacity style={s.showMoreBtn} onPress={() => setShowAllHistory((v) => !v)}>
+              <Text style={s.showMoreText}>
+                {showAllHistory ? 'Show less ▴' : `Show ${career.length - 4} more ▾`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </ScrollView>
@@ -294,5 +321,14 @@ const s = StyleSheet.create({
   historyInfo: { flex: 1 },
   historyEvent: { color: '#ccc', fontSize: 13, fontWeight: '600' },
   historyOutcome: { color: '#666', fontSize: 11, marginTop: 2 },
+  historyRight: { alignItems: 'flex-end', maxWidth: 110 },
+  historyEventName: { color: '#444', fontSize: 10, marginTop: 2 },
+  showMoreBtn: {
+    borderTopWidth: 1,
+    borderTopColor: '#191919',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  showMoreText: { color: '#888', fontSize: 12, fontWeight: '700' },
   historyDate: { color: '#444', fontSize: 11 },
 });

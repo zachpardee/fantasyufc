@@ -327,7 +327,9 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
                   key={m.id}
                   style={[s.matchupCard, mine && s.matchupCardMine]}
                   activeOpacity={0.85}
-                  onPress={() => router.push(`/(app)/league/${leagueId}/matchup` as never)}
+                  onPress={() =>
+                    router.push(`/(app)/league/${leagueId}/matchup?m=${m.id}` as never)
+                  }
                 >
                   <View style={[s.matchupEdge, { left: 0, backgroundColor: leftColor }]} />
                   <View style={[s.matchupEdge, { right: 0, backgroundColor: rightColor }]} />
