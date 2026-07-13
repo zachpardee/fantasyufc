@@ -18,7 +18,6 @@ interface StandingsEntry {
   id: string;
   teamName: string;
   userId: string;
-  username: string;
   wins: number;
   losses: number;
   ties: number;

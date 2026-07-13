@@ -182,7 +182,7 @@ export function MemberSheet({
             {bmf && <BeltHalo size={72} variant="bmf" position={belt ? 'bottom' : 'top'} />}
           </div>
           <div style={styles.name}>{member.teamName}</div>
-          <div style={styles.username}>@{member.username}</div>
+          {member.displayName && <div style={styles.username}>{member.displayName}</div>}
           {standingRank > 0 && <div style={styles.rank}>#{standingRank} in standings</div>}
           <div style={styles.stats}>
             <div style={styles.stat}>

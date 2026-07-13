@@ -46,7 +46,6 @@ export interface LeagueMember {
   stakingBalance?: number;
   joinedAt: string;
   user?: {
-    username: string;
     displayName?: string;
     avatarUrl?: string;
   };

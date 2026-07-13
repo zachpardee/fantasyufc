@@ -187,7 +187,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     if (!event) throw new AppError(404, 'Event not found');
     if (isEventLocked(event)) throw new AppError(400, 'Picks are locked — event starts soon');
 
-    // Only the top-10 fights are pickable
+    // Only the top-6 fights are pickable
     const { rows: eligibleFights } = await db.query(
       `
       SELECT id FROM fights WHERE event_id = $1
@@ -198,7 +198,7 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
     );
     const eligibleIds = new Set(eligibleFights.map((f) => f.id));
     if (picks.some((p) => !eligibleIds.has(p.fightId))) {
-      throw new AppError(400, 'Pick includes a fight not in the top 10 for this event');
+      throw new AppError(400, 'Pick includes a fight not in the top 6 for this event');
     }
 
     for (const pick of picks) {

@@ -71,7 +71,7 @@ export default function TeamScreen() {
           bmfBelt={hasBmfBelt(member, league)}
         />
         <Text style={s.teamName}>{member.teamName}</Text>
-        <Text style={s.username}>@{member.username}</Text>
+        {!!member.displayName && <Text style={s.username}>{member.displayName}</Text>}
         {standingRank > 0 && <Text style={s.rank}>#{standingRank} in standings</Text>}
       </View>
 

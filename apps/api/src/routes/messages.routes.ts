@@ -19,7 +19,7 @@ messagesRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
     const { rows } = await db.query(
       `
       SELECT lm.id, lm.body, lm.created_at,
-        mem.team_name, up.username,
+        mem.team_name, up.display_name,
         mem.id AS member_id,
         mem.avatar_color
       FROM league_messages lm
@@ -74,7 +74,7 @@ messagesRouter.post('/', requireAuth, async (req: AuthRequest, res, next) => {
     } = await db.query(
       `
       SELECT lm.id, lm.body, lm.created_at,
-        mem.team_name, up.username,
+        mem.team_name, up.display_name,
         mem.id AS member_id,
         mem.avatar_color
       FROM league_messages lm

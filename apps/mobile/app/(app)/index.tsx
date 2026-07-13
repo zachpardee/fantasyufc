@@ -33,7 +33,7 @@ export default function DashboardScreen() {
 
   const liveEvent = events?.find((e) => e.status === 'live');
   const upcomingEvent = liveEvent ?? events?.find((e) => e.status === 'scheduled');
-  const displayName = profile?.displayName ?? profile?.username ?? 'Fighter';
+  const displayName = profile?.displayName ?? 'Fighter';
 
   return (
     <ScrollView

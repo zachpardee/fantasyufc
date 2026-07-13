@@ -8,7 +8,6 @@ export default function RegisterScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,18 +22,15 @@ export default function RegisterScreen() {
       setError('Password must be at least 8 characters');
       return;
     }
-    if (!username.trim()) {
-      setError('Username is required');
+    if (!displayName.trim()) {
+      setError('Name is required');
       return;
     }
     setLoading(true);
     try {
       const { error: signUpError } = await supabase.auth.signUp({ email: email.trim(), password });
       if (signUpError) throw signUpError;
-      await apiClient.post('/auth/register', {
-        username: username.trim(),
-        displayName: displayName.trim() || undefined,
-      });
+      await apiClient.post('/auth/register', { displayName: displayName.trim() });
       router.replace('/(app)');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -71,15 +67,7 @@ export default function RegisterScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Username"
-        placeholderTextColor="#666"
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Display Name (optional)"
+        placeholder="Your name"
         placeholderTextColor="#666"
         value={displayName}
         onChangeText={setDisplayName}

@@ -94,7 +94,6 @@ export function LeagueHomePage() {
   });
 
   const { data: myProfile } = useQuery<{
-    username: string;
     displayName?: string;
     avatarUrl?: string;
     avatarColor?: string;
@@ -105,9 +104,7 @@ export function LeagueHomePage() {
     staleTime: 5 * 60_000,
   });
 
-  const { data: members = [] } = useQuery<
-    (LeagueMember & { username: string; displayName?: string })[]
-  >({
+  const { data: members = [] } = useQuery<(LeagueMember & { displayName?: string })[]>({
     queryKey: ['league-members', leagueId],
     queryFn: () => apiClient.get(`/leagues/${leagueId}/members`),
     refetchInterval: 30_000,
@@ -775,7 +772,7 @@ export function LeagueHomePage() {
                       avatarUrl={(myMember as any)?.avatarUrl}
                     />
                     <span style={styles.userPillEmail}>
-                      {myProfile?.displayName ?? myProfile?.username ?? session.user.email}
+                      {myProfile?.displayName ?? session.user.email}
                     </span>
                     <ChevronDown size={13} color="#666" />
                   </button>
@@ -1664,7 +1661,7 @@ export function LeagueHomePage() {
             {members.map((m) => (
               <div key={m.id} style={styles.memberCard}>
                 <span style={styles.memberTeam}>{m.teamName}</span>
-                <span style={styles.memberUser}>@{m.username}</span>
+                {m.displayName && <span style={styles.memberUser}>{m.displayName}</span>}
                 {m.userId === league.commissionerId && (
                   <span style={styles.commBadge}>Commissioner</span>
                 )}

@@ -117,9 +117,9 @@ export default function App() {
         if (pending) {
           sessionStorage.removeItem('pending_profile');
           try {
-            const { username, displayName } = JSON.parse(pending);
+            const { username, displayName } = JSON.parse(pending); // username: legacy pending profiles
             await import('./api/client').then(({ apiClient }) =>
-              apiClient.post('/auth/register', { username, displayName: displayName || undefined }),
+              apiClient.post('/auth/register', { displayName: displayName || username }),
             );
           } catch {
             // Profile may already exist — ignore

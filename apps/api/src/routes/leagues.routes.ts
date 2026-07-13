@@ -220,7 +220,7 @@ leaguesRouter.get('/:leagueId/members', requireAuth, async (req: AuthRequest, re
   try {
     const { rows } = await db.query(
       `
-      SELECT lm.*, up.username, up.display_name, up.avatar_url
+      SELECT lm.*, up.display_name, up.avatar_url
       FROM league_members lm
       JOIN user_profiles up ON up.id = lm.user_id
       WHERE lm.league_id = $1

@@ -7,7 +7,6 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,11 +23,11 @@ export function RegisterPage() {
 
       if (data.session) {
         // Email confirmation is off — session available immediately
-        await apiClient.post('/auth/register', { username, displayName: displayName || undefined });
+        await apiClient.post('/auth/register', { displayName });
         navigate('/');
       } else {
         // Email confirmation is on — store profile details and wait
-        sessionStorage.setItem('pending_profile', JSON.stringify({ username, displayName }));
+        sessionStorage.setItem('pending_profile', JSON.stringify({ displayName }));
         setAwaitingConfirmation(true);
       }
     } catch (err: any) {
@@ -87,17 +86,11 @@ export function RegisterPage() {
           />
           <input
             style={styles.input}
-            placeholder="Username (letters, numbers, _)"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            pattern="[a-zA-Z0-9_]+"
-          />
-          <input
-            style={styles.input}
-            placeholder="Display Name (optional)"
+            placeholder="Your name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            required
+            maxLength={100}
           />
           {error && <p style={styles.error}>{error}</p>}
           <button style={styles.button} type="submit" disabled={loading}>

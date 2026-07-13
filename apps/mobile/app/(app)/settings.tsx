@@ -139,7 +139,7 @@ export default function SettingsScreen() {
         {/* Profile header */}
         <View style={s.profileSection}>
           <MemberAvatar
-            name={profile?.displayName ?? profile?.username ?? email}
+            name={profile?.displayName ?? email}
             color={avatarColor}
             avatarUrl={(profile as any)?.avatarUrl}
             size={64}
@@ -172,9 +172,7 @@ export default function SettingsScreen() {
               </>
             ) : (
               <TouchableOpacity onPress={startEditName}>
-                <Text style={s.displayName}>
-                  {profile?.displayName ?? profile?.username ?? 'Set display name'}
-                </Text>
+                <Text style={s.displayName}>{profile?.displayName ?? 'Set display name'}</Text>
                 <Text style={s.tapToEdit}>Tap to edit name</Text>
               </TouchableOpacity>
             )}

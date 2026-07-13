@@ -65,80 +65,82 @@ export function StandingsPage() {
           </div>
         )}
         {!isError && (
-        <table style={styles.table}>
-          <thead>
-            {!isLoading && (
-              <tr>
-                {headers.map((h) => (
-                  <th key={h} style={styles.th}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            )}
-          </thead>
-          <tbody>
-            {standings?.map((member, i) => {
-              const isMe = member.userId === session?.user.id;
-              const bankroll = member.stakingBalance ?? 0;
-              return (
-                <tr
-                  key={member.id}
-                  style={{
-                    ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd),
-                    ...(isMe ? styles.rowMe : {}),
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => navigate(`/league/${leagueId}/team/${member.id}`)}
-                >
-                  <td style={styles.td}>
-                    <span style={i < 3 ? styles.medal : undefined}>
-                      {i < 3 ? (
-                        <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][i]} />
-                      ) : (
-                        i + 1
-                      )}
-                    </span>
-                  </td>
-                  <td style={styles.tdTeam}>
-                    <div style={styles.teamName}>
-                      {member.teamName}
-                      {isMe && <span style={styles.youBadge}>YOU</span>}
-                    </div>
-                    <div style={styles.username}>@{member.username}</div>
-                  </td>
-                  {isStaking ? (
-                    <td
-                      style={{
-                        ...styles.td,
-                        color: bankroll > 0 ? '#4caf50' : bankroll < 0 ? '#ff5252' : '#555',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {fmtBankroll(bankroll)}
-                    </td>
-                  ) : (
-                    <td style={{ ...styles.td, ...styles.ptsCol }}>
-                      {(+(member.totalPoints ?? 0)).toFixed(0)}
-                    </td>
-                  )}
-                  <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
-                  <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>
-                  <td style={styles.td}>{member.ties}</td>
-                  <td style={styles.td}>
-                    {member.streak > 0 ? (
-                      <span style={styles.winStreak}>W{member.streak}</span>
-                    ) : member.streak < 0 ? (
-                      <span style={styles.lossStreak}>L{Math.abs(member.streak)}</span>
-                    ) : (
-                      <span style={styles.noStreak}>--</span>
-                    )}
-                  </td>
+          <table style={styles.table}>
+            <thead>
+              {!isLoading && (
+                <tr>
+                  {headers.map((h) => (
+                    <th key={h} style={styles.th}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+            </thead>
+            <tbody>
+              {standings?.map((member, i) => {
+                const isMe = member.userId === session?.user.id;
+                const bankroll = member.stakingBalance ?? 0;
+                return (
+                  <tr
+                    key={member.id}
+                    style={{
+                      ...(i % 2 === 0 ? styles.rowEven : styles.rowOdd),
+                      ...(isMe ? styles.rowMe : {}),
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => navigate(`/league/${leagueId}/team/${member.id}`)}
+                  >
+                    <td style={styles.td}>
+                      <span style={i < 3 ? styles.medal : undefined}>
+                        {i < 3 ? (
+                          <Medal size={15} color={['#ffd700', '#c0c0c0', '#cd7f32'][i]} />
+                        ) : (
+                          i + 1
+                        )}
+                      </span>
+                    </td>
+                    <td style={styles.tdTeam}>
+                      <div style={styles.teamName}>
+                        {member.teamName}
+                        {isMe && <span style={styles.youBadge}>YOU</span>}
+                      </div>
+                      {member.displayName && (
+                        <div style={styles.username}>{member.displayName}</div>
+                      )}
+                    </td>
+                    {isStaking ? (
+                      <td
+                        style={{
+                          ...styles.td,
+                          color: bankroll > 0 ? '#4caf50' : bankroll < 0 ? '#ff5252' : '#555',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fmtBankroll(bankroll)}
+                      </td>
+                    ) : (
+                      <td style={{ ...styles.td, ...styles.ptsCol }}>
+                        {(+(member.totalPoints ?? 0)).toFixed(0)}
+                      </td>
+                    )}
+                    <td style={{ ...styles.td, ...styles.win }}>{member.wins}</td>
+                    <td style={{ ...styles.td, ...styles.loss }}>{member.losses}</td>
+                    <td style={styles.td}>{member.ties}</td>
+                    <td style={styles.td}>
+                      {member.streak > 0 ? (
+                        <span style={styles.winStreak}>W{member.streak}</span>
+                      ) : member.streak < 0 ? (
+                        <span style={styles.lossStreak}>L{Math.abs(member.streak)}</span>
+                      ) : (
+                        <span style={styles.noStreak}>--</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
         {!isLoading && !isError && standings?.length === 0 && (
           <p style={styles.empty}>No standings yet — check back after the season begins.</p>

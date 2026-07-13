@@ -10,30 +10,26 @@ authRouter.post('/register', requireAuth, async (req: AuthRequest, res, next) =>
   try {
     const { username, displayName, timezone } = z
       .object({
-        username: z
-          .string()
-          .min(3)
-          .max(50)
-          .regex(/^[a-zA-Z0-9_]+$/),
+        // Legacy clients (pre-username-removal mobile builds) still send username;
+        // accept it as a display-name fallback. New clients send displayName only.
+        username: z.string().min(1).max(50).optional(),
         displayName: z.string().max(100).optional(),
         timezone: z.string().default('America/New_York'),
       })
       .parse(req.body);
 
-    const {
-      rows: [existing],
-    } = await db.query(`SELECT id FROM user_profiles WHERE username = $1`, [username]);
-    if (existing) throw new AppError(409, 'Username already taken');
+    const name = (displayName ?? username)?.trim();
+    if (!name) throw new AppError(400, 'Display name is required');
 
     const {
       rows: [profile],
     } = await db.query(
       `
-      INSERT INTO user_profiles (id, username, display_name, timezone)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO user_profiles (id, display_name, timezone)
+      VALUES ($1, $2, $3)
       RETURNING *
     `,
-      [req.user!.id, username, displayName ?? null, timezone],
+      [req.user!.id, name, timezone],
     );
 
     res.status(201).json(profile);

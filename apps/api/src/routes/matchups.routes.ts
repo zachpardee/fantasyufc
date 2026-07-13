@@ -79,7 +79,6 @@ matchupsRouter.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       SELECT m.*,
         e.name as event_name, e.scheduled_at, e.status as event_status,
         ht.team_name as home_team_name, at2.team_name as away_team_name,
-        hup.username as home_username, aup.username as away_username
       FROM matchups m
       JOIN ufc_events e ON e.id = m.event_id
       JOIN league_members ht ON ht.id = m.home_team_id
@@ -233,7 +232,7 @@ matchupsRouter.get('/standings', requireAuth, async (req: AuthRequest, res, next
 
     const { rows } = await db.query(
       `
-      SELECT lm.*, up.username, up.display_name, up.avatar_url
+      SELECT lm.*, up.display_name, up.avatar_url
       FROM league_members lm
       JOIN user_profiles up ON up.id = lm.user_id
       WHERE lm.league_id = $1 AND lm.is_active = true

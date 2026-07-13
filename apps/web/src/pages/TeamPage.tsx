@@ -92,7 +92,7 @@ export function TeamPage() {
           <div style={styles.statDivider} />
           <div style={styles.stat}>
             <span style={styles.statLabel}>Manager</span>
-            <span style={styles.statValue}>@{member.username}</span>
+            <span style={styles.statValue}>{member.displayName ?? '—'}</span>
           </div>
         </div>
       )}

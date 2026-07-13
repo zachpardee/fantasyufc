@@ -434,14 +434,14 @@ export default function LeagueHomeScreen({ leagueIdProp }: { leagueIdProp?: stri
                 return (
                   <View key={m.id} style={s.chatMsg}>
                     <MemberAvatar
-                      name={m.teamName ?? m.username ?? '?'}
+                      name={m.teamName ?? m.displayName ?? '?'}
                       color={m.avatarColor}
                       size={26}
                     />
                     <View style={s.chatMsgBody}>
                       <View style={s.chatMsgHead}>
                         <Text style={s.chatMsgName} numberOfLines={1}>
-                          {m.teamName ?? m.username}
+                          {m.teamName ?? m.displayName}
                           {isMe ? ' (You)' : ''}
                         </Text>
                         <Text style={s.chatMsgTime}>{fmtTime(m.createdAt)}</Text>
