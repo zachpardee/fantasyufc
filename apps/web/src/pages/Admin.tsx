@@ -460,11 +460,13 @@ function UsersTable({ users }: { users: any[] }) {
       <table style={s.table}>
         <thead>
           <tr>
-            {['Email', 'Display name', 'Leagues', 'Joined', 'Last sign-in'].map((h) => (
-              <th key={h} style={s.th}>
-                {h}
-              </th>
-            ))}
+            {['Email', 'Display name', 'Leagues', 'Joined', 'Last sign-in', 'Last seen'].map(
+              (h) => (
+                <th key={h} style={s.th}>
+                  {h}
+                </th>
+              ),
+            )}
           </tr>
         </thead>
         <tbody>
@@ -483,6 +485,7 @@ function UsersTable({ users }: { users: any[] }) {
               </td>
               <td style={s.td}>{fmtDate(u.createdAt)}</td>
               <td style={s.td}>{fmtDate(u.lastSignInAt)}</td>
+              <td style={s.td}>{fmtDate(u.lastSeenAt)}</td>
             </tr>
           ))}
         </tbody>
