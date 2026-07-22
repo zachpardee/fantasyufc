@@ -181,12 +181,14 @@ stakingRouter.put('/:eventId/singles', requireAuth, async (req: AuthRequest, res
     const {
       rows: [member],
     } = await db.query(
-      `SELECT lm.id, l.league_format, l.weekly_budget
+      `SELECT lm.id, lm.is_active, l.league_format, l.weekly_budget
        FROM league_members lm JOIN leagues l ON l.id = lm.league_id
        WHERE lm.league_id = $1 AND lm.user_id = $2`,
       [leagueId, req.user!.id],
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
+    if (member.is_active === false)
+      throw new AppError(403, 'Demo account is read-only — betting is disabled');
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
     const {
@@ -309,12 +311,14 @@ stakingRouter.put('/:eventId/parlay', requireAuth, async (req: AuthRequest, res,
     const {
       rows: [member],
     } = await db.query(
-      `SELECT lm.id, l.league_format, l.weekly_budget
+      `SELECT lm.id, lm.is_active, l.league_format, l.weekly_budget
        FROM league_members lm JOIN leagues l ON l.id = lm.league_id
        WHERE lm.league_id = $1 AND lm.user_id = $2`,
       [leagueId, req.user!.id],
     );
     if (!member) throw new AppError(403, 'Not a member of this league');
+    if (member.is_active === false)
+      throw new AppError(403, 'Demo account is read-only — betting is disabled');
     if (member.league_format !== 'staking') throw new AppError(400, 'Not a staking league');
 
     const {

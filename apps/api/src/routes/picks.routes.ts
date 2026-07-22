@@ -173,11 +173,13 @@ picksRouter.post('/:eventId', requireAuth, async (req: AuthRequest, res, next) =
 
     const {
       rows: [member],
-    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
-      req.params.leagueId,
-      req.user!.id,
-    ]);
+    } = await db.query(
+      `SELECT id, is_active FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
     if (!member) throw new AppError(403, 'Not a member of this league');
+    if (member.is_active === false)
+      throw new AppError(403, 'Demo account is read-only — picks are disabled');
 
     const {
       rows: [event],
@@ -287,11 +289,13 @@ picksRouter.put('/:eventId/champion', requireAuth, async (req: AuthRequest, res,
 
     const {
       rows: [member],
-    } = await db.query(`SELECT id FROM league_members WHERE league_id = $1 AND user_id = $2`, [
-      req.params.leagueId,
-      req.user!.id,
-    ]);
+    } = await db.query(
+      `SELECT id, is_active FROM league_members WHERE league_id = $1 AND user_id = $2`,
+      [req.params.leagueId, req.user!.id],
+    );
     if (!member) throw new AppError(403, 'Not a member of this league');
+    if (member.is_active === false)
+      throw new AppError(403, 'Demo account is read-only — picks are disabled');
 
     const {
       rows: [event],
