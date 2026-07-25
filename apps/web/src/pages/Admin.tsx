@@ -45,6 +45,15 @@ export function AdminPage() {
 
   const [days, setDays] = useState<number>(30);
   const [showUsers, setShowUsers] = useState(false);
+  const { data: health } = useQuery<{
+    generatedAt: string;
+    checks: { key: string; label: string; status: string; detail: string }[];
+  }>({
+    queryKey: ['admin-health'],
+    queryFn: () => apiClient.get('/admin/health-check'),
+    enabled: !!me?.isAdmin,
+    refetchInterval: 5 * 60_000,
+  });
   const {
     data: users,
     isLoading: usersLoading,
@@ -196,6 +205,24 @@ export function AdminPage() {
       ) : null}
 
       {/* Users */}
+      {/* App health — same checks as the Sunday cloud routine, on demand */}
+      <h2 style={s.sectionTitle}>Health</h2>
+      <div style={s.healthCard}>
+        {!health ? (
+          <LoadingInline />
+        ) : (
+          health.checks.map((c) => (
+            <div key={c.key} style={s.healthRow}>
+              <span style={{ ...s.healthChip, ...HEALTH_CHIP[c.status] }}>
+                {c.status.toUpperCase()}
+              </span>
+              <span style={s.healthLabel}>{c.label}</span>
+              <span style={s.healthDetail}>{c.detail}</span>
+            </div>
+          ))
+        )}
+      </div>
+
       <h2 style={s.sectionTitle}>Users</h2>
       {!showUsers ? (
         <button style={s.refreshBtn} onClick={() => setShowUsers(true)}>
@@ -303,6 +330,13 @@ function OddsBanner({
     </div>
   );
 }
+
+const HEALTH_CHIP: Record<string, React.CSSProperties> = {
+  pass: { background: '#153c15', color: '#4caf50' },
+  warn: { background: '#3c3208', color: '#e0a000' },
+  fail: { background: '#3c1515', color: '#ff5252' },
+  skip: { background: '#222', color: '#888' },
+};
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#4caf50',
@@ -631,6 +665,32 @@ const s: Record<string, React.CSSProperties> = {
     margin: '8px 0 2px',
   },
   sectionTitle: { fontSize: 16, fontWeight: 700, margin: '28px 0 12px' },
+  healthCard: {
+    background: '#141414',
+    border: '1px solid #242424',
+    borderRadius: 12,
+    padding: '8px 16px',
+  },
+  healthRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 12,
+    padding: '8px 0',
+    borderBottom: '1px solid #1e1e1e',
+    flexWrap: 'wrap' as const,
+  },
+  healthChip: {
+    flexShrink: 0,
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: 0.5,
+    padding: '3px 8px',
+    borderRadius: 4,
+    minWidth: 40,
+    textAlign: 'center' as const,
+  },
+  healthLabel: { color: '#ddd', fontSize: 13, fontWeight: 600, flexShrink: 0 },
+  healthDetail: { color: '#777', fontSize: 12 },
   tableWrap: {
     background: '#141414',
     border: '1px solid #242424',

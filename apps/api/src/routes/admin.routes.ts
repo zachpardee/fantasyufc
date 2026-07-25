@@ -74,6 +74,125 @@ adminRouter.get('/users', requireAuth, requireAdmin, async (_req, res, next) => 
   }
 });
 
+// App health check — the same verifications the Sunday cloud routine runs, on demand.
+// Each check: { key, label, status: 'pass' | 'warn' | 'fail' | 'skip', detail }.
+adminRouter.get('/health-check', requireAuth, requireAdmin, async (_req, res, next) => {
+  try {
+    const checks: { key: string; label: string; status: string; detail: string }[] = [];
+
+    const {
+      rows: [lastEvent],
+    } = await db.query(`
+      SELECT id, name, status, scheduled_at FROM ufc_events
+      WHERE scheduled_at BETWEEN now() - interval '4 days' AND now()
+      ORDER BY scheduled_at DESC LIMIT 1
+    `);
+
+    if (!lastEvent) {
+      checks.push({
+        key: 'last_event',
+        label: 'Last event scored',
+        status: 'skip',
+        detail: 'No card in the past 4 days',
+      });
+    } else {
+      const {
+        rows: [fr],
+      } = await db.query(
+        `SELECT count(*) FILTER (WHERE f.status != 'cancelled')::int AS total,
+                count(*) FILTER (WHERE f.status != 'cancelled' AND r.id IS NULL)::int AS missing
+         FROM fights f LEFT JOIN fight_results r ON r.fight_id = f.id
+         WHERE f.event_id = $1`,
+        [lastEvent.id],
+      );
+      const scored = lastEvent.status === 'completed' && fr.missing === 0;
+      checks.push({
+        key: 'last_event',
+        label: 'Last event scored',
+        status: scored ? 'pass' : 'fail',
+        detail: scored
+          ? `${lastEvent.name}: completed, results on all ${fr.total} fights`
+          : `${lastEvent.name}: status "${lastEvent.status}", ${fr.missing}/${fr.total} fights missing results`,
+      });
+
+      // Picks on decisively-resulted fights must be scored (draw/NC picks stay NULL by design)
+      const {
+        rows: [up],
+      } = await db.query(
+        `SELECT count(*)::int AS unscored
+         FROM event_picks ep
+         JOIN fights f ON f.id = ep.fight_id AND f.event_id = $1
+         JOIN fight_results r ON r.fight_id = f.id AND r.winner_id IS NOT NULL
+         WHERE ep.is_correct IS NULL`,
+        [lastEvent.id],
+      );
+      checks.push({
+        key: 'picks_settled',
+        label: 'Picks settled',
+        status: up.unscored === 0 ? 'pass' : 'fail',
+        detail:
+          up.unscored === 0
+            ? 'Every submitted pick on a decided fight is scored'
+            : `${up.unscored} pick(s) on decided fights never scored`,
+      });
+
+      const {
+        rows: [mw],
+      } = await db.query(
+        `SELECT count(*)::int AS total, count(*) FILTER (WHERE winner_id IS NULL)::int AS open
+         FROM matchups WHERE event_id = $1`,
+        [lastEvent.id],
+      );
+      checks.push({
+        key: 'matchups_final',
+        label: 'Matchups finalized',
+        status: mw.open === 0 ? 'pass' : 'warn',
+        detail:
+          mw.open === 0
+            ? `All ${mw.total} matchups have a winner`
+            : `${mw.open}/${mw.total} matchups without a winner (tie or unfinalized)`,
+      });
+    }
+
+    const {
+      rows: [nextEvent],
+    } = await db.query(`
+      SELECT e.id, e.name, e.scheduled_at,
+        count(f.id)::int AS fights,
+        count(f.red_fighter_odds)::int AS with_odds
+      FROM ufc_events e LEFT JOIN fights f ON f.event_id = e.id
+      WHERE e.status = 'scheduled' AND e.scheduled_at > now()
+      GROUP BY e.id ORDER BY e.scheduled_at ASC LIMIT 1
+    `);
+
+    if (!nextEvent) {
+      checks.push({
+        key: 'next_event',
+        label: 'Next event ready',
+        status: 'fail',
+        detail: 'No upcoming scheduled event found',
+      });
+    } else {
+      const days = Math.round(
+        (new Date(nextEvent.scheduled_at).getTime() - Date.now()) / 86_400_000,
+      );
+      const oddsOk = nextEvent.fights > 0 && nextEvent.with_odds >= nextEvent.fights * 0.5;
+      // Odds sync only runs within 7 days of an event — missing odds further out is normal
+      const status = nextEvent.fights === 0 ? 'fail' : oddsOk ? 'pass' : days > 7 ? 'warn' : 'fail';
+      checks.push({
+        key: 'next_event',
+        label: 'Next event ready',
+        status,
+        detail: `${nextEvent.name} in ${days}d: ${nextEvent.fights} fights, odds on ${nextEvent.with_odds}`,
+      });
+    }
+
+    res.json({ generatedAt: new Date().toISOString(), checks });
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.post('/sync/events', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     syncEvents().catch(console.error); // Fire and forget
