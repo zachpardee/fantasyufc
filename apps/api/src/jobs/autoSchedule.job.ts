@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { tracked } from './jobRuns';
 import { db } from '../config/database';
 import { seasonByRegularEnd } from '@fantasy-ufc/shared';
 import { generateMatchupsForLeague } from '../services/matchup.service';
@@ -16,7 +17,9 @@ export function seasonWindow(year: number) {
 // automatically adds the next upcoming UFC event within the season window.
 // Also completes any leagues whose season window has fully elapsed.
 export function startAutoScheduleJob() {
-  cron.schedule('0 12 * * *', () => autoScheduleNextEvents(), { timezone: 'UTC' });
+  cron.schedule('0 12 * * *', tracked('auto_schedule', autoScheduleNextEvents), {
+    timezone: 'UTC',
+  });
 }
 
 export async function autoScheduleNextEvents() {

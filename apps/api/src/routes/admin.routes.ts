@@ -193,6 +193,19 @@ adminRouter.get('/health-check', requireAuth, requireAdmin, async (_req, res, ne
   }
 });
 
+// Background job freshness — one row per cron job, written by jobs/jobRuns.ts
+adminRouter.get('/jobs', requireAuth, requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT job_name, last_run_at, last_ok_at, last_status, detail
+       FROM job_runs ORDER BY job_name`,
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.post('/sync/events', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
     syncEvents().catch(console.error); // Fire and forget

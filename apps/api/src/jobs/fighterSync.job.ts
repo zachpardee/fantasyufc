@@ -1,11 +1,12 @@
 import cron from 'node-cron';
+import { tracked } from './jobRuns';
 import { db } from '../config/database';
 import { fetchAthletes, type EspnAthlete } from '../services/espn.adapter';
 import { redis } from '../config/redis';
 
 // Runs every Sunday at 3am UTC — full fighter roster sync from ESPN
 export function startFighterSyncJob() {
-  cron.schedule('0 3 * * 0', () => syncAllFighters(), { timezone: 'UTC' });
+  cron.schedule('0 3 * * 0', tracked('fighter_sync', syncAllFighters), { timezone: 'UTC' });
 }
 
 export async function syncAllFighters() {

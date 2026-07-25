@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { tracked, recordJobRun } from './jobRuns';
 import { db } from '../config/database';
 import { fetchUpcomingEvents, fetchEventsByDate, type EspnFight } from '../services/espn.adapter';
 import { redis } from '../config/redis';
@@ -10,7 +11,7 @@ import { refreshStakingMatchupScores } from '../services/scoring.service';
 
 // Runs daily at 6am UTC — syncs upcoming UFC events and their fight cards
 export function startEventSyncJob() {
-  cron.schedule('0 6 * * *', () => syncEvents(), { timezone: 'UTC' });
+  cron.schedule('0 6 * * *', tracked('event_sync', syncEvents), { timezone: 'UTC' });
   // Also run at startup
   syncEvents().catch(console.error);
 }
@@ -68,9 +69,9 @@ export async function syncEvents() {
 
     // Push events to all leagues + sync odds after every event sync
     const { prepUpcomingEvents } = await import('./preEventPrep.job');
-    await prepUpcomingEvents().catch((err: Error) =>
-      console.error('[EventSync] Pre-event prep failed:', err.message),
-    );
+    await prepUpcomingEvents()
+      .then(() => recordJobRun('pre_event_prep', true))
+      .catch((err: Error) => console.error('[EventSync] Pre-event prep failed:', err.message));
   } catch (err) {
     console.error('[EventSync] Error:', err);
   }

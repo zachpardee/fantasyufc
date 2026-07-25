@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { tracked } from './jobRuns';
 import { db } from '../config/database';
 import { fetchEventsByDate, fetchUpcomingEvents } from '../services/espn.adapter';
 import { searchEventResults } from '../services/sportsdb.adapter';
@@ -8,7 +9,7 @@ import { finalizeMatchupResults } from '../services/matchup.service';
 
 // Polls every 5 minutes. During live events it updates results in real-time.
 export function startLivePollerJob() {
-  cron.schedule('*/2 * * * *', () => pollLiveEvents(), { timezone: 'UTC' });
+  cron.schedule('*/2 * * * *', tracked('live_poller', pollLiveEvents), { timezone: 'UTC' });
 }
 
 async function pollLiveEvents() {

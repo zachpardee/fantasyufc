@@ -1,11 +1,12 @@
 import cron from 'node-cron';
+import { tracked } from './jobRuns';
 import { db } from '../config/database';
 import { getOpsMetrics } from '../services/opsMetrics.service';
 
 // Snapshots a curated set of numeric ops metrics into ops_metrics_history for the admin
 // dashboard trend graphs. Runs hourly and prunes anything older than 90 days.
 export function startOpsMetricsHistoryJob() {
-  cron.schedule('5 * * * *', () => snapshotOpsMetrics().catch(console.error), { timezone: 'UTC' });
+  cron.schedule('5 * * * *', tracked('ops_metrics', snapshotOpsMetrics), { timezone: 'UTC' });
   // Take one snapshot shortly after boot so the graphs aren't empty until the first tick.
   setTimeout(() => snapshotOpsMetrics().catch(console.error), 30_000);
 }

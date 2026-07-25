@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { tracked } from './jobRuns';
 import { db } from '../config/database';
 import { fetchEventsByDate } from '../services/espn.adapter';
 import { generateMatchupsForLeague } from '../services/matchup.service';
@@ -13,7 +14,7 @@ import { fighterNameContains } from '../utils/fighterNames';
 //   3. Generates matchups for any leagues that newly received the event
 //   4. Syncs odds from The Odds API (when ODDS_API_KEY is configured, within 7 days)
 export function startPreEventPrepJob() {
-  cron.schedule('0 */4 * * *', () => prepUpcomingEvents().catch(console.error), {
+  cron.schedule('0 */4 * * *', tracked('pre_event_prep', prepUpcomingEvents), {
     timezone: 'UTC',
   });
 }

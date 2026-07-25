@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { LoadingInline } from '../components/LoadingScreen';
@@ -45,6 +45,51 @@ export function AdminPage() {
 
   const [days, setDays] = useState<number>(30);
   const [showUsers, setShowUsers] = useState(false);
+  const qc = useQueryClient();
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+
+  const { data: jobs = [] } = useQuery<
+    {
+      jobName: string;
+      lastRunAt: string;
+      lastOkAt?: string;
+      lastStatus?: string;
+      detail?: string;
+    }[]
+  >({
+    queryKey: ['admin-jobs'],
+    queryFn: () => apiClient.get('/admin/jobs'),
+    enabled: !!me?.isAdmin,
+    refetchInterval: 60_000,
+  });
+
+  const { data: adminEvents = [] } = useQuery<
+    { id: string; name: string; status: string; scheduledAt: string }[]
+  >({
+    queryKey: ['admin-events'],
+    queryFn: () => apiClient.get('/admin/events'),
+    enabled: !!me?.isAdmin,
+  });
+
+  async function runAction(label: string, fn: () => Promise<any>, confirmMsg?: string) {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    setActionBusy(true);
+    setActionMsg(`${label}…`);
+    try {
+      const r: any = await fn();
+      setActionMsg(`${label}: ${r?.message ?? summarizeActionResult(r)}`);
+      qc.invalidateQueries({ queryKey: ['admin-health'] });
+      qc.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      qc.invalidateQueries({ queryKey: ['admin-jobs'] });
+    } catch (e: any) {
+      setActionMsg(`${label} failed: ${e?.error ?? e?.message ?? String(e)}`);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   const { data: health } = useQuery<{
     generatedAt: string;
     checks: { key: string; label: string; status: string; detail: string }[];
@@ -223,6 +268,117 @@ export function AdminPage() {
         )}
       </div>
 
+      {/* Background job freshness */}
+      <h2 style={s.sectionTitle}>Jobs</h2>
+      <div style={s.healthCard}>
+        {jobs.length === 0 ? (
+          <Muted>No job runs recorded yet — populates as crons fire after this deploy.</Muted>
+        ) : (
+          jobs.map((j) => {
+            const meta = JOB_META[j.jobName] ?? { label: j.jobName, staleAfterMin: 1560 };
+            const ageMin = (Date.now() - new Date(j.lastRunAt).getTime()) / 60_000;
+            const stale = ageMin > meta.staleAfterMin;
+            const errored = j.lastStatus === 'error';
+            const chip = errored ? 'fail' : stale ? 'warn' : 'pass';
+            const chipText = errored ? 'ERROR' : stale ? 'STALE' : 'OK';
+            return (
+              <div key={j.jobName} style={s.healthRow}>
+                <span style={{ ...s.healthChip, ...HEALTH_CHIP[chip] }}>{chipText}</span>
+                <span style={s.healthLabel}>{meta.label}</span>
+                <span style={s.healthDetail}>
+                  ran {fmtAgo(ageMin)}
+                  {errored && j.detail ? ` — ${j.detail.slice(0, 120)}` : ''}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Manual admin actions (existing API endpoints) */}
+      <h2 style={s.sectionTitle}>Actions</h2>
+      <div style={s.healthCard}>
+        <div style={s.actionRow}>
+          <button
+            style={s.actionBtn}
+            disabled={actionBusy}
+            onClick={() => runAction('Sync events', () => apiClient.post('/admin/sync/events'))}
+          >
+            Sync events
+          </button>
+          <button
+            style={s.actionBtn}
+            disabled={actionBusy}
+            onClick={() =>
+              runAction(
+                'Sync fighters',
+                () => apiClient.post('/admin/sync/fighters'),
+                'Fighter sync takes several minutes and runs in the background. Start it?',
+              )
+            }
+          >
+            Sync fighters
+          </button>
+          <button
+            style={s.actionBtn}
+            disabled={actionBusy}
+            onClick={() => runAction('Auto-schedule', () => apiClient.post('/admin/schedule/auto'))}
+          >
+            Auto-schedule
+          </button>
+          <button
+            style={{ ...s.actionBtn, ...s.actionBtnDanger }}
+            disabled={actionBusy}
+            onClick={() =>
+              runAction(
+                'Deduplicate events',
+                () => apiClient.post('/admin/events/deduplicate'),
+                'Deletes duplicate event rows sharing a calendar date (keeps the oldest). Continue?',
+              )
+            }
+          >
+            Deduplicate events
+          </button>
+        </div>
+        <div style={s.actionRow}>
+          <select
+            style={s.actionSelect}
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+          >
+            <option value="">Select event…</option>
+            {adminEvents.slice(0, 12).map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.name} ({ev.status})
+              </option>
+            ))}
+          </select>
+          <button
+            style={s.actionBtn}
+            disabled={actionBusy || !selectedEventId}
+            onClick={() =>
+              runAction('Sync odds', () =>
+                apiClient.post(`/admin/events/${selectedEventId}/sync-odds`),
+              )
+            }
+          >
+            Sync odds
+          </button>
+          <button
+            style={s.actionBtn}
+            disabled={actionBusy || !selectedEventId}
+            onClick={() =>
+              runAction('Resync fight card', () =>
+                apiClient.post(`/admin/events/${selectedEventId}/resync-fights`),
+              )
+            }
+          >
+            Resync fight card
+          </button>
+        </div>
+        {actionMsg && <div style={s.actionMsg}>{actionMsg}</div>}
+      </div>
+
       <h2 style={s.sectionTitle}>Users</h2>
       {!showUsers ? (
         <button style={s.refreshBtn} onClick={() => setShowUsers(true)}>
@@ -329,6 +485,32 @@ function OddsBanner({
       )}
     </div>
   );
+}
+
+const JOB_META: Record<string, { label: string; staleAfterMin: number }> = {
+  live_poller: { label: 'Live poller (every 2m)', staleAfterMin: 10 },
+  pre_event_prep: { label: 'Pre-event prep (every 4h)', staleAfterMin: 540 },
+  event_sync: { label: 'Event sync (daily)', staleAfterMin: 1560 },
+  ops_metrics: { label: 'Ops metrics (hourly)', staleAfterMin: 150 },
+  auto_schedule: { label: 'Auto-schedule (daily)', staleAfterMin: 1560 },
+  fighter_sync: { label: 'Fighter sync (weekly)', staleAfterMin: 11520 },
+};
+
+function fmtAgo(min: number): string {
+  if (min < 1) return 'just now';
+  if (min < 60) return `${Math.round(min)}m ago`;
+  if (min < 48 * 60) return `${Math.round(min / 60)}h ago`;
+  return `${Math.round(min / 1440)}d ago`;
+}
+
+function summarizeActionResult(r: any): string {
+  if (r == null) return 'done';
+  const parts: string[] = [];
+  if (r.matched != null) parts.push(`matched ${r.matched}/${r.total}`);
+  if (r.requestsRemaining != null) parts.push(`${r.requestsRemaining} odds requests left`);
+  if (r.deleted != null) parts.push(`deleted ${r.deleted}`);
+  if (r.updated != null) parts.push(`updated ${r.updated}`);
+  return parts.length ? parts.join(', ') : 'done';
 }
 
 const HEALTH_CHIP: Record<string, React.CSSProperties> = {
@@ -690,6 +872,34 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
   },
   healthLabel: { color: '#ddd', fontSize: 13, fontWeight: 600, flexShrink: 0 },
+  actionRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap' as const,
+    padding: '8px 0',
+  },
+  actionBtn: {
+    background: '#1a1a1a',
+    color: '#ccc',
+    border: '1px solid #333',
+    borderRadius: 8,
+    padding: '8px 14px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  actionBtnDanger: { border: '1px solid #c8102e66', color: '#ff8080' },
+  actionSelect: {
+    background: '#1a1a1a',
+    color: '#ccc',
+    border: '1px solid #333',
+    borderRadius: 8,
+    padding: '8px 10px',
+    fontSize: 13,
+    maxWidth: 320,
+  },
+  actionMsg: { color: '#e0a000', fontSize: 12, padding: '4px 0 8px' },
   healthDetail: { color: '#777', fontSize: 12 },
   tableWrap: {
     background: '#141414',
